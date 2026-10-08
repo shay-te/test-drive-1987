@@ -352,7 +352,7 @@ export class DriveScreen {
             telemetry.rpm > car.engine.redline - GAME.shiftHintRpm;
         const progress = (vehicle.s - track.startS) / (track.finishS - track.startS);
         const readings = instrumentReadings(telemetry, car, { fuel: 1 - progress * FUEL_USED });
-        this.cockpit.update(dt, readings, telemetry.gear);
+        this.cockpit.update(dt, readings, telemetry.gear, { throttle: vehicle.throttle, brake: vehicle.brake });
         const head = this.head.update(dt, { ...telemetry, speed: this.paused ? 0 : telemetry.speed }, this.input.look());
         const g = PHYS.g;
         this.bodyPitch = approach(

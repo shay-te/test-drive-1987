@@ -317,7 +317,8 @@ export class WorldView {
         if (!this.scene) return;
         this._placeCar(view);
         this._syncVehicles(view.vehicles, view.time);
-        this.cabin.update(view.cockpit);
+        const outside = Boolean(view.outside || view.spectator);
+        this.cabin.update(view.cockpit, outside);
         const focus = view.pose?.position ?? this.track.toWorld(view.s + SHADOW_AHEAD, 0);
         this.sun.target.position.set(focus.x, focus.y, focus.z);
         this.sun.position.copy(this.sun.target.position).addScaledVector(this.sunDirection, 450);
@@ -327,7 +328,6 @@ export class WorldView {
         this.scene.updateMatrixWorld();
 
         const r = this.renderer;
-        const outside = view.outside || view.spectator;
         for (const light of this.cabinLights) light.visible = !outside;
         if (outside) {
             if (view.spectator) this._placeSpectator(view.spectator);
