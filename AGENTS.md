@@ -126,3 +126,6 @@ instrument textures, Web Audio for sound. No build step: `npm start` serves the 
   only if you must edit it.
 - Single-line edits/deletions: `sed -i`. Don't read whole files to find one key.
 - Plan before acting; make the smallest change that does the job; don't touch unrelated lines.
+- Car models: follow `assets/models/README.md` (import pipeline, inspection tools, "Adding a car").
+  Every script and note lives in this repository; work files go to `tmp/` (git-ignored), never to
+  a system temp directory.

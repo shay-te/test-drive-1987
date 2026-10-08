@@ -1,0 +1,36 @@
+{
+    "source": "1985_lamborghini_countach_lp5000_qv.glb",
+    "credit": {
+        "title": "1985 Lamborghini Countach LP5000 QV",
+        "author": "OUTPISTON",
+        "url": "https://sketchfab.com/3d-models/1985-lamborghini-countach-lp5000-qv-1bd6795f12ea4476bf8afe1b3d988ed7",
+        "license": "CC-BY-NC-SA-4.0"
+    },
+    "yawDeg": 180,
+    "remove": ["interior_mirror_231"],
+    "materials": {
+        "Material.003": { "transmission": false, "color": [0.1, 0.12, 0.14], "opacity": 0.25, "roughness": 0.05 },
+        "Material.008": { "transmission": false },
+        "Material.002": { "transmission": false }
+    },
+    "normals": { "creaseDeg": 35 },
+    "eye": [-0.35, 0.92],
+    "steeringWheel": {
+        "parts": [
+            "steering_skin_190", "steering_152", "steering_part_64", "steering_logo_83", "steering_logo_part_236",
+            "steering_logo_edge_255", "steering_logo_second_41"
+        ]
+    },
+    "windshield": { "node": "Window_03_85" },
+    "instrument": { "centre": [-0.35, 0.711, -0.852], "normal": [0, 0.113, 0.994], "width": 0.21, "backing": [0.48, 0.085] },
+    "trip": { "centre": [0, 0.623, -0.915], "normal": [0, -0.018, 1], "width": 0.15 },
+    "mirror": { "centre": [0, 0.957, -0.352], "normal": [-0.077, -0.193, 0.978], "width": 0.2, "housing": false },
+    "radar": { "centre": [-0.45, 0.978, -0.4] },
+    "lever": {
+        "base": [-0.025, 0.45, -0.553],
+        "parts": [
+            "gage_panel_transmission_handle_149", "gage_panel_transmission_handle_part_54",
+            "gage_panel_transmission_handle_part_a_219", "gage_panel_transmission_handle_text_213"
+        ]
+    }
+}

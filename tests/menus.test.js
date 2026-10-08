@@ -37,7 +37,7 @@ function openMenu(Screen, params) {
 
 test('only the cars with an authored model are unlocked', () => {
     const unlocked = CARS.filter((car) => { return !isLocked(car); });
-    assert.deepEqual(unlocked.map((car) => { return car.id; }), ['porsche', 'ferrari']);
+    assert.deepEqual(unlocked.map((car) => { return car.id; }), ['porsche', 'ferrari', 'lamborghini']);
 });
 
 test('stepping through the line-up wraps round at both ends', () => {
@@ -69,16 +69,16 @@ test('the title reopens on the car handed back by the brochure', () => {
 });
 
 test('the brochure refuses a test drive in a locked car', () => {
-    const { screen, visits, press } = openMenu(SelectScreen, { carId: 'ferrari' });
+    const { screen, visits, press } = openMenu(SelectScreen, { carId: 'lamborghini' });
     press('ArrowRight');
-    assert.equal(screen.car.id, 'lamborghini');
+    assert.equal(screen.car.id, 'lotus');
     press('Enter');
     assert.deepEqual(visits, []);
     press('ArrowLeft');
     press('Enter');
     assert.equal(visits.length, 1);
     assert.equal(visits[0][0], 'drive');
-    assert.equal(visits[0][1].session.car.id, 'ferrari');
+    assert.equal(visits[0][1].session.car.id, 'lamborghini');
 });
 
 test('leaving the brochure takes the chosen car back to the title', () => {

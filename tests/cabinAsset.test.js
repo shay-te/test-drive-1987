@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { statSync } from 'node:fs';
-import { readGlb } from '../scripts/glb.mjs';
+import { readFloats, readGlb } from '../scripts/glb.mjs';
 import { CABIN_VIEWS } from '../src/data/cabinViews.js';
 import { CARS } from '../src/data/cars.js';
 import { LOOK } from '../src/config.js';
@@ -32,10 +32,14 @@ function staticBounds(model) {
     return { min, max };
 }
 
-test('the Porsche and the Ferrari drive authored cabins; the rest stay procedural', () => {
+test('the Porsche, the Ferrari and the Lamborghini drive authored cabins; the rest stay procedural', () => {
     assert.deepEqual(
         AUTHORED.map((car) => { return [car.id, car.cockpit.model]; }),
-        [['porsche', 'assets/models/porsche/cabin.glb'], ['ferrari', 'assets/models/ferrari/cabin.glb']],
+        [
+            ['porsche', 'assets/models/porsche/cabin.glb'],
+            ['ferrari', 'assets/models/ferrari/cabin.glb'],
+            ['lamborghini', 'assets/models/lamborghini/cabin.glb'],
+        ],
     );
 });
 
@@ -103,7 +107,9 @@ for (const car of AUTHORED) {
         for (const name of SURFACES) {
             const primitives = model.meshes[bindings[name].mesh].primitives;
             assert.equal(primitives.length, 1);
-            assert.ok(primitives.every((primitive) => { return primitive.attributes.TEXCOORD_0 !== undefined; }));
+            const uv = readFloats(modelUrl(car), model, primitives[0].attributes.TEXCOORD_0);
+            assert.ok(uv.every(Number.isFinite), `${name} UVs are numbers`);
+            assert.ok(Math.min(...uv) === 0 && Math.max(...uv) === 1, `${name} UVs cover the whole image`);
         }
     });
 }

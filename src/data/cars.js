@@ -317,7 +317,7 @@ export const CARS = [
         make: 'LAMBORGHINI',
         model: 'COUNTACH',
         fullName: 'Lamborghini Countach 5000 S QV',
-        paint: '#f1f0ea',
+        paint: '#b0141c',
         brochure: {
             specs: {
                 layout: 'mid/rear',
@@ -386,6 +386,7 @@ export const CARS = [
         },
         cockpit: {
             cluster: 'lamborghini',
+            model: 'assets/models/lamborghini/cabin.glb',
             dash: { top: '#141414', face: '#232323', panel: '#1d1d1d', accent: '#5a1a14', grain: 'leather' },
             wheel: { spokes: 3, rim: '#121212', spoke: '#1e1e1e' },
             shifter: { type: 'gate', pattern: 'dogleg5', knob: '#cfcfd4' },
@@ -394,11 +395,12 @@ export const CARS = [
             length: 4.14,
             width: 2.0,
             // The driver's eye, metres back from the front bumper.
-            eye: 2.45,
+            eye: 2.15,
             height: 1.07,
+            // Axles of the authored model (wheelbase 2.41).
             wheels: [
-                { x: 0.95, r: 0.31 },
-                { x: 3.4, r: 0.315 },
+                { x: 0.91, r: 0.31 },
+                { x: 3.32, r: 0.315 },
             ],
             profile: [
                 [0.03, 0.24],

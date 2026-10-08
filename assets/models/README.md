@@ -1,8 +1,9 @@
 # Car models and cabin assets
 
-The Porsche and the Ferrari are driven from the inside of full 3D models: each `cabin.glb` holds the
-complete car, exterior and interior, plus the parts the game animates and draws on. The title screen
-photographs the same file side-on. The other three cars have no model yet and are locked.
+The Porsche, the Ferrari and the Lamborghini are driven from the inside of full 3D models: each
+`cabin.glb` holds the complete car, exterior and interior, plus the parts the game animates and draws
+on. The title screen and the brochure photograph the same file side-on. The Lotus and the Corvette
+have no model yet and are locked.
 
 ## Sources and credits
 
@@ -10,11 +11,14 @@ photographs the same file side-on. The other three cars have no model yet and ar
 | --- | --- | --- | --- |
 | Porsche 911 Turbo | [Porsche 911 turbo 930 Johnny Silverhand's](https://sketchfab.com/3d-models/porsche-911-turbo-930-johnny-silverhands-25656a7a831442059de7a466f4a17692) | valvetin | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
 | Ferrari Testarossa | [1986 Ferrari Testarossa](https://sketchfab.com/3d-models/1986-ferrari-testarossa-36865e4d4d21482bb268520aafca1196) | Res1n | Sketchfab Standard |
+| Lamborghini Countach | [1985 Lamborghini Countach LP5000 QV](https://sketchfab.com/3d-models/1985-lamborghini-countach-lp5000-qv-1bd6795f12ea4476bf8afe1b3d988ed7) | OUTPISTON | [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/) |
 
-The downloaded files are kept unchanged next to each car's `cabin.glb`
-(`porsche/porsche_911_turbo_930_johnny_silverhands.glb`, `ferrari/1986_ferrari_testarossa.glb`).
-The game's `cabin.glb` is derived from them: turned into game space, decimated, with hidden engine
-parts removed, materials adjusted, and the runtime parts below added.
+The Countach model is non-commercial and share-alike: it and its derived `lamborghini/cabin.glb` stay
+under CC BY-NC-SA 4.0, not the repository's MIT license.
+
+The downloaded files are kept unchanged in each car's folder, next to `cabin.glb`. The game's
+`cabin.glb` is derived from them: turned into game space, decimated, with hidden parts removed,
+materials adjusted, and the runtime parts below added. Only `cabin.glb` is published to GitHub Pages.
 
 ## Import pipeline
 
@@ -24,34 +28,74 @@ parts removed, materials adjusted, and the runtime parts below added.
 - `yawDeg`, `centreOn` — turn the model nose-first along −z and centre it across. It is scaled to
   `body.length` from `src/data/cars.js`, put on the road, and moved so the nose is `body.eye` ahead of
   the seated eye (the origin).
-- `remove`, `materials`, `translucent` — drop hidden parts by node name, fix materials (alpha mode,
-  colour, opacity, roughness), and move a texture atlas's window parts onto a translucent copy.
+- `remove`, `materials`, `translucent` — drop parts by node name, fix materials (alpha mode, colour,
+  opacity, roughness; `transmission: false` swaps costly transmission glass for alpha blending), and
+  move a texture atlas's window parts onto a translucent copy.
 - `normals.creaseDeg`, `pruneBelow` — for flat-shaded sources: weld by position and rebuild normals
   with that crease angle; drop loose pieces smaller than that many metres (tread blocks, tiny badges).
 - `eye`, `steeringWheel`, `windshield` — the seated eye `[x, y]`; the wheel parts (their hub and axis
   are found from the geometry) and an optional material; the windshield node, or a box and facing
   that select its triangles from a larger glass mesh.
 - `instrument`, `trip`, `mirror`, `radar`, `lever`, `console` — where the live dials, trip display,
-  rear-view mirror, radar detector and gear lever sit (centre, facing normal, width). `instrument.backing`
-  blanks a model's own painted dials; `console` adds a tunnel where a model has none.
+  rear-view mirror, radar detector and gear lever sit (centre, facing normal, width).
+  `instrument.backing` blanks a model's own painted dials; `mirror.housing: false` keeps a model's own
+  mirror body; `lever.parts` hangs a model's own gear lever on the pivot instead of a generated one;
+  `console` adds a tunnel where a model has none.
 - `textures` — base-colour and other texture sizes. Textures whose alpha is used stay PNG.
 
-Decimation is error-driven: the script finds the smallest error, in metres, that brings the car under
-95,000 triangles, so dense small parts collapse before broad panels lose their shape.
-
-The script's tools are not project dependencies; install them without saving, then run it:
-
-```sh
-npm i --no-save --no-package-lock @gltf-transform/core@4 @gltf-transform/functions@4 \
-    @gltf-transform/extensions@4 meshoptimizer@0 sharp@0
-node scripts/import-car.mjs porsche
-node scripts/import-car.mjs ferrari
-npm run assets && npm run check
-```
+A mesh node named `Object_N` that is its parent's only child takes the parent's name, so configs can
+use the names the modeller gave (`steering_152`). Decimation is error-driven: the script finds the
+smallest error, in metres, that brings the car under 95,000 triangles, so dense small parts collapse
+before broad panels lose their shape.
 
 To edit a car by hand, open its source GLB in Blender (File → Import → glTF 2.0), make the change,
 export it back over the source as GLB, and run the import again. Edits to `cabin.glb` itself are
 overwritten by the next import.
+
+## Tools
+
+The model tools are not project dependencies. Install them into this repository without saving (one
+command, so a later install does not prune the others), plus Playwright's browsers:
+
+```sh
+npm i --no-save --no-package-lock @gltf-transform/core@4 @gltf-transform/functions@4 \
+    @gltf-transform/extensions@4 meshoptimizer@0 sharp@0 playwright@1.56.1
+npx playwright install chromium firefox
+```
+
+Work files go to `tmp/` (ignored by git). The browser tools need `npm start` running.
+
+- `node scripts/inspect-model.mjs <model.glb> [x0,y0,z0,x1,y1,z1]` — credit, materials, and every part
+  with its triangles and bounds, largest first; a box keeps the parts centred inside it.
+- `scripts/model-viewer.html?model=<path>&view=eye|side|top|front|back` — a studio view of any model:
+  `eye`, `yaw`, `pitch` for a seated camera, `centre` and `zoom` for the orthographic ones, `hide` for
+  parts or materials (three.js turns spaces in names into underscores).
+- `node scripts/model-shots.mjs view <name> "<query>"` — screenshot the viewer to `tmp/shots/`.
+- `node scripts/model-shots.mjs pick "<query>" x,y ...` — the part, material, point and normal under
+  each pixel of that view: how the positions in `import.json` are measured.
+- `node scripts/model-shots.mjs preview <carId> <view>[+keys] ...` — screenshot the game's own cabin
+  preview with live displays (`forward`, or a view id from `src/data/cabinViews.js`; `+89` turns on
+  the radar and the windshield damage).
+
+## Adding a car
+
+1. Put the download in `assets/models/<carId>/` and read its license with `inspect-model.mjs`.
+2. Write `import.json` with `source` and `yawDeg` (find the nose and the steering wheel in the
+   inspector's bounds; the wheel must end up at −x, on the left), then
+   `node scripts/import-car.mjs <carId> --aligned tmp/<carId>-aligned.glb`.
+3. Look at the cabin (`model-shots.mjs view` from above and from a guessed eye). If the seat is not
+   where `body.eye` puts the eye, move `body.eye` in `src/data/cars.js` and realign; set `body.wheels`
+   to the model's axles, since the over-the-edge physics uses both.
+4. Measure the rest with `model-shots.mjs pick`: the gauge face, a place for the trip display, the
+   mirror, a spot for the radar under the windshield, the lever base. Name the wheel, windshield and
+   lever parts from the inspector.
+5. Import (`node scripts/import-car.mjs <carId>`), point `cockpit.model` at the cabin, and run
+   `npm run assets`. If the decimation error is more than a couple of millimetres, the source is
+   probably flat-shaded: add `normals.creaseDeg`.
+6. Check every seated view with `model-shots.mjs preview`, including `+89`, and fix what looks wrong:
+   dark materials, see-through windows, a missing crack layer, clipped housings.
+7. Add the car to the authored-cabin and unlocked-car lists in `tests/cabinAsset.test.js` and
+   `tests/menus.test.js`, add its credit above, and run `npm run check`.
 
 ## Delivery
 
@@ -59,6 +103,7 @@ overwritten by the next import.
 | --- | ---: | ---: | ---: | ---: |
 | Porsche 911 Turbo | 93,453 | 20 | 4.8 MB | 0.7 mm |
 | Ferrari Testarossa | 93,366 | 32 | 5.8 MB | 2.8 mm |
+| Lamborghini Countach | 93,091 | 45 | 4.7 MB | 1.3 mm |
 
 The budgets are 100,000 triangles, 50 primitives and 8 MiB per car (`tests/cabinAsset.test.js`).
 
@@ -84,12 +129,6 @@ The runtime loads the path declared in `car.cockpit.model`. A missing or invalid
 
 Run `npm start`, then open `http://localhost:8080/preview.html`. URL parameters select the car, lighting stage, and initial view; for example `preview.html?car=porsche&stage=4&view=rear`. In both the game and preview, keys 1–7 select dashboard, console, driver door, passenger door, front seats, roof, and rear cabin. Q/E rotate horizontally, R/F rotate vertically, C centres, and dragging adjusts both axes. The gamepad right stick looks around; its press centres. The preview also supports live steering, A/Z shifting, up-arrow revving, and keys 8/9 toggling radar and windshield damage.
 
-`npm run browser` uses Playwright to exercise the real renderer, export all seven seated views under midday and sunset lighting, check cache ownership and controls, and measure rendering. It rejects unexpected console errors, including caught loading failures. It also starts real Firefox and tests versionless, major-only, and conventional Firefox user-agent strings in Chromium. It requires a running game server and Playwright as a development tool. A temporary tool install is sufficient:
+`npm run browser` uses Playwright (installed as above) to exercise the real renderer, export all seven seated views under midday and sunset lighting, check cache ownership and controls, and measure rendering. It rejects unexpected console errors, including caught loading failures. It also starts real Firefox and tests versionless, major-only, and conventional Firefox user-agent strings in Chromium. It requires a running game server. The same check gates every GitHub Pages deploy (`.github/workflows/pages.yml`).
 
-```sh
-npm install --prefix /tmp/test-drive-tools --no-save playwright@1.64.0
-node /tmp/test-drive-tools/node_modules/playwright/cli.js install chromium firefox
-PLAYWRIGHT_MODULE=/tmp/test-drive-tools/node_modules/playwright/index.mjs npm run browser
-```
-
-`GAME_URL` changes the server URL and `CABIN_EVIDENCE` changes the default `/tmp/test-drive-cabin-evidence` output directory. Browser verification uses the actual pinned three.js CDN modules. Screenshots and benchmark results are evidence, not game assets. `BROWSER_BIN` optionally selects an existing Chromium installation. `CABIN_REGRESSION_ONLY=1` runs the shorter loading/rendering matrix.
+`GAME_URL` changes the server URL and `CABIN_EVIDENCE` changes the default `tmp/cabin-evidence` output directory. Browser verification uses the actual pinned three.js CDN modules. Screenshots and benchmark results are evidence, not game assets. `BROWSER_BIN` optionally selects an existing Chromium installation. `CABIN_REGRESSION_ONLY=1` runs the shorter loading/rendering matrix that the deploy runs. Playwright's Firefox does not launch on this macOS version, so locally only the Chromium part completes.

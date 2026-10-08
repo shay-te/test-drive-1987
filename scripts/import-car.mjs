@@ -79,7 +79,7 @@ function splitTranslucent(spec) {
     }
 }
 
-/** Applies per-material fixes: { name: { alphaMode, color, opacity, roughness, metallic, doubleSided, as } }. */
+/** Applies per-material fixes: { name: { alphaMode, color, opacity, roughness, metallic, doubleSided, transmission, as } }. */
 function fixMaterials(fixes) {
     const materials = doc.getRoot().listMaterials();
     for (const material of materials) {
@@ -100,6 +100,8 @@ function fixMaterials(fixes) {
         if (fix.roughness !== undefined) material.setRoughnessFactor(fix.roughness);
         if (fix.metallic !== undefined) material.setMetallicFactor(fix.metallic);
         if (fix.doubleSided !== undefined) material.setDoubleSided(fix.doubleSided);
+        // Transmission costs three.js an extra render pass; plain alpha blending reads the same in a cabin.
+        if (fix.transmission === false) material.setExtension('KHR_materials_transmission', null);
     }
 }
 
@@ -120,10 +122,13 @@ function align() {
     root.setTranslation([-s * (across.min[0] + across.max[0]) / 2, -s * whole.min[1], -car.body.eye - s * whole.min[2]]);
 }
 
-/** Bakes every mesh node's world transform into its geometry and drops the empty hierarchy. */
+/** Bakes every mesh node's world transform into its geometry and drops the empty hierarchy. A generic
+ *  exporter mesh ("Object_12") that is its parent's only child takes the parent's name. */
 function bake() {
     for (const node of scene().listChildren().flatMap(subtree)) {
         if (!node.getMesh()) continue;
+        const parent = node.getParentNode();
+        if (/^Object_\d+$/.test(node.getName()) && parent?.listChildren().length === 1) node.setName(parent.getName());
         clearNodeParent(node);
         clearNodeTransform(node);
     }
@@ -206,11 +211,16 @@ function mapWindshield(node) {
     const prim = node.getMesh().listPrimitives()[0];
     const position = prim.getAttribute('POSITION').getArray();
     let normal = [0, 0, 0];
+    let reference = null;
     const { index } = readPrimitive(prim);
     for (let t = 0; t < index.length; t += 3) {
         const [a, b, c] = [0, 1, 2].map((k) => { return Array.from(position.subarray(index[t + k] * 3, index[t + k] * 3 + 3)); });
-        normal = add(normal, cross(sub(b, a), sub(c, a)));
+        const face = cross(sub(b, a), sub(c, a));
+        reference ??= face;
+        // Glass modelled as two layers faces both ways; count every face on one side.
+        normal = add(normal, dot(face, reference) < 0 ? scale(face, -1) : face);
     }
+    if (!(Math.hypot(...normal) > 0)) throw new Error('The windshield has no area to map');
     normal = unit(normal);
     const across = unit(sub([1, 0, 0], scale(normal, normal[0])));
     let down = cross(normal, across);
@@ -322,14 +332,25 @@ function mountSteeringWheel({ parts: names, material }, eye) {
     mount.addChild(wheel);
     // Into the mount's frame: rotate by the transposed axes after moving the hub to the origin.
     const [x, y, z] = axes;
-    const toLocal = [x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0,
-        -dot(x, centre), -dot(y, centre), -dot(z, centre), 1];
+    hang(parts, wheel, [x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0,
+        -dot(x, centre), -dot(y, centre), -dot(z, centre), 1]);
+    scene().addChild(mount);
+}
+
+/** Moves baked parts under `parent`, re-expressing their geometry in its frame with the `toLocal` matrix. */
+function hang(parts, parent, toLocal) {
     for (const part of parts) {
         transformMesh(part.getMesh(), toLocal);
         scene().removeChild(part);
-        wheel.addChild(part);
+        parent.addChild(part);
     }
-    scene().addChild(mount);
+}
+
+/** Hangs the model's own gear lever parts on a `gear_lever` pivot at `base`, which the runtime tilts. */
+function mountLever({ parts, base }) {
+    const pivot = doc.createNode('gear_lever').setTranslation(base);
+    hang(named(parts), pivot, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -base[0], -base[1], -base[2], 1]);
+    scene().addChild(pivot);
 }
 
 /** Keeps only the `semantics` vertex attributes on every primitive. */
@@ -556,13 +577,15 @@ function addRig() {
         add(trip.centre, scale(unit(trip.normal), SURFACE_OFFSET)), trip.normal));
 
     const m = CABIN.mirror;
-    const mirror = config.mirror.centre;
-    root.addChild(placed('mirror_surface', quad(m.w, m.h), materials.display, mirror));
+    const { centre: mirror, normal: facing, width = m.w, housing: housed = true } = config.mirror;
+    root.addChild(placed('mirror_surface', quad(width, (width * m.h) / m.w), materials.display, mirror, facing));
     root.addChild(doc.createNode('mirror_camera').setTranslation(mirror).setRotation([0, 1, 0, 0]));
-    const housing = [m.w + 2 * m.bezel, m.h + 2 * m.bezel, MIRROR.housingDepth];
-    root.addChild(placed(staticName('mirror housing'), box(housing), materials.black, add(mirror, [0, 0, -housing[2] / 2 - 0.001])));
-    root.addChild(placed(staticName('mirror stem'), box(MIRROR.stem), materials.black,
-        add(mirror, [0, housing[1] / 2 + MIRROR.stem[1] / 2, -housing[2] / 2])));
+    if (housed) {
+        const housing = [m.w + 2 * m.bezel, m.h + 2 * m.bezel, MIRROR.housingDepth];
+        root.addChild(placed(staticName('mirror housing'), box(housing), materials.black, add(mirror, [0, 0, -housing[2] / 2 - 0.001])));
+        root.addChild(placed(staticName('mirror stem'), box(MIRROR.stem), materials.black,
+            add(mirror, [0, housing[1] / 2 + MIRROR.stem[1] / 2, -housing[2] / 2])));
+    }
 
     const r = CABIN.radar;
     const radar = doc.createNode('radar_mount').setTranslation(config.radar.centre);
@@ -574,11 +597,12 @@ function addRig() {
     root.addChild(placed(staticName('radar body'), box([r.w, r.h, r.d]), materials.black, config.radar.centre));
 
     const lever = config.lever;
-    const s = CABIN.shifter;
-    const pivot = doc.createNode('gear_lever').setTranslation(lever.base);
-    pivot.addChild(meshNode('gear stick', lathe([[LEVER.stickRadius, 0], [LEVER.stickRadius, lever.length]]), materials[lever.stick]));
-    pivot.addChild(meshNode('gear knob', shift(sphere(s.knob), [0, lever.length, 0]), materials.black));
-    root.addChild(pivot);
+    if (!lever.parts) {
+        const pivot = doc.createNode('gear_lever').setTranslation(lever.base);
+        pivot.addChild(meshNode('gear stick', lathe([[LEVER.stickRadius, 0], [LEVER.stickRadius, lever.length]]), materials[lever.stick]));
+        pivot.addChild(meshNode('gear knob', shift(sphere(CABIN.shifter.knob), [0, lever.length, 0]), materials.black));
+        root.addChild(pivot);
+    }
     if (lever.gate) root.addChild(placed(staticName('gear gate'), box(LEVER.gate), materials[lever.gate], lever.base));
     if (lever.boot) {
         const b = LEVER.boot;
@@ -620,6 +644,7 @@ if (flag === '--aligned') {
 const eye = [...config.eye, 0];
 extractWindshield(config.windshield);
 mountSteeringWheel(config.steeringWheel, eye);
+if (config.lever.parts) mountLever(config.lever);
 // Flat-shaded sources weld by position alone so the decimator can work; their normals are rebuilt after.
 const crease = config.normals?.creaseDeg;
 keepAttributes(crease ? ['POSITION'] : ['POSITION', 'NORMAL', 'TEXCOORD_0']);

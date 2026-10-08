@@ -61,7 +61,12 @@ async function confirmLoading(browser, label, userAgent) {
     page.on('console', (message) => {
         if (message.type() === 'error' && !message.location().url.endsWith('/favicon.ico')) failures.push(message.text());
     });
-    page.on('requestfailed', (request) => { failures.push(`${request.url()}: ${request.failure().errorText}`); });
+    page.on('requestfailed', async (request) => {
+        // Browsers can flag a streamed model download as aborted after delivering it (200); only a
+        // request without a successful response has failed.
+        if ((await request.response())?.ok()) return;
+        failures.push(`${request.url()}: ${request.failure().errorText}`);
+    });
     await page.addInitScript(() => {
         globalThis.__cabinDrawCalls = 0;
         const draw = globalThis.WebGL2RenderingContext.prototype.drawElements;
@@ -71,19 +76,21 @@ async function confirmLoading(browser, label, userAgent) {
         };
     });
     try {
+        // The title downloads the cabin to photograph it; the drive reuses that cached model.
+        const asset = page.waitForResponse((response) => { return response.url().endsWith('/cabin.glb'); });
         await page.goto(baseUrl);
         await page.waitForFunction(() => {
             const canvas = document.querySelector('canvas.overlay');
             return canvas && canvas.getContext('2d').getImageData(640, 150, 1, 1).data[3] > 0;
         });
+        assert.equal((await asset).status(), 200, `${label}: actual cabin download`);
         await page.keyboard.press('Enter');
         await page.evaluate(async () => {
             await new Promise((resolve) => { requestAnimationFrame(resolve); });
             await new Promise((resolve) => { requestAnimationFrame(resolve); });
+            globalThis.__cabinDrawCalls = 0;
         });
-        const asset = page.waitForResponse((response) => { return response.url().endsWith('/cabin.glb'); });
         await page.keyboard.press('Enter');
-        assert.equal((await asset).status(), 200, `${label}: actual cabin download`);
         await page.waitForFunction(() => { return globalThis.__cabinDrawCalls > 0; });
         assert.deepEqual(failures, [], `${label}: browser errors`);
         await page.screenshot({ path: `${output}/${label}-driving.png` });
@@ -98,7 +105,7 @@ async function confirmLoading(browser, label, userAgent) {
 
 const { chromium, firefox } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 const baseUrl = process.env.GAME_URL ?? 'http://127.0.0.1:8080';
-const output = process.env.CABIN_EVIDENCE ?? '/tmp/test-drive-cabin-evidence';
+const output = process.env.CABIN_EVIDENCE ?? 'tmp/cabin-evidence';
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
     executablePath: process.env.BROWSER_BIN,
@@ -203,8 +210,8 @@ try {
         assert.equal(modelRequests, 1, 'the asset must only be fetched once across reloads');
         results.preview.modelRequests = modelRequests;
         results.preview.performance = await measure(page, screen);
-        await page.goto(`${baseUrl}/preview.html?car=lamborghini`, { waitUntil: 'networkidle' });
-        await page.screenshot({ path: `${output}/procedural-lamborghini.png` });
+        await page.goto(`${baseUrl}/preview.html?car=lotus`, { waitUntil: 'networkidle' });
+        await page.screenshot({ path: `${output}/procedural-lotus.png` });
         await page.goto(baseUrl, { waitUntil: 'networkidle' });
         const game = await instance(page, '/src/core/Game.js', 'Game');
         await page.keyboard.press('Enter');
