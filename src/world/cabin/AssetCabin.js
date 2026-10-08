@@ -4,7 +4,7 @@ import { CabinWindshield } from './CabinWindshield.js';
 import { leverAngles, radarLights, wheelAngle } from './cabinAnimation.js';
 import { CABIN } from './cabinLayout.js';
 import { sideMirrorNodes, validateCabinNodes } from './cabinAsset.js';
-import { onCabinLayer } from './shapes.js';
+import { onCabinLayer } from './cabinLayer.js';
 
 /** An authored cabin instance sharing cached geometry and owning its live display resources. */
 export class AssetCabin {

@@ -64,7 +64,8 @@ export const CARS = [
             idleRpm: 950,
             redline: 6800,
             maxRpm: 7600,
-            turbo: { spoolRpm: 2700, fullRpm: 4300, lagSec: 0.95, offBoost: 0.55 },
+            // KKK K27 at 0.8 bar (11.6 psi) peak boost.
+            turbo: { spoolRpm: 2700, fullRpm: 4300, lagSec: 0.95, offBoost: 0.55, peakPsi: 11.6 },
         },
         drivetrain: {
             gears: [2.25, 1.304, 0.893, 0.656],
@@ -477,7 +478,8 @@ export const CARS = [
             idleRpm: 900,
             redline: 7000,
             maxRpm: 7800,
-            turbo: { spoolRpm: 2600, fullRpm: 4000, lagSec: 0.7, offBoost: 0.6 },
+            // Garrett T3 at 0.55 bar (8 psi) peak boost.
+            turbo: { spoolRpm: 2600, fullRpm: 4000, lagSec: 0.7, offBoost: 0.6, peakPsi: 8 },
         },
         drivetrain: {
             gears: [2.92, 1.94, 1.32, 0.97, 0.76],

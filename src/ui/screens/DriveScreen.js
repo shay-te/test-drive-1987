@@ -1,7 +1,7 @@
 import { DriveSoundscape } from '../../audio/DriveSoundscape.js';
 import { CockpitState } from '../../cockpit/CockpitState.js';
 import { HeadMotion } from '../../cockpit/HeadMotion.js';
-import { instrumentReadings, lampStates } from '../../cockpit/instruments.js';
+import { boostPsi, instrumentReadings, lampStates, revState } from '../../cockpit/instruments.js';
 import { tripInfo, tripLines } from '../../cockpit/tripDisplay.js';
 import { GAME, MOTION, PHYS } from '../../config.js';
 import { gearLabel } from '../../data/cars.js';
@@ -396,9 +396,13 @@ export class DriveScreen {
             drawCrash(ctx, this.cause, this._fallStats(), session.chances, this.over, this.time);
         if (this.state === 'ticket' && this.vehicle.vx <= 0.3)
             drawTicket(ctx, this.car, this.clockedMph, this.time);
-        const gear = gearLabel(this.car, this.vehicle.engine.gear);
-        if (this.outside) drawOutsideReadout(ctx, this.vehicle.speedMph, gear);
-        else drawGear(ctx, gear);
+        const telemetry = this.vehicle.telemetry();
+        const gear = gearLabel(this.car, telemetry.gear);
+        if (this.outside) {
+            drawOutsideReadout(ctx, {
+                mph: telemetry.mph, rpm: telemetry.rpm, rev: revState(telemetry, this.car), gear, psi: boostPsi(telemetry, this.car),
+            });
+        } else drawGear(ctx, gear);
         if (this.paused) drawPaused(ctx);
     }
 

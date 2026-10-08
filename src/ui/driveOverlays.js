@@ -90,23 +90,33 @@ export function drawTicket(ctx, car, mph, time) {
     drawPrompt(ctx, t('crash.continue'), time, k.y + k.h - 40);
 }
 
-/** A bottom-edge panel of [value, label] fields; centred, or at `left`. */
+/** Readout colours for the engine's revs (see revState). */
+const REV_COLORS = { normal: COLORS.white, high: COLORS.accent, over: COLORS.danger };
+
+/** A bottom-edge panel of [value, label, color?] fields; centred, or at `left`. */
 function drawReadout(ctx, fields, left = null) {
     const r = READOUT;
     const w = r.field * fields.length;
     const x = left ?? CENTER - w / 2;
     const y = VIEW.height - r.bottom - r.h;
     drawPanel(ctx, x, y, w, r.h);
-    fields.forEach(([value, label], i) => {
+    fields.forEach(([value, label, color = COLORS.white], i) => {
         const cx = x + r.field * (i + 0.5);
-        drawText(ctx, value, cx, y + r.h * 0.42, { size: r.size, family: 'display', color: COLORS.white });
+        drawText(ctx, value, cx, y + r.h * 0.42, { size: r.size, family: 'display', color });
         drawText(ctx, label, cx, y + r.h * 0.82, { size: r.label, color: COLORS.chrome });
     });
 }
 
-/** Speed and gear for the outside view, where the instruments cannot be seen. */
-export function drawOutsideReadout(ctx, mph, gear) {
-    drawReadout(ctx, [[String(Math.round(mph)), t('general.mph')], [gear, t('general.gear')]]);
+/** The outside view's instruments, which cannot be seen from there: speed, revs (amber near the
+ *  redline, red past it), gear, and boost on a turbo car (`psi` null without one). */
+export function drawOutsideReadout(ctx, { mph, rpm, rev, gear, psi }) {
+    const fields = [
+        [String(Math.round(mph)), t('general.mph')],
+        [String(Math.round(rpm / 50) * 50), t('general.rpm'), REV_COLORS[rev]],
+        [gear, t('general.gear')],
+    ];
+    if (psi !== null) fields.push([psi.toFixed(1), `${t('general.boost')} ${t('general.psi')}`]);
+    drawReadout(ctx, fields);
 }
 
 /** The gear you are in, always on show from the driver's seat. */

@@ -12,9 +12,8 @@ import { SCENERY_MODELS } from '../data/scenery.js';
 import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 import { AssetCabin } from './cabin/AssetCabin.js';
 import { SIDE_MIRRORS, SURFACES, validateCabinNodes } from './cabin/cabinAsset.js';
-import { CarCabin } from './cabin/CarCabin.js';
 import { CABIN } from './cabin/cabinLayout.js';
-import { CABIN_LAYER } from './cabin/shapes.js';
+import { CABIN_LAYER } from './cabin/cabinLayer.js';
 import { photographProfile } from './profilePhoto.js';
 import { photographStation } from './stationPhoto.js';
 import { chasePose, followYaw } from './chaseView.js';
@@ -181,8 +180,7 @@ export class WorldView {
     _installCabin(scene, stage, car, cabinAsset) {
         this._addSkyAndSun(scene, stage);
         this.renderer.toneMappingExposure = stage.sky.exposure;
-        const Cabin = car.cockpit.model ? AssetCabin : CarCabin;
-        this.cabin = new Cabin(
+        this.cabin = new AssetCabin(
             car,
             this.resources,
             this.renderer.capabilities.getMaxAnisotropy(),

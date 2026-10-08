@@ -1,4 +1,19 @@
+import { GAME } from '../config.js';
 import { clamp, lerp } from '../util/math.js';
+
+/** How hard the engine is revving: 'over' past the redline (it is wearing towards blowing up), 'high'
+ *  within the shift hint of it, otherwise 'normal'. */
+export function revState(telemetry, car) {
+    if (telemetry.rpm > car.engine.redline || telemetry.overRev > 0) return 'over';
+    if (telemetry.rpm > car.engine.redline - GAME.shiftHintRpm) return 'high';
+    return 'normal';
+}
+
+/** Turbo boost in psi for a turbocharged car, or null. */
+export function boostPsi(telemetry, car) {
+    const turbo = car.engine.turbo;
+    return turbo ? telemetry.boost * turbo.peakPsi : null;
+}
 
 /** Dipstick level the 930's oil gauge shows with the engine running (0..1). */
 const OIL_LEVEL = 0.72;
