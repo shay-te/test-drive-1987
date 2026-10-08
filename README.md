@@ -30,6 +30,11 @@ patrol cars and a gas station at the end of every stage.
 2. Tune the cabin materials and lighting against the reference photos; handling feedback pass.
 3. Test on phones (touch controls, performance of the cabin pass).
 
+## Play it
+
+**https://shay-te.github.io/test-drive-1987/**: published from `master` by
+`.github/workflows/pages.yml` after the tests pass.
+
 ## Run it
 
 ```sh

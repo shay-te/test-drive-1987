@@ -6,6 +6,13 @@ const TYRE = '#111113';
 const GLASS_TOP = '#9fb4cc';
 const GLASS_BOTTOM = '#141c28';
 const TRIM = '#141414';
+/** Round headlamps sit on the sloping wing front, leaning back. */
+const LAMP_LEAN = 0.45;
+const CHROME = [
+    [0, '#f4f6f8'],
+    [0.5, '#8d9299'],
+    [1, '#dfe3e8'],
+];
 
 /** Side-view illustration of a car from its `body` data (metres): paint, glass, wheels, details. */
 export function drawCarArt(ctx, car, x, groundY, width) {
@@ -40,7 +47,7 @@ export function drawCarArt(ctx, car, x, groundY, width) {
         [0.7, shadeHex(car.paint, 0.8)],
         [1, shadeHex(car.paint, 0.45)],
     ]);
-    smoothPath(ctx, toScreen(body.profile));
+    smoothPath(ctx, toScreen(body.profile), body.smooth);
     ctx.fill();
 
     for (const wheel of body.wheels) {
@@ -100,8 +107,11 @@ function drawDetails(ctx, car, body, px, py, toScreen, k) {
         ctx.lineTo(px(door + 0.02), py(body.waistLine ?? 0.82));
         ctx.stroke();
     }
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.fillRect(px(0.3), py(0.66), (body.length - 0.6) * k, k * 0.02);
+    if (body.crease) {
+        ctx.fillStyle = 'rgba(255,255,255,0.18)';
+        ctx.fillRect(px(0.3), py(body.crease), (body.length - 0.6) * k, k * 0.02);
+    }
+    for (const b of body.bellows ?? []) bellows(ctx, b, px, py, k);
     if (body.spoiler) {
         ctx.fillStyle = shadeHex(car.paint, 0.95);
         smoothPath(ctx, toScreen(body.spoiler), 0.15);
@@ -165,8 +175,30 @@ function drawDetails(ctx, car, body, px, py, toScreen, k) {
     }
     ctx.fillStyle = '#ff2a1a';
     ctx.fillRect(px(body.lights.tail[0]) - k * 0.03, py(body.lights.tail[1]) - k * 0.05, k * 0.05, k * 0.1);
-    ctx.fillStyle = '#ffd38a';
-    ctx.fillRect(px(body.lights.head[0]) - k * 0.02, py(body.lights.head[1]) - k * 0.03, k * 0.08, k * 0.05);
+    const [hx, hy] = body.lights.head;
+    if (body.headlamp === 'round') {
+        // Upright round lamp in the wing, seen edge-on: chrome ring round a tall lens.
+        ctx.fillStyle = linearGradient(ctx, 0, py(hy + 0.09), 0, py(hy - 0.09), CHROME);
+        ctx.beginPath();
+        ctx.ellipse(px(hx), py(hy), k * 0.035, k * 0.09, LAMP_LEAN, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = '#fff1c9';
+        ctx.beginPath();
+        ctx.ellipse(px(hx) - k * 0.008, py(hy), k * 0.02, k * 0.075, LAMP_LEAN, 0, TAU);
+        ctx.fill();
+    } else {
+        ctx.fillStyle = '#ffd38a';
+        ctx.fillRect(px(hx) - k * 0.02, py(hy) - k * 0.03, k * 0.08, k * 0.05);
+    }
+}
+
+/** Black rubber accordion boot between an impact bumper and the body. */
+function bellows(ctx, b, px, py, k) {
+    ctx.fillStyle = TRIM;
+    ctx.fillRect(px(b.x0), py(b.y1), (b.x1 - b.x0) * k, (b.y1 - b.y0) * k);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    for (let x = b.x0 + 0.02; x < b.x1; x += 0.025)
+        ctx.fillRect(px(x), py(b.y1), k * 0.006, (b.y1 - b.y0) * k);
 }
 
 function slats(ctx, spec, px, py, k, direction, color) {
@@ -208,8 +240,12 @@ function drawWheel(ctx, cx, cy, r, rim) {
     ctx.beginPath();
     ctx.arc(cx, cy, rr, 0, TAU);
     ctx.fill();
+    if (rim === 'fuchs') {
+        fuchs(ctx, cx, cy, rr);
+        return;
+    }
     ctx.fillStyle = '#1a1a1c';
-    const holes = { fuchs: 5, star: 5, dial: 5, cross: 10, turbine: 12 }[rim];
+    const holes = { star: 5, dial: 5, cross: 10, turbine: 12 }[rim];
     for (let i = 0; i < holes; i++) {
         const a = (i / holes) * TAU + (rim === 'turbine' ? 0.3 : 0);
         ctx.save();
@@ -225,5 +261,39 @@ function drawWheel(ctx, cx, cy, r, rim) {
     ctx.fillStyle = '#2b2d31';
     ctx.beginPath();
     ctx.arc(cx, cy, rr * 0.2, 0, TAU);
+    ctx.fill();
+}
+
+/** Fuchs forged wheel: polished lip and five polished petals over a black centre. */
+function fuchs(ctx, cx, cy, rr) {
+    ctx.fillStyle = '#17181b';
+    ctx.beginPath();
+    ctx.arc(cx, cy, rr * 0.86, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = radialGradient(ctx, cx - rr * 0.3, cy - rr * 0.3, rr * 0.1, rr * 1.1, [
+        [0, '#ffffff'],
+        [0.6, '#b9bec5'],
+        [1, '#6c7178'],
+    ]);
+    for (let i = 0; i < 5; i++) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate((i / 5) * TAU - Math.PI / 2);
+        ctx.beginPath();
+        ctx.moveTo(rr * 0.2, -rr * 0.13);
+        ctx.quadraticCurveTo(rr * 0.55, -rr * 0.2, rr * 0.86, -rr * 0.3);
+        ctx.arc(0, 0, rr * 0.86, -0.36, 0.36);
+        ctx.quadraticCurveTo(rr * 0.55, rr * 0.2, rr * 0.2, rr * 0.13);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+    ctx.fillStyle = '#1d1e21';
+    ctx.beginPath();
+    ctx.arc(cx, cy, rr * 0.24, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = '#c9a646';
+    ctx.beginPath();
+    ctx.arc(cx, cy, rr * 0.09, 0, TAU);
     ctx.fill();
 }
