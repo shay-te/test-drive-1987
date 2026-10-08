@@ -54,6 +54,9 @@ async function lighting(page, screen, stageIndex) {
     }, { preview: screen, index: stageIndex });
 }
 
+/** Software-rendered browsers on CI photograph the cabins and build the stage slowly. */
+const LOAD_TIMEOUT_MS = 180_000;
+
 async function confirmLoading(browser, label, userAgent) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, userAgent });
     const failures = [];
@@ -71,27 +74,28 @@ async function confirmLoading(browser, label, userAgent) {
         globalThis.__cabinDrawCalls = 0;
         const draw = globalThis.WebGL2RenderingContext.prototype.drawElements;
         globalThis.WebGL2RenderingContext.prototype.drawElements = function (...args) {
-            globalThis.__cabinDrawCalls++;
+            // Only the game's world canvas: the title photographs the cars on a canvas of its own.
+            if (this.canvas.classList?.contains('world')) globalThis.__cabinDrawCalls++;
             return draw.apply(this, args);
         };
     });
+    // The title downloads the cabins to photograph them; the drive reuses the cached model.
+    const downloads = [];
+    page.on('response', (response) => { if (response.url().endsWith('/cabin.glb')) downloads.push(response.status()); });
     try {
-        // The title downloads the cabin to photograph it; the drive reuses that cached model.
-        const asset = page.waitForResponse((response) => { return response.url().endsWith('/cabin.glb'); });
-        await page.goto(baseUrl);
+        await page.goto(baseUrl, { timeout: LOAD_TIMEOUT_MS });
         await page.waitForFunction(() => {
             const canvas = document.querySelector('canvas.overlay');
             return canvas && canvas.getContext('2d').getImageData(640, 150, 1, 1).data[3] > 0;
-        });
-        assert.equal((await asset).status(), 200, `${label}: actual cabin download`);
+        }, null, { timeout: LOAD_TIMEOUT_MS });
         await page.keyboard.press('Enter');
         await page.evaluate(async () => {
             await new Promise((resolve) => { requestAnimationFrame(resolve); });
             await new Promise((resolve) => { requestAnimationFrame(resolve); });
-            globalThis.__cabinDrawCalls = 0;
         });
         await page.keyboard.press('Enter');
-        await page.waitForFunction(() => { return globalThis.__cabinDrawCalls > 0; });
+        await page.waitForFunction(() => { return globalThis.__cabinDrawCalls > 0; }, null, { timeout: LOAD_TIMEOUT_MS });
+        assert.ok(downloads.includes(200), `${label}: actual cabin download`);
         assert.deepEqual(failures, [], `${label}: browser errors`);
         await page.screenshot({ path: `${output}/${label}-driving.png` });
         return { userAgent: await page.evaluate(() => { return navigator.userAgent; }), rendered: true, errors: failures };
