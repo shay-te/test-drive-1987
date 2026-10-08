@@ -1,22 +1,66 @@
 # Car models and cabin assets
 
-The default Porsche has an authored 1987 911 Turbo (930) coupe interior and exterior. Open `porsche/cabin.blend` in Blender to edit the full vehicle. The game loads `porsche/cabin.glb`; the Ferrari Testarossa loads `ferrari/cabin.glb` (below), and the other three cars retain their procedural cabins.
+The Porsche and the Ferrari are driven from the inside of full 3D models: each `cabin.glb` holds the
+complete car, exterior and interior, plus the parts the game animates and draws on. The title screen
+photographs the same file side-on. The other three cars have no model yet and are locked.
 
-The model includes flared bodywork, bonnet, roof, tea-tray spoiler, Fuchs-style wheels, tyre tread, impact bumpers, lamps, mirrors, window seals, wipers, dashboard, live instruments, four-spoke wheel, console, pedals, pleated seats and doors, rear seating, belts, carpet and headliner. Paint and upholstery retain the game's existing palette. Body panels are fixed; engine internals and opening doors are outside this asset's scope.
+## Sources and credits
 
-Inspected photo sources and interpretation limits are recorded in `porsche/references.json`. This is reference-informed original game geometry, not a dimensionally certified restoration model. Roof lining and rear trim contain interpretive details.
+| Car | Source model | Author | License |
+| --- | --- | --- | --- |
+| Porsche 911 Turbo | [Porsche 911 turbo 930 Johnny Silverhand's](https://sketchfab.com/3d-models/porsche-911-turbo-930-johnny-silverhands-25656a7a831442059de7a466f4a17692) | valvetin | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
+| Ferrari Testarossa | [1986 Ferrari Testarossa](https://sketchfab.com/3d-models/1986-ferrari-testarossa-36865e4d4d21482bb268520aafca1196) | Res1n | Sketchfab Standard |
 
-## Delivery and previews
+The downloaded files are kept unchanged next to each car's `cabin.glb`
+(`porsche/porsche_911_turbo_930_johnny_silverhands.glb`, `ferrari/1986_ferrari_testarossa.glb`).
+The game's `cabin.glb` is derived from them: turned into game space, decimated, with hidden engine
+parts removed, materials adjusted, and the runtime parts below added.
 
-The complete model exports as 99,604 triangles, 29 mesh primitives and four embedded 256×256 normal maps (1 MiB decoded RGBA). The GLB is approximately 3.5 MiB, below the 8 MiB budget. The 29 primitives count the model's main pass; shadows, mirrors and damage add passes or meshes.
+## Import pipeline
 
-Previews are in `porsche/previews/`: studio [front](porsche/previews/front.png), [rear](porsche/previews/rear.png), and [side](porsche/previews/side.png), plus in-game [dashboard](porsche/previews/dashboard.png) and [seats](porsche/previews/seats.png). In Blender, dynamic display surfaces are placeholders; inspect live instruments and the rear-view mirror in `preview.html`.
+`scripts/import-car.mjs <carId>` turns `assets/models/<carId>/<source>.glb` into
+`assets/models/<carId>/cabin.glb`, following `assets/models/<carId>/import.json`:
 
-The selection screen uses [selection.png](porsche/selection.png), a transparent 1536×512 Blender render of this source. The [selection-screen preview](porsche/previews/selection-screen.png) shows it in the game. Other cars keep their existing profile artwork. `scripts/blender/render_porsche.py -- OUTPUT_DIRECTORY` renders the studio, orthographic and selection images without saving preview lighting into the source. Optional view names after the directory restrict the render, for example `selection`.
+- `yawDeg`, `centreOn` — turn the model nose-first along −z and centre it across. It is scaled to
+  `body.length` from `src/data/cars.js`, put on the road, and moved so the nose is `body.eye` ahead of
+  the seated eye (the origin).
+- `remove`, `materials`, `translucent` — drop hidden parts by node name, fix materials (alpha mode,
+  colour, opacity, roughness), and move a texture atlas's window parts onto a translucent copy.
+- `normals.creaseDeg`, `pruneBelow` — for flat-shaded sources: weld by position and rebuild normals
+  with that crease angle; drop loose pieces smaller than that many metres (tread blocks, tiny badges).
+- `eye`, `steeringWheel`, `windshield` — the seated eye `[x, y]`; the wheel parts (their hub and axis
+  are found from the geometry) and an optional material; the windshield node, or a box and facing
+  that select its triangles from a larger glass mesh.
+- `instrument`, `trip`, `mirror`, `radar`, `lever`, `console` — where the live dials, trip display,
+  rear-view mirror, radar detector and gear lever sit (centre, facing normal, width). `instrument.backing`
+  blanks a model's own painted dials; `console` adds a tunnel where a model has none.
+- `textures` — base-colour and other texture sizes. Textures whose alpha is used stay PNG.
 
-## Ferrari Testarossa
+Decimation is error-driven: the script finds the smallest error, in metres, that brings the car under
+95,000 triangles, so dense small parts collapse before broad panels lose their shape.
 
-`ferrari/cabin.blend` is the editable source of the authored Testarossa interior and exterior; `ferrari/cabin.glb` is its export under the contract below. It is 84,800 triangles in 44 mesh primitives with no textures, about 2.3 MiB. Its static bounds follow the Ferrari `body` data in `src/data/cars.js`: front bumper 2.555 m ahead of the eye, 4.50 m long, 1.13 m roof. The driver's eye sits at 0.98 m, lower than the 930's. There is no selection render yet, so the select screen keeps the Ferrari's profile artwork.
+The script's tools are not project dependencies; install them without saving, then run it:
+
+```sh
+npm i --no-save --no-package-lock @gltf-transform/core@4 @gltf-transform/functions@4 \
+    @gltf-transform/extensions@4 meshoptimizer@0 sharp@0
+node scripts/import-car.mjs porsche
+node scripts/import-car.mjs ferrari
+npm run assets && npm run check
+```
+
+To edit a car by hand, open its source GLB in Blender (File → Import → glTF 2.0), make the change,
+export it back over the source as GLB, and run the import again. Edits to `cabin.glb` itself are
+overwritten by the next import.
+
+## Delivery
+
+| Car | Triangles | Mesh primitives | GLB | Decimation error |
+| --- | ---: | ---: | ---: | ---: |
+| Porsche 911 Turbo | 93,453 | 19 | 4.8 MB | 0.7 mm |
+| Ferrari Testarossa | 93,366 | 32 | 5.8 MB | 2.8 mm |
+
+The budgets are 100,000 triangles, 50 primitives and 8 MiB per car (`tests/cabinAsset.test.js`).
 
 ## Contract
 
@@ -24,34 +68,7 @@ Export glTF 2.0 as a self-contained, uncompressed GLB. Use metres, X right, Y up
 
 The runtime requires unique nodes named `driver_eye`, `mirror_camera`, `steering_wheel`, `gear_lever`, `instrument_surface`, `trip_surface`, `mirror_surface`, `windshield_surface`, and `radar_led_0` through `radar_led_5`. The four surfaces must be UV-mapped meshes. Surface UVs cover the full image, using standard glTF image coordinates (the exported top edge is V=0). The wheel rotates around its local Z axis; the lever tilts around its local X and Z axes. The mirror camera points backwards along the car's +Z axis. The driver camera is attached to `driver_eye` and stays seated.
 
-The cluster, trip display, mirror picture, windshield cracks, and radar illumination are runtime-owned. Do not bake speed, gear, warnings, or other changing text into textures. Preserve the named surfaces and pivots while replacing the surrounding geometry. Static materials and textures belong to the cached asset; runtime textures and material overrides belong to each cabin instance. Cabin teardown must not dispose cached geometry or materials, or the shared mirror render target.
-
-Preserve the complete interior and exterior when editing. Check all seated viewpoints and exterior angles, not just the forward image. Use the photo references for visual decisions; the earlier integration geometry establishes attachment locations only.
-
-## Source and export
-
-`porsche/cabin.blend` is the authoritative editable source. Its collections separate body, roof, wheels, dashboard, seats, doors and animated controls. `porsche/cabin.json` retains the mechanical layout in game coordinates. Blender uses Z-up internally and exports standard Y-up glTF.
-
-`scripts/blender/detail_porsche.py` records the one-time authoring operation on the mechanical baseline; it refuses to regenerate an already detailed blend. Continue modeling directly in the saved source. `scripts/blender/export_cabin.py --export-only` saves the edited source and exports evaluated static meshes in temporary material batches, keeping moving controls and runtime surfaces separate. It does not merge or replace editable source objects. Four embedded normal maps provide fine material grain.
-
-`scripts/blender/refine_porsche.py` records the revision 1→2 edits to the existing detailed source; it refuses to repeat them. `scripts/blender/verify_porsche.py -- REPORT_PATH` remeasures the saved source and requires an independent export to match the delivered GLB byte for byte. Run these scripts through Blender's `--background` and `--python` options, as with the exporter below.
-
-Paint uses dielectric enamel with a separate clearcoat layer. Leather grain and pleats are restrained. At stage load, the renderer captures the sky, road and scenery once for reflections; the isolated preview includes ground colour in that capture. Cabin shadows cover the full car, ambient light follows the stage palette, and the HDR rear-view mirror uses the display tone mapping. Reflections are a stage snapshot, not continuously updated probes.
-
-## Supplied blueprint verification
-
-`porsche/blueprint-validation.json` records before/after measurements and comparison limits. Orthographic [side](porsche/previews/ortho-side.png), [front](porsche/previews/ortho-front.png) and [top](porsche/previews/ortho-top.png) renders support visual inspection. Dimensions below are millimetres, rounded to the nearest millimetre; the verification tolerance is 3 mm.
-
-| Dimension | Blueprint | Saved model |
-| --- | ---: | ---: |
-| Body length | 4,291 | 4,291 |
-| Body width, excluding mirrors | 1,775 | 1,775 |
-| Roof height | 1,310 | 1,310 |
-| Wheelbase | 2,272 | 2,272 |
-| Front track | 1,432 | 1,434 |
-| Rear track | 1,492 | 1,494 |
-
-The comparison corrected overhangs, axle placement, wheel tracks, arch openings and rear-quarter window proportions. Length excludes the exhaust and height excludes the aerial. The drawing was visually compared, not registered as a pixel overlay; local curvature, lamps and trim remain approximations. Matching these dimensions does not certify every 1987 detail.
+The cluster, trip display, mirror picture, windshield cracks, and radar illumination are runtime-owned. Do not bake speed, gear, warnings, or other changing text into textures. Static materials and textures belong to the cached asset; runtime textures and material overrides belong to each cabin instance. Cabin teardown must not dispose cached geometry or materials, or the shared mirror render target.
 
 The runtime loads the path declared in `car.cockpit.model`. A missing or invalid configured model is an error, not a reason to silently substitute procedural geometry.
 
@@ -62,20 +79,6 @@ The runtime loads the path declared in `car.cockpit.model`. A missing or invalid
 - Seated yaw and pitch controls work while driving, stay bounded, and return to forward view.
 - All interior viewpoints are inspectable in the asset preview and in-game.
 - Repository checks pass; performance and browser evidence are recorded before handover.
-
-## Running Blender
-
-From the repository root on WSL, export the edited source with the verified Windows installation. A native Blender installation accepts the same arguments with Linux paths.
-
-```sh
-BLENDER_BIN='/mnt/c/Program Files/Blender Foundation/Blender 4.1/blender.exe'
-"$BLENDER_BIN" --background "$(wslpath -w "$PWD/assets/models/porsche/cabin.blend")" \
-    --python-exit-code 1 --python "$(wslpath -w "$PWD/scripts/blender/export_cabin.py")" -- \
-    --layout "$(wslpath -w "$PWD/assets/models/porsche/cabin.json")" \
-    --output "$(wslpath -w "$PWD/assets/models/porsche/cabin.glb")" --export-only
-npm run assets
-npm run check
-```
 
 ## Inspecting and verifying
 
@@ -89,33 +92,4 @@ node /tmp/test-drive-tools/node_modules/playwright/cli.js install chromium firef
 PLAYWRIGHT_MODULE=/tmp/test-drive-tools/node_modules/playwright/index.mjs npm run browser
 ```
 
-`GAME_URL` changes the server URL and `CABIN_EVIDENCE` changes the default `/tmp/test-drive-cabin-evidence` output directory. Browser verification uses the actual pinned three.js CDN modules. Screenshots and benchmark results are evidence, not game assets.
-
-`BROWSER_BIN` optionally selects an existing Chromium installation. `CABIN_REGRESSION_ONLY=1` runs the shorter loading/rendering matrix; this is required before GitHub Pages publication. The renderer and addons remain pinned to 0.180.0. GLTFLoader alone is locally patched to guard a failing Firefox version match; its license and exact changes are recorded in `vendor/three/README.md`.
-
-## Modeling notes
-
-The reference record covers the LHD dashboard, controls, front seats, doors and exterior side profile. Historical accuracy has not been independently certified. Further edits should improve correspondence with photographs while retaining the runtime contract. Do not rerun the integration generator over this source; the exporter refuses to overwrite an existing blend in generation mode.
-
-Preserve runtime bindings and their local axes. The GLB mirror camera is independent of the driver's head, and its texture is rendered using the world layer. Live display UVs must use glTF's top-down image convention; the runtime handles the render-target mirror's different convention. Each runtime surface must be a single mesh primitive. Do not add static glass over the live windshield surface, or duplicate the wheel/lever in the static shell.
-
-For the first detailed cabin, target at most 100,000 triangles, 50 cabin draw calls, an 8 MiB GLB, and 64 MiB of uncompressed texture data. These are initial engineering budgets to compare against the measured integration baseline, not validated hardware limits. Use normal/roughness maps for fine grain, modest texture sizes away from the dashboard, and merged static geometry where it does not destroy runtime bindings. Measure the full driving scene and mirror, not just the isolated preview. Keep the no-build browser delivery and pinned renderer version.
-
-The earlier integration GLB was 186,404 bytes with 2,200 source triangles, 49 nodes, and 42 meshes. On 2026-10-08, Chrome 148 in headless WSL using SwiftShader at 1280×800 produced the following baseline. Counters include all render passes and shadows; the 50-call modeling budget above applies to the cabin's main pass. Frame intervals are medians of 30 animation frames, not a GPU benchmark or a hardware frame-rate promise.
-
-| Scene | Draw calls, all passes | Triangles, all passes | Resident textures | Resident geometries | Median frame interval |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Isolated Porsche preview | 71 | 4,032 | 6 | 43 | 139.6 ms |
-| Paused stage 1, looking rearward | 103 | 1,003,026 | 30 | 309 | 554.6 ms |
-
-The browser check verified one asset request across three cabin reloads, preservation of cached geometry, animated controls, damage/radar overlays, mouse and emulated touch looking, paused-camera behavior, and recovery from an injected HTTP 503. It wrote screenshots for all seven cabin views and JSON measurements to `/tmp/test-drive-cabin-evidence`. Those software-renderer timings motivate measuring on the target desktop and phone before increasing visual complexity.
-
-Compare all seven inspection views plus the forward driver view, under midday and sunset lighting. Verify animated controls and displays after each export. Physical phone performance and connected gamepad hardware still need device checks.
-
-## Detailed model verification — 2026-10-08
-
-`porsche/validation.json` records the delivered GLB hash and measurements. Linux Blender 4.1.1 reopened the saved source and produced a byte-identical GLB; exporting left all 86 editable source objects intact. `npm run assets` passed. `npm run check` passed 80 tests, lint, zero duplication clones and no orphaned exports.
-
-The expanded browser check passed all seven views under stage 1 midday and stage 5 sunset lighting, steering and shifting, instruments, radar, damage, mirror direction, mouse/touch looking, cache survival, forward driving above 10 mph, paused inspection, and injected HTTP 503 recovery. Chromium with all three Firefox user-agent forms and actual Firefox 157 loaded and rendered successfully. Screenshots and full logs are in `/tmp/porsche-realism/verified-browser`; selected previews are checked in. The selection render also decoded, entered the shared resource cache, and survived switching to another car and back.
-
-At 1280×800 on WSL SwiftShader, the complete model measured a median 393.2 ms preview frame interval (56 calls across all passes) and 1004.9 ms paused driving interval (88 calls across all passes). These are software-renderer measurements, not a claim of playable frame rates or validated desktop/phone performance. Physical device profiling remains outstanding.
+`GAME_URL` changes the server URL and `CABIN_EVIDENCE` changes the default `/tmp/test-drive-cabin-evidence` output directory. Browser verification uses the actual pinned three.js CDN modules. Screenshots and benchmark results are evidence, not game assets. `BROWSER_BIN` optionally selects an existing Chromium installation. `CABIN_REGRESSION_ONLY=1` runs the shorter loading/rendering matrix.

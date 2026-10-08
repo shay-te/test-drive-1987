@@ -5,6 +5,7 @@ import { clamp } from '../../util/math.js';
 import { drawCarArt, drawGroundShadow } from '../CarArt.js';
 import { paintScenery } from '../scenery.js';
 import { COLORS } from '../theme.js';
+import { loadProfilePhotos } from '../profilePhotos.js';
 import { drawLogo, drawPrompt, drawStamp, drawText } from '../widgets.js';
 
 const FADE_SECONDS = 0.25;
@@ -29,14 +30,10 @@ export class TitleScreen {
     enter({ carId } = {}) {
         this.world.clear();
         this.car = carById(carId);
-        for (const car of CARS) {
-            this.world.profile(car)?.then((photo) => {
-                this.photos.set(car.id, photo);
-                if (car === this.car) this.chosenAt = this.time;
-            }).catch((error) => {
-                console.error(`Profile photo failed for ${car.id}; using profile artwork`, error);
-            });
-        }
+        loadProfilePhotos(this.world, (car, photo) => {
+            this.photos.set(car.id, photo);
+            if (car === this.car) this.chosenAt = this.time;
+        });
     }
 
     update(dt) {

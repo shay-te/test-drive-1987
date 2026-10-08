@@ -6,9 +6,8 @@ a mountain road with a rock face on one side and a sheer drop on the other, truc
 patrol cars and a gas station at the end of every stage.
 
 > **Status: playable, being polished.** Title, car brochure, all five stages, gas station,
-> results and high scores work end to end. The Porsche and the Ferrari have authored GLB cabins
-> and are the drivable cars; the other three are shown locked until their models exist.
-> Detailed cabin modeling and reference-based visual acceptance are the next phase.
+> results and high scores work end to end. The Porsche and the Ferrari are full 3D models, driven
+> from inside their own cabins; the other three are shown locked until their models exist.
 
 ### Done
 
@@ -61,7 +60,7 @@ Gamepads (standard mapping) and touch controls work too. The right stick looks a
 
 ## Cabin assets
 
-The Porsche uses a simple integration GLB with live instruments, animated controls, and a seated camera. Detailed visual modeling is the next phase. Inspect it at [preview.html](preview.html); use keys 1–7 for repeatable interior viewpoints. See [the asset contract and Blender workflow](assets/models/README.md) before replacing its geometry.
+The Porsche (Johnny Silverhand's 930 by valvetin, CC BY 4.0) and the Ferrari (1986 Testarossa by Res1n) are Sketchfab models, converted by `scripts/import-car.mjs` into cabins with live instruments, animated controls and a seated camera. Inspect them at [preview.html](preview.html); use keys 1–7 for repeatable interior viewpoints. See [the import pipeline, credits and asset contract](assets/models/README.md) before changing a model.
 
 ## The cars
 

@@ -34,9 +34,8 @@ export const CARS = [
         make: 'PORSCHE',
         model: '911 TURBO',
         fullName: 'Porsche 911 Turbo',
-        paint: '#5fc7b0',
+        paint: '#c4c8cc',
         brochure: {
-            image: 'assets/models/porsche/selection.png',
             specs: {
                 layout: 'rear/rear',
                 engineType: 'turbo sohc flat-6',
@@ -273,11 +272,12 @@ export const CARS = [
             length: 4.485,
             width: 1.976,
             // The driver's eye, metres back from the front bumper.
-            eye: 2.55,
+            eye: 2.44,
             height: 1.13,
+            // Axles of the authored model (wheelbase 2.56).
             wheels: [
-                { x: 0.98, r: 0.32 },
-                { x: 3.53, r: 0.33 },
+                { x: 1.1, r: 0.32 },
+                { x: 3.66, r: 0.33 },
             ],
             profile: [
                 [0.05, 0.24],

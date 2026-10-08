@@ -210,11 +210,11 @@ try {
         await page.keyboard.press('Enter');
         await page.waitForFunction((value) => { return value.screen.constructor.name === 'SelectScreen'; }, game);
         await page.waitForFunction((value) => { return value.screen.artwork.has('porsche'); }, game);
-        results.selection = await page.evaluate((value) => {
+        results.selection = await page.evaluate(async (value) => {
             const screen = value.screen;
-            const image = screen.artwork.get('porsche');
-            if (image !== screen.resources.get(`image:${screen.car.brochure.image}`)) throw new Error('Brochure render is not cached');
-            return { width: image.naturalWidth, height: image.naturalHeight, path: screen.car.brochure.image };
+            const photo = await screen.world.profile(screen.car);
+            if (screen.artwork.get('porsche') !== photo) throw new Error('Brochure photo is not the cached profile photo');
+            return { width: photo.width, height: photo.height };
         }, game);
         await page.screenshot({ path: `${output}/selection-porsche.png` });
         await page.keyboard.press('ArrowRight');

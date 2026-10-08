@@ -1,0 +1,121 @@
+{
+    "source": "porsche_911_turbo_930_johnny_silverhands.glb",
+    "credit": {
+        "title": "Porsche 911 turbo 930 Johnny Silverhand's",
+        "author": "valvetin",
+        "url": "https://sketchfab.com/3d-models/porsche-911-turbo-930-johnny-silverhands-25656a7a831442059de7a466f4a17692",
+        "license": "CC-BY-4.0"
+    },
+    "yawDeg": 180,
+    "centreOn": "Main Body",
+    "remove": [
+        "Cube.003",
+        "some wires",
+        "Radiator or idk",
+        "fan",
+        "Filter",
+        "idk",
+        "ummm, blinker fluid?",
+        "another filter idk",
+        "wires",
+        "some random thing no one will care about",
+        "Belt",
+        "key",
+        "Big Wires",
+        "Oil or smth"
+    ],
+    "materials": {
+        "Main_Body__0": {
+            "alphaMode": "OPAQUE"
+        },
+        "Glass": {
+            "alphaMode": "BLEND",
+            "color": [
+                0.1,
+                0.12,
+                0.14
+            ],
+            "opacity": 0.25,
+            "roughness": 0.05
+        }
+    },
+    "textures": {
+        "baseColor": 2048,
+        "other": 1024
+    },
+    "eye": [
+        -0.36,
+        1.06
+    ],
+    "steeringWheel": {
+        "parts": [
+            "Steering Wheel__0"
+        ]
+    },
+    "windshield": {
+        "node": "Windshield_Glass_0"
+    },
+    "instrument": {
+        "centre": [
+            -0.3155,
+            0.893,
+            -0.618
+        ],
+        "normal": [
+            0,
+            0.13,
+            0.99
+        ],
+        "width": 0.35,
+        "backing": [
+            0.44,
+            0.08
+        ]
+    },
+    "trip": {
+        "centre": [
+            0.088,
+            0.845,
+            -0.582
+        ],
+        "normal": [
+            0,
+            0.17,
+            0.99
+        ],
+        "width": 0.1
+    },
+    "mirror": {
+        "centre": [
+            0,
+            1.145,
+            -0.385
+        ]
+    },
+    "radar": {
+        "centre": [
+            -0.52,
+            1.1,
+            -0.42
+        ]
+    },
+    "lever": {
+        "base": [
+            0.0,
+            0.43,
+            -0.42
+        ],
+        "length": 0.24,
+        "stick": "black",
+        "boot": true
+    },
+    "translucent": {
+        "material": "Main_Body__0",
+        "parts": [
+            "Front Window",
+            "Door Window",
+            "Back Window",
+            "Back Windshield"
+        ]
+    }
+}

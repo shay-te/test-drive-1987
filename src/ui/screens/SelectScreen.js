@@ -6,6 +6,7 @@ import { Session } from '../../sim/Session.js';
 import { linearGradient, speckle } from '../../util/canvas.js';
 import { drawCarArt } from '../CarArt.js';
 import { COLORS, font } from '../theme.js';
+import { loadProfilePhotos } from '../profilePhotos.js';
 import { drawPrompt, drawStamp, drawText } from '../widgets.js';
 
 const BAND = 352;
@@ -48,15 +49,10 @@ export class SelectScreen {
     enter({ carId } = {}) {
         this.world.clear();
         this.car = carById(carId);
-        for (const car of CARS) {
-            if (!car.brochure.image) continue;
-            this.resources.image(car.brochure.image).then((image) => {
-                this.artwork.set(car.id, image);
-                this.resources.evict(`canvas:brochure:${car.id}`);
-            }).catch((error) => {
-                console.error(`Brochure image failed for ${car.id}; using profile artwork`, error);
-            });
-        }
+        loadProfilePhotos(this.world, (car, photo) => {
+            this.artwork.set(car.id, photo);
+            this.resources.evict(`canvas:brochure:${car.id}`);
+        });
     }
 
     update(dt) {
@@ -102,7 +98,7 @@ function paintBrochure(ctx, car, image) {
     const x = (VIEW.width - ART_WIDTH) / 2;
     const ground = BAND - 46;
     if (image) {
-        const height = ART_WIDTH * image.naturalHeight / image.naturalWidth;
+        const height = ART_WIDTH * image.height / image.width;
         ctx.drawImage(image, x, ground - height, ART_WIDTH, height);
     } else {
         drawCarArt(ctx, car, x, ground, ART_WIDTH);

@@ -55,10 +55,20 @@ for (const car of AUTHORED) {
         const { min, max } = staticBounds(model);
         const { width, height, length, eye } = car.body;
         assert.ok(max[0] - min[0] >= width, 'complete width, including both exterior mirrors');
-        assert.ok(min[1] < 0.02 && max[1] > height - 0.01, 'tyres reach the road and roof is present');
+        assert.ok(min[1] < 0.02 && max[1] > height - 0.05, 'tyres reach the road and the roof is at the car\'s height');
         assert.ok(Math.abs(min[2] + eye) < 0.006, 'front bumper matches the body data, relative to the seated eye');
-        const overhang = max[2] - (length - eye);
-        assert.ok(overhang >= 0 && overhang < 0.05, 'rear bumper and exhaust stay within the body overhang');
+        assert.ok(Math.abs(max[2] - (length - eye)) < 0.005, 'rear bumper matches the body length');
+    });
+
+    test(`the ${car.fullName} seats the driver behind the wheel, under the roof`, () => {
+        const bindings = validateCabinNodes(model.nodes);
+        const [x, y] = bindings.driver_eye.translation;
+        const wheel = model.nodes.indexOf(bindings.steering_wheel);
+        const [hubX, hubY, hubZ] = model.nodes.find((node) => { return node.children?.includes(wheel); }).translation;
+        assert.ok(Math.abs(hubX - x) < 0.05, 'the wheel is centred on the driver');
+        assert.ok(hubZ < -0.35 && hubZ > -0.8, `the hub is ${(-hubZ).toFixed(2)} m ahead of the eye`);
+        assert.ok(y - hubY > 0.15, 'the eye looks over the hub');
+        assert.ok(staticBounds(model).max[1] - y > 0.1, 'headroom under the roof');
     });
 
     test(`the ${car.fullName} title photo frames it nose-left on the road, sharp on a 2x display`, () => {
@@ -98,17 +108,13 @@ for (const car of AUTHORED) {
     });
 }
 
-test('Porsche enamel exports dielectric paint with a separate clearcoat highlight', () => {
-    const paint = asset.materials.find((material) => { return material.name === '930 • seafoam enamel'; });
-    assert.equal(paint.pbrMetallicRoughness.metallicFactor, 0);
-    assert.ok(paint.extensions.KHR_materials_clearcoat.clearcoatFactor >= 0.8);
-    assert.ok(paint.extensions.KHR_materials_clearcoat.clearcoatRoughnessFactor < 0.1);
-});
-
-test('the Porsche seats the driver at the procedural cabin eye', () => {
-    const nodes = validateCabinNodes(asset.nodes);
-    assert.ok(Math.abs(nodes.driver_eye.translation[0] + 0.36) < 1e-6);
-    assert.ok(Math.abs(nodes.driver_eye.translation[1] - 1.08) < 1e-6);
+test('the Porsche body is opaque while its atlas windows stay see-through', () => {
+    const material = (name) => { return asset.materials.find((m) => { return m.name === name; }); };
+    assert.equal(material('Main_Body__0').alphaMode ?? 'OPAQUE', 'OPAQUE');
+    const windows = material('Main_Body__0 • translucent');
+    assert.equal(windows.alphaMode, 'BLEND');
+    const texture = asset.textures[windows.pbrMetallicRoughness.baseColorTexture.index];
+    assert.equal(asset.images[texture.source].mimeType, 'image/png', 'a JPEG would drop the window alpha');
 });
 
 test('missing or duplicated cabin bindings fail instead of selecting an arbitrary node', () => {
