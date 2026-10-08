@@ -58,35 +58,25 @@ export function buildProps(track, materials, stage) {
     return group;
 }
 
-/** Instanced pine trees at precomputed world positions [{x, y, z, height}]. */
+/** Instanced pines at world positions [{x, y, z, height}]: trunk plus two foliage tiers. */
 export function buildTrees(placements, materials) {
-    const foliage = [];
+    const tiers = [[], []];
     const trunks = [];
-    const m = new THREE.Matrix4();
+    const at = (p, lift, width, height) => {
+        return new THREE.Matrix4().compose(
+            new THREE.Vector3(p.x, p.y + lift, p.z),
+            new THREE.Quaternion(),
+            new THREE.Vector3(width, height, width),
+        );
+    };
     for (const p of placements) {
-        foliage.push(
-            m
-                .clone()
-                .compose(
-                    new THREE.Vector3(p.x, p.y + p.height * 0.18, p.z),
-                    new THREE.Quaternion(),
-                    new THREE.Vector3(p.height * 0.3, p.height, p.height * 0.3),
-                ),
-        );
-        trunks.push(
-            m
-                .clone()
-                .compose(
-                    new THREE.Vector3(p.x, p.y, p.z),
-                    new THREE.Quaternion(),
-                    new THREE.Vector3(0.25, p.height * 0.25, 0.25),
-                ),
-        );
+        tiers[0].push(at(p, p.height * 0.15, p.height * 0.3, p.height * 0.6));
+        tiers[1].push(at(p, p.height * 0.45, p.height * 0.2, p.height * 0.55));
+        trunks.push(at(p, 0, 0.22, p.height * 0.3));
     }
+    const cone = new THREE.ConeGeometry(1, 1, 8).translate(0, 0.5, 0);
     const group = new THREE.Group();
-    group.add(
-        instanced(new THREE.ConeGeometry(1, 1, 7).translate(0, 0.5, 0), materials.foliage, foliage, true),
-    );
+    for (const tier of tiers) group.add(instanced(cone, materials.foliage, tier, true));
     group.add(
         instanced(new THREE.CylinderGeometry(1, 1, 1, 5).translate(0, 0.5, 0), materials.bark, trunks, false),
     );

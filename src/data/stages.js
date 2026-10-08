@@ -15,7 +15,7 @@ export const STAGES = [
         rockDark: '#5e3c26',
         vegetation: '#56702f',
         sun: { elevation: 24, azimuth: -38 },
-        sky: { turbidity: 1.6, rayleigh: 2.6, mie: 0.003, exposure: 0.6 },
+        sky: { turbidity: 1.2, rayleigh: 0.7, mie: 0.003, exposure: 0.5 },
         fog: { color: '#b9cde0', density: 0.00011 },
     },
     {
@@ -32,7 +32,7 @@ export const STAGES = [
         rockDark: '#66422a',
         vegetation: '#5d7232',
         sun: { elevation: 42, azimuth: 20 },
-        sky: { turbidity: 1.4, rayleigh: 2.4, mie: 0.003, exposure: 0.58 },
+        sky: { turbidity: 1.1, rayleigh: 0.6, mie: 0.003, exposure: 0.5 },
         fog: { color: '#bfd3e6', density: 0.0001 },
     },
     {
@@ -49,7 +49,7 @@ export const STAGES = [
         rockDark: '#4f4842',
         vegetation: '#4d6a34',
         sun: { elevation: 55, azimuth: 60 },
-        sky: { turbidity: 1.5, rayleigh: 2.2, mie: 0.003, exposure: 0.56 },
+        sky: { turbidity: 1.2, rayleigh: 0.6, mie: 0.003, exposure: 0.5 },
         fog: { color: '#c3d4e4', density: 0.0001 },
     },
     {
@@ -66,7 +66,7 @@ export const STAGES = [
         rockDark: '#43301f',
         vegetation: '#4a6630',
         sun: { elevation: 30, azimuth: 110 },
-        sky: { turbidity: 2.2, rayleigh: 2.4, mie: 0.004, exposure: 0.58 },
+        sky: { turbidity: 1.8, rayleigh: 0.8, mie: 0.004, exposure: 0.5 },
         fog: { color: '#c9cfd8', density: 0.00012 },
     },
     {

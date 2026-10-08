@@ -39,7 +39,7 @@ export class WorldMaterials {
             }),
             roughness: 1,
         });
-        this.steel = new THREE.MeshStandardMaterial({ color: '#b9bec4', roughness: 0.38, metalness: 0.85 });
+        this.steel = new THREE.MeshStandardMaterial({ color: '#c3c8ce', roughness: 0.42, metalness: 0.7 });
         this.post = new THREE.MeshStandardMaterial({
             map: this._texture('post', 32, 128, (ctx, w, h) => {
                 drawDelineator(ctx, w, h);
@@ -120,7 +120,7 @@ export class WorldMaterials {
 // ------------------------------------------------------------------------- drawing
 
 function drawAsphalt(ctx, w, h) {
-    ctx.fillStyle = '#3c3d41';
+    ctx.fillStyle = '#545559';
     ctx.fillRect(0, 0, w, h);
     speckle(ctx, w, h, { count: 26000, alpha: 0.32, size: 1.4, seed: 3 });
     const px = w / (ROAD.halfWidth * 2);
@@ -192,8 +192,8 @@ function rockHeights(size) {
             const ny = Math.cos(b) * period;
             const nw = Math.sin(b) * period;
             const relief = noise.fbm3(nx + nw * 0.5, ny, nz - nw * 0.5, 5);
-            const band = (y / size) * 7 + relief * 0.8;
-            const ledge = smoothstep(0.65, 0.95, band - Math.floor(band)) * 0.22;
+            const band = (y / size) * 5 + relief * 1.6;
+            const ledge = smoothstep(0.7, 0.95, band - Math.floor(band)) * 0.12;
             const fracture = Math.pow(1 - Math.abs(noise.noise3(nx * 2.2 + 7, ny * 0.35, nz * 2.2)), 26);
             heights[y * size + x] = clamp(0.52 + relief * 0.5 - ledge - fracture * 0.3, 0, 1);
         }

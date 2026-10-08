@@ -170,7 +170,7 @@ export class WorldBuilder {
         };
         for (let i = 0; i < track.count; i += 2) {
             if (rng() < 0.35) place(i, this._slopeSection(track, i), 1, SLOPE_ROWS);
-            if (rng() < 0.18) place(i, drop, 0, drop.length - 4);
+            if (rng() < 0.18) place(i, drop, 0, drop.length - 5);
         }
         return placements;
     }

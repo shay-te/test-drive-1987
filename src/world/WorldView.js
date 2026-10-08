@@ -118,6 +118,7 @@ export class WorldView {
         u.mieDirectionalG.value = 0.8;
         u.sunPosition.value.copy(this.sunDirection);
         scene.add(this.sky);
+        scene.environment = this._skyEnvironment();
 
         const warmth = Math.min(1, stage.sun.elevation / 35);
         this.sun = new THREE.DirectionalLight(
@@ -138,7 +139,17 @@ export class WorldView {
         shadow.bias = -0.0004;
         shadow.normalBias = 0.06;
         scene.add(this.sun, this.sun.target);
-        scene.add(new THREE.HemisphereLight('#c4daf5', '#6e5a44', 2.2));
+        scene.add(new THREE.HemisphereLight('#c4daf5', '#7a6650', 3));
+    }
+
+    /** Image-based lighting baked from the sky, so paint, glass and steel reflect it. */
+    _skyEnvironment() {
+        const pmrem = new THREE.PMREMGenerator(this.renderer);
+        const skyScene = new THREE.Scene();
+        skyScene.add(this.sky.clone());
+        const texture = pmrem.fromScene(skyScene).texture;
+        pmrem.dispose();
+        return texture;
     }
 
     /** Renders a frame; `view` = {s, u, theta, pitch, roll, lift, shakeX, shakeY, vehicles, time}. */
