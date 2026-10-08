@@ -8,6 +8,26 @@ patrol cars and a gas station at the end of every stage.
 > **Status: work in progress.** The simulation, audio and 3D world are in place; the cockpits,
 > menus and game loop are being built.
 
+### Done
+
+- `src/sim/`: drivetrain (calibrated to each car's 0-60 and top speed), tyre/vehicle dynamics,
+  procedural stages (rock face right, drop left), traffic, radar traps and pursuit, scoring. Tested.
+- `src/audio/`: `AudioManager`, per-car engine synthesiser (AudioWorklet), sound bank, soundscape.
+- `src/world/`: three.js world: road, cliff, drop, terrain, trees, props, vehicles, sky lighting,
+  rear-view mirror (`WorldView`).
+- `src/cockpit/`: instrument readings, gauge drawing primitives, per-car cluster layouts
+  (`clusters.js`; the Lotus layout is the one in the original game's screenshot).
+
+### Next
+
+1. `src/cockpit/Cockpit.js`: draw the interior over the 3D view: visor with radar detector,
+   mirror frame, dash and cowl, clusters from `clusters.js`, rotating "TD" steering wheel,
+   animated H-pattern gear lever, trip computer, windshield cracks on a crash.
+2. Screens in `src/ui/screens/`: title, car-select brochure (side-view art and an acceleration
+   graph from `Drivetrain.simulateLaunch`), driving, gas station, results and high scores.
+3. `src/core/Game.js` (loop and screen switching) and `src/main.js` (composition only).
+4. Browser test pass in headless Chromium, then tune visuals and handling.
+
 ## Run it
 
 ```sh
