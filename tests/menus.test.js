@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CARS, isLocked, neighbourCar } from '../src/data/cars.js';
+import { CARS, carById, isLocked, neighbourCar } from '../src/data/cars.js';
 import { SelectScreen } from '../src/ui/screens/SelectScreen.js';
 import { TitleScreen } from '../src/ui/screens/TitleScreen.js';
 import { keyboardInput } from './helpers/keyboard.js';
@@ -12,6 +12,14 @@ const silentAudio = { unlock() { return Promise.resolve(); }, play() {} };
 const pendingImages = { image() { return new Promise(() => {}); } };
 /** Photographing models needs WebGL, so the menus get a world with no photos to offer. */
 const offscreenWorld = { clear() {}, profile() { return null; } };
+
+/** Locks the real `carId` for one test by taking its model away (every car has one now). */
+function lockForTest(t, carId) {
+    const cockpit = carById(carId).cockpit;
+    const model = cockpit.model;
+    delete cockpit.model;
+    t.after(() => { cockpit.model = model; });
+}
 
 /** A real menu screen driven through a real InputManager, recording where it sends the game. */
 function openMenu(Screen, params, world = offscreenWorld) {
@@ -35,9 +43,10 @@ function openMenu(Screen, params, world = offscreenWorld) {
     return { screen, visits, press };
 }
 
-test('only the cars with an authored model are unlocked', () => {
-    const unlocked = CARS.filter((car) => { return !isLocked(car); });
-    assert.deepEqual(unlocked.map((car) => { return car.id; }), ['porsche', 'ferrari', 'lamborghini', 'lotus']);
+test('every car has a model and is unlocked; a car without one would be locked', () => {
+    assert.ok(CARS.every((car) => { return !isLocked(car); }));
+    const corvette = carById('corvette');
+    assert.ok(isLocked({ ...corvette, cockpit: { ...corvette.cockpit, model: undefined } }));
 });
 
 test('stepping through the line-up wraps round at both ends', () => {
@@ -63,7 +72,8 @@ test('the title photographs only the car on show, and the next one once it is ch
     assert.deepEqual(asked, ['porsche', 'ferrari']);
 });
 
-test('a locked car on the title goes no further', () => {
+test('a locked car on the title goes no further', (t) => {
+    lockForTest(t, 'corvette');
     const { screen, visits, press } = openMenu(TitleScreen);
     press('ArrowLeft');
     assert.equal(screen.car.id, 'corvette');
@@ -76,7 +86,8 @@ test('the title reopens on the car handed back by the brochure', () => {
     assert.equal(screen.car.id, 'ferrari');
 });
 
-test('the brochure refuses a test drive in a locked car', () => {
+test('the brochure refuses a test drive in a locked car', (t) => {
+    lockForTest(t, 'corvette');
     const { screen, visits, press } = openMenu(SelectScreen, { carId: 'lotus' });
     press('ArrowRight');
     assert.equal(screen.car.id, 'corvette');

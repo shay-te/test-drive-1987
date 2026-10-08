@@ -639,6 +639,7 @@ export const CARS = [
         },
         cockpit: {
             cluster: 'corvette',
+            model: 'assets/models/corvette/cabin.glb',
             dash: { top: '#1e1f22', face: '#3a3b3f', panel: '#2e2f33', accent: '#55575c', grain: 'plastic' },
             wheel: { spokes: 2, rim: '#191919', spoke: '#2a2a2c' },
             shifter: { type: 'boot', pattern: 'overdrive', knob: '#1b1b1b' },
@@ -647,11 +648,12 @@ export const CARS = [
             length: 4.48,
             width: 1.806,
             // The driver's eye, metres back from the front bumper.
-            eye: 2.65,
+            eye: 2.93,
             height: 1.18,
+            // Axles of the authored model (wheelbase 2.38).
             wheels: [
-                { x: 1.06, r: 0.32 },
-                { x: 3.5, r: 0.33 },
+                { x: 1.08, r: 0.32 },
+                { x: 3.46, r: 0.33 },
             ],
             profile: [
                 [0.04, 0.27],

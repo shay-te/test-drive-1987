@@ -160,11 +160,13 @@ function meshNode(name, geometry, material) {
     return doc.createNode(name).setMesh(doc.createMesh(name).addPrimitive(primitive(geometry, material)));
 }
 
-/** Splits the triangles of the named glass for which `keep(centroid, normal)` holds into their own node. */
+/** Splits the triangles of `node` for which `keep(centroid, normal)` holds into a node of their own
+ *  (null when none do). */
 function splitTriangles(node, keep, name) {
     const prim = node.getMesh().listPrimitives()[0];
     const { position, index } = readPrimitive(prim);
     const normals = prim.getAttribute('NORMAL').getArray();
+    const uvs = prim.getAttribute('TEXCOORD_0')?.getArray();
     const kept = [];
     const rest = [];
     for (let t = 0; t < index.length; t += 3) {
@@ -173,7 +175,7 @@ function splitTriangles(node, keep, name) {
         const normal = unit(cross(sub(corners[1], corners[0]), sub(corners[2], corners[0])));
         (keep(centroid, normal) ? kept : rest).push(index[t], index[t + 1], index[t + 2]);
     }
-    if (!kept.length) throw new Error(`No triangles of "${node.getName()}" matched the windshield region`);
+    if (!kept.length) return null;
     const geometry = { position: [], normal: [], uv: [], index: [] };
     const remap = new Map();
     for (const i of kept) {
@@ -181,7 +183,7 @@ function splitTriangles(node, keep, name) {
             remap.set(i, remap.size);
             geometry.position.push(...position.subarray(i * 3, i * 3 + 3));
             geometry.normal.push(...normals.subarray(i * 3, i * 3 + 3));
-            geometry.uv.push(0, 0);
+            geometry.uv.push(...(uvs ? uvs.subarray(i * 2, i * 2 + 2) : [0, 0]));
         }
         geometry.index.push(remap.get(i));
     }
@@ -200,11 +202,17 @@ function extractWindshield(spec) {
         node.setName('windshield_surface');
         return node;
     }
-    const [x0, y0, z0, x1, y1, z1] = spec.box;
-    return splitTriangles(node, (c, n) => {
-        const inside = c[0] >= x0 && c[0] <= x1 && c[1] >= y0 && c[1] <= y1 && c[2] >= z0 && c[2] <= z1;
-        return inside && Math.abs(dot(n, spec.facing)) >= spec.cos;
+    const inside = inBox(spec.box);
+    const windshield = splitTriangles(node, (c, n) => {
+        return inside(c) && Math.abs(dot(n, spec.facing)) >= spec.cos;
     }, 'windshield_surface');
+    if (!windshield) throw new Error(`No triangles of "${spec.node}" matched the windshield region`);
+    return windshield;
+}
+
+/** Whether a point lies inside the box `[x0, y0, z0, x1, y1, z1]`. */
+function inBox([x0, y0, z0, x1, y1, z1]) {
+    return (c) => { return c[0] >= x0 && c[0] <= x1 && c[1] >= y0 && c[1] <= y1 && c[2] >= z0 && c[2] <= z1; };
 }
 
 /** Planar UVs over the windshield: U left to right, V from the top edge (0) down to the bottom (1). */
@@ -347,10 +355,15 @@ function hang(parts, parent, toLocal) {
     }
 }
 
-/** Hangs the model's own gear lever parts on a `gear_lever` pivot at `base`, which the runtime tilts. */
-function mountLever({ parts, base }) {
+/** Hangs the model's own gear lever on a `gear_lever` pivot at `base`, which the runtime tilts: the named
+ *  `parts`, or the triangles inside `box` when the source merged the lever into larger meshes. */
+function mountLever({ parts, box, base }) {
     const pivot = doc.createNode('gear_lever').setTranslation(base);
-    hang(named(parts), pivot, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -base[0], -base[1], -base[2], 1]);
+    const inside = box && inBox(box);
+    const lever = parts ? named(parts) : scene().listChildren().filter((node) => { return node.getMesh(); })
+        .map((node) => { return splitTriangles(node, inside, 'gear lever'); }).filter(Boolean);
+    if (!lever.length) throw new Error('The gear lever config matched no geometry');
+    hang(lever, pivot, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -base[0], -base[1], -base[2], 1]);
     scene().addChild(pivot);
 }
 
@@ -598,7 +611,7 @@ function addRig() {
     root.addChild(placed(staticName('radar body'), box([r.w, r.h, r.d]), materials.black, config.radar.centre));
 
     const lever = config.lever;
-    if (!lever.parts) {
+    if (!lever.parts && !lever.box) {
         const pivot = doc.createNode('gear_lever').setTranslation(lever.base);
         pivot.addChild(meshNode('gear stick', lathe([[LEVER.stickRadius, 0], [LEVER.stickRadius, lever.length]]), materials[lever.stick]));
         pivot.addChild(meshNode('gear knob', shift(sphere(CABIN.shifter.knob), [0, lever.length, 0]), materials.black));
@@ -647,7 +660,7 @@ if (flag === '--aligned') {
 const eye = [...config.eye, 0];
 extractWindshield(config.windshield);
 mountSteeringWheel(config.steeringWheel, eye);
-if (config.lever.parts) mountLever(config.lever);
+if (config.lever.parts || config.lever.box) mountLever(config.lever);
 // Flat-shaded sources weld by position alone so the decimator can work; their normals are rebuilt after.
 const crease = config.normals?.creaseDeg;
 keepAttributes(crease ? ['POSITION'] : ['POSITION', 'NORMAL', 'TEXCOORD_0']);

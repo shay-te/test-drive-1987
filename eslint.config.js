@@ -39,7 +39,7 @@ const browserGlobals = [
 ];
 
 export default [
-    { ignores: ['vendor/**', 'node_modules/**'] },
+    { ignores: ['vendor/**', 'node_modules/**', 'tmp/**'] },
     {
         files: ['**/*.js', '**/*.mjs'],
         languageOptions: {
