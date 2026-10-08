@@ -264,6 +264,7 @@ export const CARS = [
         },
         cockpit: {
             cluster: 'ferrari',
+            model: 'assets/models/ferrari/cabin.glb',
             dash: { top: '#1b1a19', face: '#c9a27a', panel: '#b8916a', accent: '#2a2725', grain: 'leather' },
             wheel: { spokes: 3, rim: '#141414', spoke: '#a8a8ad' },
             shifter: { type: 'gate', pattern: 'dogleg5', knob: '#111111' },
@@ -689,6 +690,16 @@ export const carById = (id) => {
             return c.id === id;
         }) ?? CARS[0]
     );
+};
+
+/** The car `step` places along the line-up from `car`, wrapping round at either end. */
+export const neighbourCar = (car, step) => {
+    return CARS[(CARS.indexOf(car) + step + CARS.length) % CARS.length];
+};
+
+/** Only cars with an authored model can be driven; the rest are shown locked. */
+export const isLocked = (car) => {
+    return !car.cockpit.model;
 };
 
 /** Display label of a gear index (0 = neutral). */

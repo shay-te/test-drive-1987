@@ -5,6 +5,7 @@ import { HeadMotion } from '../src/cockpit/HeadMotion.js';
 import { InputManager } from '../src/core/InputManager.js';
 import { carById } from '../src/data/cars.js';
 import { VehicleDynamics } from '../src/sim/VehicleDynamics.js';
+import { keyboardInput } from './helpers/keyboard.js';
 
 const DT = 1 / 120;
 const stationary = new VehicleDynamics(carById('porsche')).telemetry();
@@ -37,14 +38,7 @@ test('pointer look persists and centre restores forward view', () => {
 });
 
 test('keyboard looking coexists with steering and recentres on C', () => {
-    const keyboard = new EventTarget();
-    const input = new InputManager(keyboard, null);
-    const key = (type, code) => {
-        const event = new Event(type);
-        event.code = code;
-        event.key = code;
-        keyboard.dispatchEvent(event);
-    };
+    const { keyboard, input, key } = keyboardInput();
     for (const code of ['ArrowLeft', 'KeyE', 'KeyR']) key('keydown', code);
     assert.equal(input.steering(), -1);
     assert.equal(input.look().yaw, 1);

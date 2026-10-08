@@ -6,8 +6,8 @@ a mountain road with a rock face on one side and a sheer drop on the other, truc
 patrol cars and a gas station at the end of every stage.
 
 > **Status: playable, being polished.** Title, car brochure, all five stages, gas station,
-> results and high scores work end to end. The Porsche uses an editable GLB integration cabin;
-> the other cars retain procedural cabins with their own instruments, wheel and shifter.
+> results and high scores work end to end. The Porsche and the Ferrari have authored GLB cabins
+> and are the drivable cars; the other three are shown locked until their models exist.
 > Detailed cabin modeling and reference-based visual acceptance are the next phase.
 
 ### Done
@@ -68,6 +68,8 @@ The Porsche uses a simple integration GLB with live instruments, animated contro
 Porsche 911 Turbo, Ferrari Testarossa, Lamborghini Countach 5000 QV, Lotus Esprit Turbo and
 Chevrolet Corvette. Each uses its real gear ratios, final drive, tyre size, weight and torque
 curve; the simulation self-calibrates to the published 0-60 mph time and top speed.
+Choose with ◀ ▶ on the title screen or in the brochure. Cars without an authored model are
+marked LOCKED and cannot be driven yet.
 
 ## Engine sound
 

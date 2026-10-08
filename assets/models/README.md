@@ -1,6 +1,6 @@
-# Porsche model and cabin assets
+# Car models and cabin assets
 
-The default Porsche has an authored 1987 911 Turbo (930) coupe interior and exterior. Open `porsche/cabin.blend` in Blender to edit the full vehicle. The game loads `porsche/cabin.glb`; the other four cars retain their procedural cabins.
+The default Porsche has an authored 1987 911 Turbo (930) coupe interior and exterior. Open `porsche/cabin.blend` in Blender to edit the full vehicle. The game loads `porsche/cabin.glb`; the Ferrari Testarossa loads `ferrari/cabin.glb` (below), and the other three cars retain their procedural cabins.
 
 The model includes flared bodywork, bonnet, roof, tea-tray spoiler, Fuchs-style wheels, tyre tread, impact bumpers, lamps, mirrors, window seals, wipers, dashboard, live instruments, four-spoke wheel, console, pedals, pleated seats and doors, rear seating, belts, carpet and headliner. Paint and upholstery retain the game's existing palette. Body panels are fixed; engine internals and opening doors are outside this asset's scope.
 
@@ -13,6 +13,10 @@ The complete model exports as 99,604 triangles, 29 mesh primitives and four embe
 Previews are in `porsche/previews/`: studio [front](porsche/previews/front.png), [rear](porsche/previews/rear.png), and [side](porsche/previews/side.png), plus in-game [dashboard](porsche/previews/dashboard.png) and [seats](porsche/previews/seats.png). In Blender, dynamic display surfaces are placeholders; inspect live instruments and the rear-view mirror in `preview.html`.
 
 The selection screen uses [selection.png](porsche/selection.png), a transparent 1536×512 Blender render of this source. The [selection-screen preview](porsche/previews/selection-screen.png) shows it in the game. Other cars keep their existing profile artwork. `scripts/blender/render_porsche.py -- OUTPUT_DIRECTORY` renders the studio, orthographic and selection images without saving preview lighting into the source. Optional view names after the directory restrict the render, for example `selection`.
+
+## Ferrari Testarossa
+
+`ferrari/cabin.blend` is the editable source of the authored Testarossa interior and exterior; `ferrari/cabin.glb` is its export under the contract below. It is 84,800 triangles in 44 mesh primitives with no textures, about 2.3 MiB. Its static bounds follow the Ferrari `body` data in `src/data/cars.js`: front bumper 2.555 m ahead of the eye, 4.50 m long, 1.13 m roof. The driver's eye sits at 0.98 m, lower than the 930's. There is no selection render yet, so the select screen keeps the Ferrari's profile artwork.
 
 ## Contract
 

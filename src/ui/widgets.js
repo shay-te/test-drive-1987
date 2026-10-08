@@ -62,6 +62,11 @@ export function drawPrompt(ctx, text, time, y = VIEW.height - 70) {
     });
 }
 
+/** A bold red word laid over artwork, like a rubber stamp. */
+export function drawStamp(ctx, text, x, y, size) {
+    drawText(ctx, text, x, y, { size, weight: 'bold', color: COLORS.danger, glow: COLORS.ink });
+}
+
 /** Full-screen gradient backdrop used by the menus. */
 export function drawBackdrop(ctx, top, bottom) {
     ctx.fillStyle = linearGradient(ctx, 0, 0, 0, VIEW.height, [

@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AudioManager } from '../src/audio/AudioManager.js';
-import { InputManager } from '../src/core/InputManager.js';
 import { ResourceManager } from '../src/core/ResourceManager.js';
 import { carById } from '../src/data/cars.js';
 import { Session } from '../src/sim/Session.js';
 import { DriveScreen } from '../src/ui/screens/DriveScreen.js';
+import { keyboardInput } from './helpers/keyboard.js';
 
 const FRAME = 1 / 60;
 /** The 3D world needs WebGL, so the drive screen gets one that only accepts calls. */
@@ -13,8 +13,7 @@ const offscreenWorld = { prepare() { return null; }, load() {}, render() {}, cle
 
 /** A real drive screen on a real stage, played through a real InputManager. */
 function startStage(carId = 'porsche', world = offscreenWorld) {
-    const keyboard = new EventTarget();
-    const input = new InputManager(keyboard, null);
+    const { input, key } = keyboardInput();
     const screen = new DriveScreen({
         game: { go() {} },
         audio: new AudioManager(new ResourceManager()),
@@ -22,12 +21,6 @@ function startStage(carId = 'porsche', world = offscreenWorld) {
         world,
     });
     screen.enter({ session: new Session(carById(carId)) });
-    const key = (type, code) => {
-        const event = new Event(type);
-        event.code = code;
-        event.key = code;
-        keyboard.dispatchEvent(event);
-    };
     const run = (seconds) => {
         for (let t = 0; t < seconds; t += FRAME) {
             input.poll();

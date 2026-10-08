@@ -187,6 +187,13 @@ export class InputManager {
         );
     }
 
+    /** Menu step pressed this frame: -1 left, 1 right, 0 none (keys, pad, or the touch steering buttons). */
+    menuStep() {
+        const left = this.pressed('left') || this.pressed('steerLeft');
+        const right = this.pressed('right') || this.pressed('steerRight');
+        return (right ? 1 : 0) - (left ? 1 : 0);
+    }
+
     /** Steering -1 (left) .. 1 (right). */
     steering() {
         const keys = (this.isDown('steerRight') ? 1 : 0) - (this.isDown('steerLeft') ? 1 : 0);
