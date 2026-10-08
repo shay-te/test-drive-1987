@@ -153,9 +153,9 @@ try {
             const prefix = stageIndex === 0 ? '' : 'sunset-';
             for (const [i, view] of CABIN_VIEWS.entries()) {
                 await page.keyboard.press(`Digit${i + 1}`);
-                await page.waitForFunction(({ preview, yaw }) => {
-                    return Math.abs(preview.head.yaw.value + yaw) < 0.01;
-                }, { preview: screen, yaw: view.yaw });
+                await page.waitForFunction(({ preview, yaw, pitch }) => {
+                    return Math.abs(preview.head.yaw.value + yaw) < 0.01 && Math.abs(preview.head.pitch.value - pitch) < 0.01;
+                }, { preview: screen, yaw: view.yaw, pitch: view.pitch });
                 await page.screenshot({ path: `${output}/${prefix}${view.id}.png` });
             }
         }
@@ -189,7 +189,16 @@ try {
             if (cluster.flipY) throw new Error('GLB instruments have the wrong texture orientation');
             const direction = world.mirrorCamera.getWorldDirection(world.sun.position.clone());
             if (direction.z < 0.9) throw new Error('Mirror camera is not facing backwards');
-            return { geometrySurvivedReload: !disposed, textures: world.renderer.info.memory.textures, geometries: world.renderer.info.memory.geometries };
+            if (!world.cabin.bindings.mirror_surface.material.toneMapped) throw new Error('HDR mirror must use the final display tone mapping');
+            if (world.scene.environment !== world.environmentTarget.texture) throw new Error('Stage reflection texture is missing');
+            let paint;
+            template.traverse((node) => {
+                if (node.material?.name.includes('seafoam')) paint = node.material;
+            });
+            if (!paint?.isMeshPhysicalMaterial || paint.clearcoat < 0.8 || paint.metalness !== 0) throw new Error('Paint lost its dielectric clearcoat');
+            return { geometrySurvivedReload: !disposed, mirrorToneMapped: true, clearcoat: paint.clearcoat,
+                environmentIntensity: world.scene.environmentIntensity,
+                textures: world.renderer.info.memory.textures, geometries: world.renderer.info.memory.geometries };
         }, screen);
         assert.equal(modelRequests, 1, 'the asset must only be fetched once across reloads');
         results.preview.modelRequests = modelRequests;
@@ -200,6 +209,18 @@ try {
         const game = await instance(page, '/src/core/Game.js', 'Game');
         await page.keyboard.press('Enter');
         await page.waitForFunction((value) => { return value.screen.constructor.name === 'SelectScreen'; }, game);
+        await page.waitForFunction((value) => { return value.screen.artwork.has('porsche'); }, game);
+        results.selection = await page.evaluate((value) => {
+            const screen = value.screen;
+            const image = screen.artwork.get('porsche');
+            if (image !== screen.resources.get(`image:${screen.car.brochure.image}`)) throw new Error('Brochure render is not cached');
+            return { width: image.naturalWidth, height: image.naturalHeight, path: screen.car.brochure.image };
+        }, game);
+        await page.screenshot({ path: `${output}/selection-porsche.png` });
+        await page.keyboard.press('ArrowRight');
+        await page.waitForFunction((value) => { return value.screen.car.id !== 'porsche'; }, game);
+        await page.keyboard.press('ArrowLeft');
+        await page.waitForFunction((value) => { return value.screen.car.id === 'porsche'; }, game);
         await page.keyboard.press('Enter');
         await page.waitForFunction((value) => { return value.screen.state === 'driving'; }, game);
         const drive = await page.evaluateHandle((value) => { return value.screen; }, game);

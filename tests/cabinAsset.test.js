@@ -36,7 +36,15 @@ test('the complete Porsche stays inside its delivery and geometry budgets', () =
     }
     assert.ok(max[0] - min[0] > 1.75, 'complete Turbo width, including both exterior mirrors');
     assert.ok(min[1] < 0.02 && max[1] > 1.3, 'tyres reach the road and roof is present');
-    assert.ok(min[2] < -2.35 && max[2] > 1.9, 'front and rear exterior are both present');
+    assert.ok(Math.abs(min[2] + 2.340) < 0.003, 'front bumper matches the blueprint, relative to the seated eye');
+    assert.ok(max[2] > 1.951 && max[2] < 2, 'rear bumper and exhaust stay within the corrected overhang');
+});
+
+test('Porsche enamel exports dielectric paint with a separate clearcoat highlight', () => {
+    const paint = asset.materials.find((material) => { return material.name === '930 • seafoam enamel'; });
+    assert.equal(paint.pbrMetallicRoughness.metallicFactor, 0);
+    assert.ok(paint.extensions.KHR_materials_clearcoat.clearcoatFactor >= 0.8);
+    assert.ok(paint.extensions.KHR_materials_clearcoat.clearcoatRoughnessFactor < 0.1);
 });
 
 test('static batching preserves separate moving control geometry and neutral pivots', () => {

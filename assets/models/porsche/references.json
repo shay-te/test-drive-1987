@@ -25,20 +25,29 @@
             "url": "https://www.canepa.com/photo-gallery/1987-porsche-930-turbo5011/",
             "image": "https://dealeraccelerate-all.s3.amazonaws.com/canepa/images/3/1/0/310/15465_87_porsche_911_turbo_03.jpg",
             "role": "Photo inspected using the public signed image URL: side profile, coupe roof, rear quarter window, wide arches, Fuchs wheels, tea-tray spoiler, impact bumpers and stone guards."
+        },
+        {
+            "source": "User-supplied Porsche 911 turbo orthographic blueprint, 2026-10-08",
+            "role": "Side, front, rear and top drawing inspected. Printed dimensions constrain body length, width, height, wheelbase and wheel tracks; scan is not a factory-certified 1987 drawing. See blueprint-validation.json."
         }
     ],
     "dimensions": {
         "wheelbaseMetres": 2.272,
         "frontTyre": "205/55 R16",
         "rearTyre": "245/45 R16",
-        "basis": "Existing per-car chassis and brochure data; camera and control mounting coordinates retained from cabin.json."
+        "basis": "Printed user blueprint dimensions; track measurements use tyre centrelines. Seated eye and control bindings remain unchanged.",
+        "lengthMetres": 4.291,
+        "widthMetres": 1.775,
+        "heightMetres": 1.31,
+        "frontTrackMetres": 1.432,
+        "rearTrackMetres": 1.492
     },
     "modelingDecisions": [
         "Original authored geometry; reference photographs are not redistributed or embedded as textures.",
         "Existing seafoam paint and grey upholstery palette retained; this is not a claim about a verified factory colour code.",
         "Closed, fixed body panels; no engine bay or operable doors are included.",
         "Runtime-owned instruments, trip display, windshield damage, radar, mirror, wheel and lever bindings retained.",
-        "Roof lining and rear upholstery details are interpretive; the model has not been checked against measured factory drawings.",
+        "Roof lining and rear upholstery details remain interpretive. Principal dimensions were checked against the supplied blueprint, without factory certification or a registered pixel comparison.",
         "Rear and side glazing, lighting lenses and leather grain are economical real-time approximations."
     ]
 }

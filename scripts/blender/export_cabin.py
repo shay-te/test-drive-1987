@@ -198,6 +198,7 @@ def export_asset(output):
                 bpy.ops.object.join()
             obj = parts[0]
             obj.name = 'static_' + materials[0]
+            bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
             merged.append(obj)
         bpy.ops.object.select_all(action='DESELECT')
         for obj in retained + merged:

@@ -36,6 +36,7 @@ export const CARS = [
         fullName: 'Porsche 911 Turbo',
         paint: '#5fc7b0',
         brochure: {
+            image: 'assets/models/porsche/selection.png',
             specs: {
                 layout: 'rear/rear',
                 engineType: 'turbo sohc flat-6',

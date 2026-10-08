@@ -8,9 +8,11 @@ Inspected photo sources and interpretation limits are recorded in `porsche/refer
 
 ## Delivery and previews
 
-The complete model exports as 99,508 triangles, 29 mesh primitives and four embedded 256×256 normal maps (1 MiB decoded RGBA). The GLB is approximately 3.5 MiB, below the 8 MiB budget. The 29 primitives count the model's main pass; shadows, mirrors and damage add passes or meshes.
+The complete model exports as 99,604 triangles, 29 mesh primitives and four embedded 256×256 normal maps (1 MiB decoded RGBA). The GLB is approximately 3.5 MiB, below the 8 MiB budget. The 29 primitives count the model's main pass; shadows, mirrors and damage add passes or meshes.
 
 Previews are in `porsche/previews/`: studio [front](porsche/previews/front.png), [rear](porsche/previews/rear.png), and [side](porsche/previews/side.png), plus in-game [dashboard](porsche/previews/dashboard.png) and [seats](porsche/previews/seats.png). In Blender, dynamic display surfaces are placeholders; inspect live instruments and the rear-view mirror in `preview.html`.
+
+The selection screen uses [selection.png](porsche/selection.png), a transparent 1536×512 Blender render of this source. The [selection-screen preview](porsche/previews/selection-screen.png) shows it in the game. Other cars keep their existing profile artwork. `scripts/blender/render_porsche.py -- OUTPUT_DIRECTORY` renders the studio, orthographic and selection images without saving preview lighting into the source. Optional view names after the directory restrict the render, for example `selection`.
 
 ## Contract
 
@@ -27,6 +29,25 @@ Preserve the complete interior and exterior when editing. Check all seated viewp
 `porsche/cabin.blend` is the authoritative editable source. Its collections separate body, roof, wheels, dashboard, seats, doors and animated controls. `porsche/cabin.json` retains the mechanical layout in game coordinates. Blender uses Z-up internally and exports standard Y-up glTF.
 
 `scripts/blender/detail_porsche.py` records the one-time authoring operation on the mechanical baseline; it refuses to regenerate an already detailed blend. Continue modeling directly in the saved source. `scripts/blender/export_cabin.py --export-only` saves the edited source and exports evaluated static meshes in temporary material batches, keeping moving controls and runtime surfaces separate. It does not merge or replace editable source objects. Four embedded normal maps provide fine material grain.
+
+`scripts/blender/refine_porsche.py` records the revision 1→2 edits to the existing detailed source; it refuses to repeat them. `scripts/blender/verify_porsche.py -- REPORT_PATH` remeasures the saved source and requires an independent export to match the delivered GLB byte for byte. Run these scripts through Blender's `--background` and `--python` options, as with the exporter below.
+
+Paint uses dielectric enamel with a separate clearcoat layer. Leather grain and pleats are restrained. At stage load, the renderer captures the sky, road and scenery once for reflections; the isolated preview includes ground colour in that capture. Cabin shadows cover the full car, ambient light follows the stage palette, and the HDR rear-view mirror uses the display tone mapping. Reflections are a stage snapshot, not continuously updated probes.
+
+## Supplied blueprint verification
+
+`porsche/blueprint-validation.json` records before/after measurements and comparison limits. Orthographic [side](porsche/previews/ortho-side.png), [front](porsche/previews/ortho-front.png) and [top](porsche/previews/ortho-top.png) renders support visual inspection. Dimensions below are millimetres, rounded to the nearest millimetre; the verification tolerance is 3 mm.
+
+| Dimension | Blueprint | Saved model |
+| --- | ---: | ---: |
+| Body length | 4,291 | 4,291 |
+| Body width, excluding mirrors | 1,775 | 1,775 |
+| Roof height | 1,310 | 1,310 |
+| Wheelbase | 2,272 | 2,272 |
+| Front track | 1,432 | 1,434 |
+| Rear track | 1,492 | 1,494 |
+
+The comparison corrected overhangs, axle placement, wheel tracks, arch openings and rear-quarter window proportions. Length excludes the exhaust and height excludes the aerial. The drawing was visually compared, not registered as a pixel overlay; local curvature, lamps and trim remain approximations. Matching these dimensions does not certify every 1987 detail.
 
 The runtime loads the path declared in `car.cockpit.model`. A missing or invalid configured model is an error, not a reason to silently substitute procedural geometry.
 
@@ -89,8 +110,8 @@ Compare all seven inspection views plus the forward driver view, under midday an
 
 ## Detailed model verification — 2026-10-08
 
-`porsche/validation.json` records the delivered GLB hash and measurements. Blender 4.1.1 reopened the saved source and produced a byte-identical GLB; exporting left all 82 editable source objects intact. `npm run assets` passed. `npm run check` passed 79 tests, lint, zero duplication clones and no orphaned exports.
+`porsche/validation.json` records the delivered GLB hash and measurements. Linux Blender 4.1.1 reopened the saved source and produced a byte-identical GLB; exporting left all 86 editable source objects intact. `npm run assets` passed. `npm run check` passed 80 tests, lint, zero duplication clones and no orphaned exports.
 
-The expanded browser check passed all seven views under stage 1 midday and stage 5 sunset lighting, steering and shifting, instruments, radar, damage, mirror direction, mouse/touch looking, cache survival, forward driving above 10 mph, paused inspection, and injected HTTP 503 recovery. Chromium with all three Firefox user-agent forms and actual Firefox 157 loaded and rendered successfully. Screenshots and full logs are in `/tmp/porsche-930-evidence`; selected previews are checked in.
+The expanded browser check passed all seven views under stage 1 midday and stage 5 sunset lighting, steering and shifting, instruments, radar, damage, mirror direction, mouse/touch looking, cache survival, forward driving above 10 mph, paused inspection, and injected HTTP 503 recovery. Chromium with all three Firefox user-agent forms and actual Firefox 157 loaded and rendered successfully. Screenshots and full logs are in `/tmp/porsche-realism/verified-browser`; selected previews are checked in. The selection render also decoded, entered the shared resource cache, and survived switching to another car and back.
 
-At 1280×800 on WSL SwiftShader, the complete model measured a median 368.7 ms preview frame interval (56 calls across all passes) and 909 ms paused driving interval (88 calls across all passes). These are software-renderer measurements, not a claim of playable frame rates or validated desktop/phone performance. Physical device profiling remains outstanding.
+At 1280×800 on WSL SwiftShader, the complete model measured a median 393.2 ms preview frame interval (56 calls across all passes) and 1004.9 ms paused driving interval (88 calls across all passes). These are software-renderer measurements, not a claim of playable frame rates or validated desktop/phone performance. Physical device profiling remains outstanding.

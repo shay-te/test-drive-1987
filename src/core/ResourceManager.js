@@ -1,4 +1,4 @@
-/** Loads, generates and caches every asset: fonts, procedural canvases, audio buffers and JSON. */
+/** Loads, generates and caches fonts, images, models, canvases, audio buffers and JSON. */
 export class ResourceManager {
     constructor(baseUrl = new URL('../../', import.meta.url)) {
         this.baseUrl = baseUrl;
@@ -70,6 +70,15 @@ export class ResourceManager {
     model(path, loader) {
         return this._load(`model:${path}`, () => {
             return loader(this.url(path));
+        });
+    }
+
+    image(path) {
+        return this._load(`image:${path}`, async () => {
+            const image = new Image();
+            image.src = this.url(path);
+            await image.decode();
+            return image;
         });
     }
 

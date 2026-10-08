@@ -40,12 +40,22 @@ export class SelectScreen {
         Object.assign(this, { game, display, resources, audio, input, world });
         this.index = 0;
         this.time = 0;
+        this.artwork = new Map();
     }
 
     /** Opens on `carId` when coming back from a drive, otherwise on the first car. */
     enter({ carId } = {}) {
         this.world.clear();
         this.index = CARS.indexOf(carById(carId));
+        for (const car of CARS) {
+            if (!car.brochure.image) continue;
+            this.resources.image(car.brochure.image).then((image) => {
+                this.artwork.set(car.id, image);
+                this.resources.evict(`canvas:brochure:${car.id}`);
+            }).catch((error) => {
+                console.error(`Brochure image failed for ${car.id}; using profile artwork`, error);
+            });
+        }
     }
 
     get car() {
@@ -78,7 +88,7 @@ export class SelectScreen {
             VIEW.height,
             this.display.scale,
             (c) => {
-                paintBrochure(c, car);
+                paintBrochure(c, car, this.artwork.get(car.id));
             },
         );
         ctx.drawImage(page, 0, 0, VIEW.width, VIEW.height);
@@ -86,13 +96,20 @@ export class SelectScreen {
     }
 }
 
-function paintBrochure(ctx, car) {
+function paintBrochure(ctx, car, image) {
     ctx.fillStyle = linearGradient(ctx, 0, 0, 0, BAND, [
         [0, COLORS.navy],
         [1, COLORS.navyLight],
     ]);
     ctx.fillRect(0, 0, VIEW.width, BAND);
-    drawCarArt(ctx, car, (VIEW.width - ART_WIDTH) / 2, BAND - 46, ART_WIDTH);
+    const x = (VIEW.width - ART_WIDTH) / 2;
+    const ground = BAND - 46;
+    if (image) {
+        const height = ART_WIDTH * image.naturalHeight / image.naturalWidth;
+        ctx.drawImage(image, x, ground - height, ART_WIDTH, height);
+    } else {
+        drawCarArt(ctx, car, x, ground, ART_WIDTH);
+    }
     outlinedTitle(ctx, car.make, 40, 52, 44);
     outlinedTitle(ctx, car.model, 40, 100, 34);
 
