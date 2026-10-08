@@ -121,14 +121,16 @@ export const TRAFFIC_TYPES = {
         colors: ['#2c54a8', '#c0392b', '#e8e6df', '#2f6b3a', '#d98e1c'],
         semi: true,
     },
+    // A 2001 Crown Victoria Police Interceptor (5385 x 1987 x 1440 mm).
     police: {
-        length: 5.0,
-        width: 1.9,
-        height: 1.45,
+        length: 5.385,
+        width: 1.987,
+        height: 1.44,
         speedMph: [0, 0],
         colors: ['#f4f4f0'],
-        body: SEDAN_BODY,
-        lightBar: true,
+        model: 'assets/models/police/model.glb',
+        // The model's light bar lenses, split by colour so the runtime can flash them.
+        lightBar: { red: 'light_red', blue: 'light_blue' },
     },
 };
 
