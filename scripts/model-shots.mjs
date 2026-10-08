@@ -22,7 +22,11 @@ page.on('console', (message) => { if (message.type() === 'error') errors.push(me
 
 const openViewer = async (query) => {
     await page.goto(`${baseUrl}/scripts/model-viewer.html?${query}`);
-    await page.waitForFunction(() => { return window.viewerReady; }, null, { timeout: 180_000 });
+    try {
+        await page.waitForFunction(() => { return window.viewerReady; }, null, { timeout: 180_000 });
+    } catch (error) {
+        throw new Error(`The viewer did not finish (${error.message}); browser errors: ${errors.join('; ') || 'none'}`);
+    }
 };
 
 try {

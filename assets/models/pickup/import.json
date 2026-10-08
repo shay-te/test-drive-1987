@@ -1,0 +1,19 @@
+{
+    "source": "pickup_truck_1990.glb",
+    "credit": {
+        "title": "Pickup Truck 1990",
+        "author": "Brian Trepanier",
+        "url": "https://sketchfab.com/3d-models/pickup-truck-1990-f7c1de0dbec349ae8db4127e43796fbf",
+        "license": "CC-BY-4.0"
+    },
+    "yawDeg": 151.8,
+    "triangles": 20000,
+    "textures": {
+        "baseColor": 512,
+        "other": 256
+    },
+    "normals": {
+        "creaseDeg": 35
+    },
+    "pruneBelow": 0.01
+}

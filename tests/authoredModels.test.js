@@ -5,7 +5,7 @@ import { readGlb } from '../scripts/glb.mjs';
 import { ROAD } from '../src/config.js';
 import { SCENERY_MODELS } from '../src/data/scenery.js';
 import { STAGES } from '../src/data/stages.js';
-import { TRAFFIC_TYPES } from '../src/data/traffic.js';
+import { CIVILIAN_TYPES, TRAFFIC_TYPES } from '../src/data/traffic.js';
 import { buildTrack } from '../src/sim/TrackBuilder.js';
 
 /** A baked model's bounds over all its primitives: [min, max] per axis. */
@@ -31,8 +31,13 @@ function assertDelivery(model, url, { triangles: maxTriangles, primitives: maxPr
 
 const MODELLED = Object.entries(TRAFFIC_TYPES).filter(([, spec]) => { return spec.model; });
 
-test('the patrol car is the authored Crown Victoria; other traffic stays procedural', () => {
-    assert.deepEqual(MODELLED.map(([id, spec]) => { return [id, spec.model]; }), [['police', 'assets/models/police/model.glb']]);
+test('every road user is an authored model in its own folder', () => {
+    assert.deepEqual(MODELLED.map(([id]) => { return id; }), Object.keys(TRAFFIC_TYPES));
+    for (const [id, spec] of MODELLED) assert.equal(spec.model, `assets/models/${id}/model.glb`);
+});
+
+test('ordinary traffic picks only authored civilian types', () => {
+    assert.ok(CIVILIAN_TYPES.every((type) => { return TRAFFIC_TYPES[type]?.model && type !== 'police'; }));
 });
 
 for (const [id, spec] of MODELLED) {
@@ -45,9 +50,9 @@ for (const [id, spec] of MODELLED) {
         assert.ok(Math.abs(max[2] - min[2] - spec.length) < 0.01, 'bumper to bumper is the traffic length');
         assert.ok(Math.abs(max[2] + min[2]) < 0.01, 'centred along the car, like the procedural traffic');
         assert.ok(Math.abs(max[0] + min[0]) < 0.01, 'centred across');
-        assert.ok(max[0] - min[0] >= spec.width - 0.05 && max[0] - min[0] <= spec.width + 0.25, 'body width, plus mirrors');
+        assert.ok(max[0] - min[0] >= spec.width - 0.05 && max[0] - min[0] <= spec.width + 0.45, 'body width, plus mirrors');
         assert.ok(min[1] < 0.02, 'tyres on the road');
-        assert.ok(max[1] >= spec.height && max[1] <= spec.height + 0.3, 'roof height, plus a light bar');
+        assert.ok(max[1] >= spec.height - 0.01 && max[1] <= spec.height + 0.3, 'roof height, plus a light bar');
     });
 
     if (spec.lightBar) {

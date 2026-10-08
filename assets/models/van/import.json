@@ -1,0 +1,18 @@
+{
+    "source": "1990_ford_aerostar.glb",
+    "credit": {
+        "title": "1990 Ford Aerostar",
+        "author": "tonielpro520",
+        "url": "https://sketchfab.com/3d-models/1990-ford-aerostar-cf424ba5d1e349fb9ba76407686c73ec",
+        "license": "CC-BY-4.0"
+    },
+    "yawDeg": 180,
+    "triangles": 12000,
+    "textures": {
+        "baseColor": 512,
+        "other": 256
+    },
+    "normals": {
+        "creaseDeg": 35
+    }
+}

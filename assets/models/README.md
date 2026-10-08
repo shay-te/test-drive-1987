@@ -15,10 +15,18 @@ The Lotus model is a right-hand-drive car, so its driver sits on the right.
 | Lotus Esprit Turbo | [Lotus Esprit Turbo 1983](https://sketchfab.com/3d-models/lotus-esprit-turbo-1983-886bcf8ce52f46e3b36115e01319ec44) | esprit3d.website | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
 | Chevrolet Corvette | [Chevrolet Corvette C4](https://sketchfab.com/3d-models/chevrolet-corvette-c4-944ec751e0334d58b249cb983147e7e9) | Randomness | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
 | Police car (traffic) | [2001 Crown Victoria Police Interceptor Game Prop](https://sketchfab.com/3d-models/2001-crown-victoria-police-interceptor-game-prop-9f30d360cee343efb5a441978ddb57bd) | 8sianDude | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
+| Traffic: Continental | [Lincoln Continental Mark V](https://sketchfab.com/3d-models/lincoln-continental-mark-v-09587fee473d4b07ac7f10d2a65b47c4) | Barbo | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
+| Traffic: Beetle | [1968 Volkswagen Beetle](https://sketchfab.com/3d-models/1968-volkswagen-beetle-969a477451ee40bb8e715ec0907d187e) | Ddiaz Design | [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/) |
+| Traffic: yellow Beetle | [68 VW Beetle Bumblebee Skin GMOD](https://sketchfab.com/3d-models/68-vw-beetle-bumblebee-skin-gmod-c0755aa173044afbaf2998ba389d4461) | Pipogame | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
+| Traffic: RX-7 | [Mazda RX-7 FC](https://sketchfab.com/3d-models/mazda-rx-7-fc-8ac0df459f514950ab83ac37109a06ab) | Lexyc16 | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
+| Traffic: pickup | [Pickup Truck 1990](https://sketchfab.com/3d-models/pickup-truck-1990-f7c1de0dbec349ae8db4127e43796fbf) | Brian Trepanier | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
+| Traffic: van | [1990 Ford Aerostar](https://sketchfab.com/3d-models/1990-ford-aerostar-cf424ba5d1e349fb9ba76407686c73ec) | tonielpro520 | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
+| Traffic: truck | [Mack MR Garbage Truck](https://sketchfab.com/3d-models/mack-mr-garbage-truck-2000545db3e846a991dcb1aea1505d41) | zairiq | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
 | Gas station | [Lowpoly Gas Station](https://sketchfab.com/3d-models/lowpoly-gas-station-02a11319cb744999adddd7236a46bf8e) | AspectStudios | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
 
-The Countach model is non-commercial and share-alike: it and its derived `lamborghini/cabin.glb` stay
-under CC BY-NC-SA 4.0, not the repository's MIT license.
+The Countach and the 1968 Beetle are non-commercial and share-alike: they and their derived
+`lamborghini/cabin.glb` and `beetle/model.glb` stay under CC BY-NC-SA 4.0, not the repository's MIT
+license.
 
 The downloaded files are kept unchanged in each car's folder, next to `cabin.glb`. The game's
 `cabin.glb` is derived from them: turned into game space, decimated, with hidden parts removed,
@@ -28,9 +36,11 @@ materials adjusted, and the runtime parts below added. The game loads only `cabi
 
 `scripts/import-car.mjs <carId>` turns `assets/models/<carId>/<source>.glb` into
 `assets/models/<carId>/cabin.glb`, following `assets/models/<carId>/import.json`. Given a road-user id
-from `src/data/traffic.js` instead (`police`), it writes `model.glb`: centred on the road at the
-traffic length, decimated to `triangles`, with the light bar's lenses split by colour (`lights.node`)
-into the meshes named by the type's `lightBar`, which the game flashes. Given a scenery id from
+from `src/data/traffic.js` instead (`continental`, `police`, ...), it writes `model.glb`: centred on
+the road at the traffic length, decimated to `triangles`, with a patrol car's light bar lenses split
+by colour (`lights.node`) into the meshes named by the type's `lightBar`, which the game flashes. Set
+the type's width and height from the imported body (without mirrors): collisions use them.
+`pitchDeg` stands up a model lying on its side or back; a rigged model keeps its rest pose. Given a scenery id from
 `src/data/scenery.js` (`station`), it also writes `model.glb`, scaled by `scale` and standing on
 `ground` (in source units), centred; the station stands in each stage's finish pull-out and is
 photographed with the player's car at its `bay` for the refuelling screen. The cabin options are:
@@ -123,6 +133,13 @@ Work files go to `tmp/` (ignored by git). The browser tools need `npm start` run
 | Lotus Esprit Turbo | 93,073 | 34 | 4.9 MB | 1.8 mm |
 | Chevrolet Corvette | 93,062 | 41 | 5.4 MB | 0.3 mm |
 | Police car | 19,999 | 9 | 2.9 MB | 1.4 mm |
+| Continental | 12,000 | 7 | 1.4 MB | 6.6 mm |
+| Beetle | 11,974 | 13 | 1.2 MB | 6.1 mm |
+| Yellow Beetle | 11,998 | 12 | 0.9 MB | 5.8 mm |
+| RX-7 | 12,000 | 12 | 0.8 MB | 2.5 mm |
+| Pickup | 19,979 | 1 | 1.1 MB | 16 mm |
+| Van | 11,994 | 2 | 0.5 MB | 0.9 mm |
+| Garbage truck | 3,988 | 1 | 0.3 MB | 0.1 mm |
 | Gas station | 19,996 | 5 | 1.2 MB | 8.3 mm |
 
 The budgets are 100,000 triangles, 50 primitives and 8 MiB per car (`tests/cabinAsset.test.js`).

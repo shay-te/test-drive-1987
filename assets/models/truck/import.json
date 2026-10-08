@@ -1,0 +1,15 @@
+{
+    "source": "mack_mr_garbage_truck.glb",
+    "credit": {
+        "title": "mack mr Garbage Truck",
+        "author": "zairiq-zairiq-123-pixar-cars-bfdi",
+        "url": "https://sketchfab.com/3d-models/mack-mr-garbage-truck-2000545db3e846a991dcb1aea1505d41",
+        "license": "CC-BY-4.0"
+    },
+    "yawDeg": 180,
+    "triangles": 12000,
+    "textures": {
+        "baseColor": 512,
+        "other": 256
+    }
+}

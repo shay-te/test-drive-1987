@@ -1,0 +1,21 @@
+{
+    "source": "lincoln_continental_mark_v.glb",
+    "credit": {
+        "title": "Lincoln Continental Mark V",
+        "author": "Barbo",
+        "url": "https://sketchfab.com/3d-models/lincoln-continental-mark-v-09587fee473d4b07ac7f10d2a65b47c4",
+        "license": "CC-BY-4.0"
+    },
+    "yawDeg": 180,
+    "remove": [
+        "Paint.001_8"
+    ],
+    "triangles": 12000,
+    "textures": {
+        "baseColor": 512,
+        "other": 256
+    },
+    "normals": {
+        "creaseDeg": 35
+    }
+}

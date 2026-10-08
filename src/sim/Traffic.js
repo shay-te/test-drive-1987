@@ -34,7 +34,6 @@ export class TrafficManager {
             length: spec.length,
             width: spec.width,
             height: spec.height,
-            color: this.rng.pick(spec.colors),
             speed: 0,
             targetSpeed: 0,
             ...props,

@@ -124,8 +124,11 @@ function fixMaterials(fixes) {
  *  origin, `body.eye` behind the nose; a road user to its traffic length, and scenery by `config.scale`,
  *  both centred. The ground is the model's lowest point, or `config.ground` in the source's units. */
 function align() {
-    const turn = (config.yawDeg * Math.PI) / 360;
-    const root = doc.createNode('align').setRotation([0, Math.sin(turn), 0, Math.cos(turn)]);
+    // Yaw about y after `pitchDeg` about x, which stands up a model lying on its side or back.
+    const yaw = (config.yawDeg * Math.PI) / 360;
+    const pitch = ((config.pitchDeg ?? 0) * Math.PI) / 360;
+    const rotation = [Math.cos(yaw) * Math.sin(pitch), Math.sin(yaw) * Math.cos(pitch), -Math.sin(yaw) * Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)];
+    const root = doc.createNode('align').setRotation(rotation);
     for (const child of scene().listChildren()) {
         scene().removeChild(child);
         root.addChild(child);
@@ -142,10 +145,15 @@ function align() {
 }
 
 /** Bakes every mesh node's world transform into its geometry and drops the empty hierarchy. A generic
- *  exporter mesh ("Object_12") that is its parent's only child takes the parent's name. */
+ *  exporter mesh ("Object_12") that is its parent's only child takes the parent's name. A rigged mesh
+ *  keeps its rest pose: game models do not animate. */
 function bake() {
     for (const node of scene().listChildren().flatMap(subtree)) {
         if (!node.getMesh()) continue;
+        if (node.getSkin()) {
+            node.setSkin(null);
+            for (const prim of node.getMesh().listPrimitives()) prim.setAttribute('JOINTS_0', null).setAttribute('WEIGHTS_0', null);
+        }
         const parent = node.getParentNode();
         if (/^Object_\d+$/.test(node.getName()) && parent?.listChildren().length === 1) node.setName(parent.getName());
         clearNodeParent(node);

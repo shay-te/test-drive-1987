@@ -23,11 +23,19 @@ patrol cars and a gas station at the end of every stage.
   (`HeadMotion`: leans in bends, nods under braking, road buzz, crash jolt, looking around).
 - `src/ui/screens/`: title, brochure with the acceleration graph, driving, gas station, results.
 
-### Next
+### Next (queued, in order)
 
-1. Model the Porsche's full interior against references, then the other four cabins.
-2. Tune the cabin materials and lighting against the reference photos; handling feedback pass.
-3. Test on phones (touch controls, performance of the cabin pass).
+1. **The cars you drive, as in reality:** each car's real engine sound, its real turbo and rev
+   behaviour, and handling that matches the real car; always show which gear you are in.
+2. **An outside camera,** above and behind the car.
+3. **A Sea-to-Sky Highway setting:** the coastal road from Horseshoe Bay to Squamish above Howe
+   Sound (one lane each way, cut into the cliffs; see the 1966 TranBC footage). Start with one
+   polished 500 m section (bend, rock wall, drop, trees, distant mountains), then extend it; rock
+   assets from Poly Haven (CC0), terrain from Natural Resources Canada elevation data.
+4. **Sea-to-Sky lighting:** driving north, a late-afternoon summer sun in the west (to the left),
+   and its glint on the water to the left, moving across the view as the road turns.
+5. **Over the edge into the sea:** the car sinks, with fish and rising air bubbles.
+6. Test on phones (touch controls, performance of the cabin pass).
 
 ## Play it
 
@@ -60,7 +68,7 @@ Gamepads (standard mapping) and touch controls work too. The right stick looks a
 
 ## Cabin assets
 
-The Porsche (Johnny Silverhand's 930 by valvetin, CC BY 4.0), the Ferrari (1986 Testarossa by Res1n) the Lamborghini (1985 Countach LP5000 QV by OUTPISTON, CC BY-NC-SA 4.0), the Lotus (1983 Esprit Turbo by esprit3d.website, CC BY 4.0), the Corvette (C4 by Randomness, CC BY 4.0) the patrol car (2001 Crown Victoria Police Interceptor by 8sianDude, CC BY 4.0) and the gas station (Lowpoly Gas Station by AspectStudios, CC BY 4.0) are Sketchfab models, converted by `scripts/import-car.mjs` into cabins with live instruments, animated controls and a seated camera. Inspect them at [preview.html](preview.html); use keys 1–7 for repeatable interior viewpoints. See [the import pipeline, credits and asset contract](assets/models/README.md) before changing a model.
+Every car, the traffic, the patrol car and the gas station are Sketchfab models by their authors, credited with their licences in [assets/models/README.md](assets/models/README.md); two (the Countach and the 1968 Beetle) are CC BY-NC-SA 4.0, non-commercial. `scripts/import-car.mjs` converts the player cars into cabins with live instruments, animated controls and a seated camera. Inspect them at [preview.html](preview.html); use keys 1–7 for repeatable interior viewpoints. See [the import pipeline, credits and asset contract](assets/models/README.md) before changing a model.
 
 ## The cars
 
