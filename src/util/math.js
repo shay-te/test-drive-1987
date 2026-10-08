@@ -16,9 +16,6 @@ export const smoothstep = (a, b, v) => {
     const t = clamp(invLerp(a, b, v), 0, 1);
     return t * t * (3 - 2 * t);
 };
-export const easeInOut = (t) => {
-    return 0.5 - Math.cos(clamp(t, 0, 1) * Math.PI) / 2;
-};
 export const sign = (v) => {
     return v < 0 ? -1 : 1;
 };
@@ -31,11 +28,6 @@ export const approach = (current, target, rate, dt) => {
 /** Moves `current` towards `target` by at most `step`. */
 export const moveTowards = (current, target, step) => {
     return Math.abs(target - current) <= step ? target : current + Math.sign(target - current) * step;
-};
-
-export const wrapAngle = (a) => {
-    a = (a + Math.PI) % TAU;
-    return (a < 0 ? a + TAU : a) - Math.PI;
 };
 
 /** Seeded PRNG (mulberry32). Returns a function producing floats in [0, 1). */
@@ -60,16 +52,6 @@ export function createRng(seed) {
         return next() < p;
     };
     return next;
-}
-
-/** Integer hash -> float in [0, 1). */
-export function hash01(n) {
-    n = n ^ 61 ^ (n >>> 16);
-    n = Math.imul(n, 9);
-    n ^= n >>> 4;
-    n = Math.imul(n, 0x27d4eb2d);
-    n ^= n >>> 15;
-    return (n >>> 0) / 4294967296;
 }
 
 /** Seeded 3D gradient noise (Perlin's improved noise), output roughly in [-1, 1]. */

@@ -23,6 +23,7 @@ export const EN = {
         car: 'CAR',
         score: 'SCORE',
         mile: 'MILE',
+        chances: 'CHANCES',
     },
     title: {
         logo: 'TEST DRIVE',
@@ -31,6 +32,7 @@ export const EN = {
         tap: 'Tap to start',
         controls:
             'Arrows: steer / gas / brake    A / Z: shift up / down    D: gear lever    I: digital readout    M: mute    P: pause',
+        badge: 'TD',
         credit: 'A fan tribute to Test Drive by Distinctive Software and Accolade (1987).',
     },
     select: {

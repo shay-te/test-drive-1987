@@ -46,9 +46,10 @@ export class Display {
             canvas.style.left = `${(clientWidth - cssWidth) / 2}px`;
             canvas.style.top = `${(clientHeight - cssHeight) / 2}px`;
         }
+        if (scale === this.scale && this.uiCanvas.width === backingWidth) return;
+        // Assigning a canvas size clears it, so only do it when the size really changed.
         this.uiCanvas.width = backingWidth;
         this.uiCanvas.height = Math.round(VIEW.height * scale);
-        if (scale === this.scale) return;
         this.scale = scale;
         for (const listener of this.resizeListeners) listener(scale);
     }

@@ -72,8 +72,6 @@ const SOUNDS = {
     },
 };
 
-export const SOUND_NAMES = Object.keys(SOUNDS);
-
 /** Renders sound `name` for `context`. */
 export function renderSound(context, name) {
     const spec = SOUNDS[name];

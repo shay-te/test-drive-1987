@@ -28,7 +28,3 @@ export function shadeHex(hex, f) {
     const shaded = f > 1 ? mixRgb(c, [255, 255, 255], Math.min(1, f - 1)) : mixRgb([0, 0, 0], c, f);
     return css(shaded);
 }
-
-export function withAlpha(hex, alpha) {
-    return css(hexToRgb(hex), alpha);
-}

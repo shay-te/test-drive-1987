@@ -6,8 +6,9 @@ sound. No build step: `npm start` serves the folder.
 
 ## Git
 
-- **Do not run `git add`, `git commit` or `git push`.** Prepare the changes and stop; the user
-  inspects them and decides when to stage or commit.
+- **Push finished work to `master`.** When a milestone is complete and `npm run check` is green,
+  commit it and push to `master`; the user only runs `git pull`. Fetch and merge first if
+  `master` moved, so nobody's work is lost.
 - No destructive git commands (`reset --hard`, `checkout --`, `clean`, force pushes).
 - Don't run `git diff` / `git status` reflexively. Use git history only when you need it
   (`git log --follow`, `git show <commit>:<path>`, `git blame`).
