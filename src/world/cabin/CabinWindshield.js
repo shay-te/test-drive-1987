@@ -21,14 +21,16 @@ export class CabinWindshield {
         this.seed = null;
     }
 
-    update(crack) {
-        this.mesh.visible = crack !== null;
-        if (!crack || crack.seed === this.seed) return;
-        this.seed = crack.seed;
+    /** Shows the `cracks` ([{x, y, seed}], one per hard hit), redrawn only when there is a new one. */
+    update(cracks) {
+        this.mesh.visible = cracks.length > 0;
+        const key = cracks.map((crack) => { return crack.seed; }).join();
+        if (!cracks.length || key === this.seed) return;
+        this.seed = key;
         const canvas = this.texture.image;
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawCrack(ctx, crack);
+        for (const crack of cracks) drawCrack(ctx, crack);
         this.texture.needsUpdate = true;
     }
 

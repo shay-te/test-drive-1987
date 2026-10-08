@@ -24,7 +24,7 @@ export class PreviewScreen {
         this.ready = false;
         this.failed = false;
         this.radar = false;
-        this.crack = null;
+        this.cracks = [];
     }
 
     enter() {
@@ -64,7 +64,7 @@ export class PreviewScreen {
         if (this.input.pressed('shiftDown')) drivetrain.shift(engine, -1);
         drivetrain.update(engine, 0, this.input.throttle(), dt);
         if (this.input.pressed('previewRadar')) this.radar = !this.radar;
-        if (this.input.pressed('previewCrack')) this.crack = this.crack ? null : PREVIEW.crack;
+        if (this.input.pressed('previewCrack')) this.cracks = this.cracks.length ? [] : [PREVIEW.crack];
         const telemetry = this.vehicle.telemetry();
         const readings = instrumentReadings(telemetry, this.car);
         this.cockpit.update(dt, readings, telemetry.gear);
@@ -79,7 +79,7 @@ export class PreviewScreen {
                 trip: tripLines({ trip: tripInfo(this.session, 0), readings, digital: true, gearLabel: gearLabel(this.car, engine.gear) }),
                 steer: this.input.steering(),
                 radar: this.radar ? PREVIEW.radar : 0,
-                crack: this.crack,
+                cracks: this.cracks,
                 time: this.time,
             },
         };

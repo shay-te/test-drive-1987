@@ -116,3 +116,22 @@ test('V switches between the driver seat and the outside view, which the next st
     next.enter({ session: new Session(carById('porsche')), outside: true });
     assert.equal(next.outside, true);
 });
+
+test('hitting a car plays the crash out, watched from outside, before the notice; then the wreck is cleared', () => {
+    const { screen, run, tap } = startStage();
+    const { vehicle } = screen;
+    const truck = screen.traffic.add('truck', { s: vehicle.s + 12, u: vehicle.u, dir: -1, speed: 0, scripted: true });
+    vehicle.vx = 30;
+    run(1);
+    assert.equal(screen.state, 'wrecking', 'no freeze-frame: the crash plays');
+    assert.ok(screen.view.spectator, 'seen from beside the road');
+    assert.ok(truck.wrecked && truck.pose, 'the truck follows its own wreck');
+    assert.ok(screen.cracks.length > 0, 'the windshield cracked');
+    assert.equal(screen.traffic.collision(truck.s, truck.u), null, 'the wreck no longer counts as traffic');
+    for (let t = 0; t < 12 && screen.state === 'wrecking'; t++) run(1);
+    assert.equal(screen.state, 'crashed', 'the notice comes once the cars settle');
+    tap('Enter');
+    assert.equal(screen.state, 'driving');
+    assert.ok(!screen.traffic.vehicles.includes(truck), 'the wreck is cleared away');
+    assert.deepEqual(screen.cracks, [], 'a fresh windshield');
+});

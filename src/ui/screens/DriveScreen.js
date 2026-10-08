@@ -3,13 +3,14 @@ import { CockpitState } from '../../cockpit/CockpitState.js';
 import { HeadMotion } from '../../cockpit/HeadMotion.js';
 import { boostPsi, instrumentReadings, lampStates, revState } from '../../cockpit/instruments.js';
 import { tripInfo, tripLines } from '../../cockpit/tripDisplay.js';
-import { GAME, MOTION, PHYS } from '../../config.js';
+import { CRASH, GAME, MOTION, PHYS } from '../../config.js';
 import { gearLabel } from '../../data/cars.js';
 import { STAGES } from '../../data/stages.js';
 import { t } from '../../i18n/i18n.js';
 import { POLICE_EVENT, PoliceManager } from '../../sim/Police.js';
 import { Landscape } from '../../sim/Landscape.js';
 import { OverTheEdge } from '../../sim/OverTheEdge.js';
+import { RoadCrash } from '../../sim/RoadCrash.js';
 import { CRASH_CAUSE } from '../../sim/Session.js';
 import { buildTrack } from '../../sim/TrackBuilder.js';
 import { LANE, ONCOMING, TrafficManager } from '../../sim/Traffic.js';
@@ -30,16 +31,15 @@ import { COLORS } from '../theme.js';
 const STEP = 1 / GAME.physicsHz;
 const INTRO_SECONDS = 4;
 const TOAST_SECONDS = 3;
-/** Seconds into a fall after which ENTER skips to the crash notice. */
-const FALL_SKIP = 3;
 /** A hit at this speed (m/s) or more plays the crash sound at full volume. */
 const LOUD_HIT = 30;
 /** After a crash the car restarts this far back, in the right-hand lane. */
 const RESPAWN_BACK = 25;
 /** Fuel gauge drop over a full stage (cosmetic). */
 const FUEL_USED = 0.6;
-/** Impacts above this speed (m/s) crack the windshield. */
+/** Impacts above this speed (m/s) crack the windshield; each one more, until it is shattered. */
 const CRACK_IMPACT = 6;
+const MAX_CRACKS = 5;
 const TICKET_BRAKE = 1;
 /** Where on the glass an impact can crack it (layout px), the fall's tilt per second, body sway rate. */
 const CRACK_AREA = { x: 380, y: 120, w: 520, h: 220 };
@@ -111,8 +111,9 @@ export class DriveScreen {
         this.accumulator = 0;
         this.bodyPitch = 0;
         this.bodyRoll = 0;
-        this.crack = null;
+        this.cracks = [];
         this.wreck = null;
+        this.wrecked = null;
         this.stageTime = 0;
         if (this.audio.ready) {
             this.audio.createEngine(car).then((engine) => {
@@ -156,7 +157,7 @@ export class DriveScreen {
         this.stageTime += dt;
         if (this.toast) this.toast.time += dt;
         if (this.state === 'driving') this._drive(dt);
-        else if (this.state === 'falling') this._falling(dt);
+        else if (this.state === 'wrecking') this._wrecking(dt);
         else if (this.state === 'ticket') this._stopForTicket(dt);
         else if (this.state === 'crashed' && this.input.pressed('confirm')) this._afterCrash();
     }
@@ -193,7 +194,7 @@ export class DriveScreen {
                     : hit.dir === ONCOMING
                       ? CRASH_CAUSE.headOn
                       : CRASH_CAUSE.rearEnd;
-            this._crash(cause, Math.abs(vehicle.vx - hit.speed * hit.dir));
+            this._crash(cause, Math.abs(vehicle.vx - hit.speed * hit.dir), hit);
             return;
         }
         if (vehicle.engine.blown) {
@@ -223,32 +224,53 @@ export class DriveScreen {
         this.toast = { text, color, time: 0 };
     }
 
-    _crash(cause, impact) {
+    /** `other` is the traffic vehicle hit, if any. A blown engine just stops; any other crash is played
+     *  out: over the edge the car tumbles down the drop, on the road the cars are thrown apart. */
+    _crash(cause, impact, other = null) {
         this.cause = cause;
         this.over = this.session.recordCrash(cause);
         this.head.jolt(impact);
-        if (cause !== CRASH_CAUSE.engine && impact > CRACK_IMPACT) {
-            this.crack = {
-                x: CRACK_AREA.x + Math.random() * CRACK_AREA.w,
-                y: CRACK_AREA.y + Math.random() * CRACK_AREA.h,
-                seed: Math.floor(this.time * 1000),
-            };
-        }
         this.audio.play('crash', { volume: cause === CRASH_CAUSE.engine ? 0.5 : 1 });
-        // Over the edge the car becomes a rigid body tumbling down to the valley floor.
-        this.wreck =
-            cause === CRASH_CAUSE.edge ? new OverTheEdge(this.vehicle, this.track, this.landscape) : null;
-        this.state = this.wreck ? 'falling' : 'crashed';
+        if (cause === CRASH_CAUSE.engine) {
+            this.state = 'crashed';
+            return;
+        }
+        this._crack(impact);
+        this.impactAt = { s: this.vehicle.s, u: this.vehicle.u };
+        const { vehicle, track, landscape } = this;
+        this.wreck = cause === CRASH_CAUSE.edge
+            ? new OverTheEdge(vehicle, track, landscape)
+            : new RoadCrash(vehicle, track, landscape, other);
+        if (other) {
+            // The car hit leaves the traffic and follows its own wreck.
+            other.scripted = true;
+            other.wrecked = true;
+            this.wrecked = other;
+        }
+        this.state = 'wrecking';
     }
 
-    /** Over the edge: the wreck runs until it stops; every hard hit is heard and felt. */
-    _falling(dt) {
-        const hit = this.wreck.update(dt);
-        if (hit) {
-            this.audio.play('crash', { volume: Math.min(1, hit / LOUD_HIT) });
-            this.head.jolt(hit);
+    /** Another crack across the windshield for a hard enough hit, up to shattered. */
+    _crack(impact) {
+        if (impact <= CRACK_IMPACT || this.cracks.length >= MAX_CRACKS) return;
+        this.cracks = [...this.cracks, {
+            x: CRACK_AREA.x + Math.random() * CRACK_AREA.w,
+            y: CRACK_AREA.y + Math.random() * CRACK_AREA.h,
+            seed: Math.floor(this.time * 1000) + this.cracks.length,
+        }];
+    }
+
+    /** The wreck plays until the cars stop; every hard hit is heard, felt and may break more glass. */
+    _wrecking(dt) {
+        const hits = this.wreck.update(dt);
+        if (hits.player) {
+            this.audio.play('crash', { volume: Math.min(1, hits.player / LOUD_HIT) });
+            this.head.jolt(hits.player);
+            this._crack(hits.player);
         }
-        const skip = this.wreck.time > FALL_SKIP && this.input.pressed('confirm');
+        if (hits.other) this.audio.play('crash', { volume: Math.min(1, hits.other / LOUD_HIT) / 2 });
+        if (this.wrecked) this.wrecked.pose = this.wreck.otherPose;
+        const skip = this.wreck.time > CRASH.skipAfter && this.input.pressed('confirm');
         if (this.wreck.done || skip) this.state = 'crashed';
     }
 
@@ -259,9 +281,11 @@ export class DriveScreen {
         }
         const s = Math.max(this.track.startS, this.vehicle.s - RESPAWN_BACK);
         this.vehicle.reset(s, LANE);
+        if (this.wrecked) this.traffic.remove(this.wrecked);
+        this.wrecked = null;
         this.traffic.clearAround(s);
         this.police.release();
-        this.crack = null;
+        this.cracks = [];
         this.wreck = null;
         this.state = 'driving';
     }
@@ -350,6 +374,8 @@ export class DriveScreen {
             pitch: Math.atan(track.gradeAt(vehicle.s)) + this.bodyPitch,
             roll: this.bodyRoll,
             pose: this.wreck?.pose ?? null,
+            // A crash is watched from beside it, whichever view was chosen.
+            spectator: this.wreck ? this.impactAt : null,
             head,
             cockpit: {
                 state: this.cockpit,
@@ -357,7 +383,7 @@ export class DriveScreen {
                 lamps: lampStates(telemetry, car, this.time),
                 steer: telemetry.steer,
                 radar: this.police.radarSignal(vehicle),
-                crack: this.crack,
+                cracks: this.cracks,
                 time: this.time,
                 trip: tripLines({
                     trip: tripInfo(session, track.finishS - vehicle.s),
@@ -409,7 +435,7 @@ export class DriveScreen {
     /** The numbers of a fall over the edge for the crash notice, or null. */
     _fallStats() {
         const w = this.wreck;
-        if (!w) return null;
+        if (this.cause !== CRASH_CAUSE.edge || !w) return null;
         return t('crash.fallStats', {
             ft: Math.round(w.drop / PHYS.foot),
             s: w.time.toFixed(1),

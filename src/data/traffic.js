@@ -1,12 +1,13 @@
 /** Other road users, each an authored model (assets/models/<type>/model.glb) scaled to its real length.
  *  Sizes in metres, taken from the model's body without mirrors so collisions match what is drawn;
- *  speeds in mph as [min, max]. */
+ *  kerb masses in kg (a crash throws the lighter car further); speeds in mph as [min, max]. */
 export const TRAFFIC_TYPES = {
     // A 1978 Lincoln Continental Mark V.
     continental: {
         length: 5.85,
         width: 2.02,
         height: 1.34,
+        massKg: 2100,
         speedMph: [46, 62],
         model: 'assets/models/continental/model.glb',
     },
@@ -15,6 +16,7 @@ export const TRAFFIC_TYPES = {
         length: 4.08,
         width: 1.59,
         height: 1.47,
+        massKg: 840,
         speedMph: [40, 54],
         model: 'assets/models/beetle/model.glb',
     },
@@ -23,6 +25,7 @@ export const TRAFFIC_TYPES = {
         length: 4.08,
         width: 1.58,
         height: 1.47,
+        massKg: 840,
         speedMph: [40, 54],
         model: 'assets/models/bumblebee/model.glb',
     },
@@ -31,6 +34,7 @@ export const TRAFFIC_TYPES = {
         length: 4.29,
         width: 1.76,
         height: 1.27,
+        massKg: 1220,
         speedMph: [50, 66],
         model: 'assets/models/rx7/model.glb',
     },
@@ -39,6 +43,7 @@ export const TRAFFIC_TYPES = {
         length: 5.4,
         width: 2.42,
         height: 2.1,
+        massKg: 1950,
         speedMph: [42, 56],
         model: 'assets/models/pickup/model.glb',
     },
@@ -47,6 +52,7 @@ export const TRAFFIC_TYPES = {
         length: 4.44,
         width: 1.86,
         height: 1.82,
+        massKg: 1560,
         speedMph: [40, 54],
         model: 'assets/models/van/model.glb',
     },
@@ -55,6 +61,7 @@ export const TRAFFIC_TYPES = {
         length: 9.3,
         width: 2.95,
         height: 3.95,
+        massKg: 12000,
         speedMph: [34, 50],
         model: 'assets/models/truck/model.glb',
     },
@@ -63,6 +70,7 @@ export const TRAFFIC_TYPES = {
         length: 5.385,
         width: 1.987,
         height: 1.44,
+        massKg: 1800,
         speedMph: [0, 0],
         model: 'assets/models/police/model.glb',
         // The model's light bar lenses, split by colour so the runtime can flash them.
