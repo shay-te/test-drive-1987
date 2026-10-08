@@ -72,11 +72,12 @@ export class TrafficManager {
         }
     }
 
-    /** The vehicle the player's footprint overlaps, or null. */
+    /** The vehicle the player's footprint overlaps, or null (a wrecked one is no longer on the road). */
     collision(s, u) {
         return (
             this.vehicles.find((v) => {
                 return (
+                    !v.wrecked &&
                     Math.abs(v.s - s) < (v.length + PLAYER_LENGTH) / 2 &&
                     Math.abs(v.u - u) < (v.width + PLAYER_WIDTH) / 2
                 );

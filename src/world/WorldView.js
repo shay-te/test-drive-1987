@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { CHASE, LIGHTING, VIEW } from '../config.js';
+import { CHASE, CRASH, LIGHTING, VIEW } from '../config.js';
 import { DEG } from '../util/math.js';
 import { WorldMaterials } from './Materials.js';
 import { WorldBuilder } from './WorldBuilder.js';
@@ -327,9 +327,11 @@ export class WorldView {
         this.scene.updateMatrixWorld();
 
         const r = this.renderer;
-        for (const light of this.cabinLights) light.visible = !view.outside;
-        if (view.outside) {
-            this._placeChase(view.time);
+        const outside = view.outside || view.spectator;
+        for (const light of this.cabinLights) light.visible = !outside;
+        if (outside) {
+            if (view.spectator) this._placeSpectator(view.spectator);
+            else this._placeChase(view.time);
             this.chaseCamera.getWorldPosition(this.sky.position);
             r.render(this.scene, this.chaseCamera);
             return;
@@ -351,6 +353,18 @@ export class WorldView {
         r.clearDepth();
         r.render(this.scene, this.camera);
         r.autoClear = true;
+    }
+
+    /** Watching a crash from beside the road where it happened: behind the impact, out over the drop,
+     *  following the player's car wherever it is thrown. */
+    _placeSpectator({ s, u }) {
+        const c = CRASH.camera;
+        const at = this.track.toWorld(s - c.back, u - c.out);
+        const car = this.cabin.root.position;
+        this.chaseCamera.position.set(at.x, at.y + c.up, at.z);
+        this.chaseCamera.lookAt(car.x, car.y + c.aimUp, car.z);
+        this.chaseCamera.updateMatrixWorld();
+        this.chaseYaw = null;
     }
 
     /** Behind and above the car, its yaw easing after the car's heading (also while it tumbles). */
@@ -409,9 +423,16 @@ export class WorldView {
                 this.models.set(v.id, model);
                 this.scene.add(model);
             }
-            const p = this.track.toWorld(v.s, v.u);
-            model.position.set(p.x, p.y, p.z);
-            model.rotation.y = -p.heading + (v.dir < 0 ? Math.PI : 0);
+            if (v.pose) {
+                // A wrecked car flies free of the road.
+                const { position, quaternion: q } = v.pose;
+                model.position.set(position.x, position.y, position.z);
+                model.quaternion.set(q.x, q.y, q.z, q.w);
+            } else {
+                const p = this.track.toWorld(v.s, v.u);
+                model.position.set(p.x, p.y, p.z);
+                model.rotation.set(0, -p.heading + (v.dir < 0 ? Math.PI : 0), 0);
+            }
             model.userData.siren = Boolean(v.siren);
             this.vehicles.animate(model, time);
         }

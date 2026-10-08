@@ -74,7 +74,7 @@ export class AssetCabin {
 
     update(cockpit) {
         this.displays.update(cockpit.state, cockpit.readings, cockpit.lamps, cockpit.trip);
-        this.windshield.update(cockpit.crack);
+        this.windshield.update(cockpit.cracks);
         this.rotation.set(0, 0, wheelAngle(cockpit.steer));
         this.bindings.steering_wheel.quaternion.copy(this.wheelNeutral).multiply(this.delta.setFromEuler(this.rotation));
         const angles = leverAngles(cockpit.state.knob);

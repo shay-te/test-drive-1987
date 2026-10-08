@@ -95,6 +95,29 @@ export const LOOK = Object.freeze({
     dragThreshold: 5,
 });
 
+/** A crash on the road, played out: the two cars thrown apart by the impact. */
+export const CRASH = Object.freeze({
+    /** Share of the closing speed the cars spring apart with (crumpling steel bounces little). */
+    restitution: 0.25,
+    /** Upward speed per m/s of closing speed as the cars ride up over each other, lighter one most. */
+    rideUp: 0.12,
+    /** Spin per m/s of closing speed: about the vertical for an off-centre hit (per metre off centre),
+     *  and nose-up for the car riding up. */
+    yawSpin: 0.35,
+    pitchSpin: 0.08,
+    /** Bounce off the rock face or a rail: the share of sideways speed kept, and the spin it gives. */
+    wallBounce: 0.3,
+    /** The rock face as a crashing car meets it: a slope it is pushed back off, not a sheer step. */
+    wallSlope: 20,
+    wallGap: 0.4,
+    /** The wreck stops playing after this long even if the cars are still moving (s). */
+    maxSeconds: 8,
+    /** From then on ENTER skips to the crash notice (s). */
+    skipAfter: 1.5,
+    /** Where the crash is watched from: behind the impact, out over the drop, above the road (m). */
+    camera: { back: 16, out: 9, up: 4.5, aimUp: 0.6 },
+});
+
 /** The outside camera (V): behind and above the car, its yaw easing after the car's. */
 export const CHASE = Object.freeze({
     /** Metres behind and above the car's origin. */
@@ -142,4 +165,11 @@ export const FALL = Object.freeze({
     sill: 0.22,
     belt: 0.9,
     wheelInset: 0.11,
+    /** Integration safety: a sticking contact stops at most this share of the body's mass per step,
+     *  and spin (rad/s) is capped far above anything a real wreck does. */
+    stickShare: 0.15,
+    maxSpin: 25,
+    /** A traffic vehicle's centre of mass as a share of its height, and its axles from either end (m). */
+    trafficCg: 0.4,
+    axleFromEnd: 0.9,
 });

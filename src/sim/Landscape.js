@@ -32,6 +32,13 @@ const RELIEF_DEPTH = 12;
 const RELIEF_AMOUNT = 0.35;
 const NORMAL_STEP = 0.25;
 
+/** Upward unit normal at (x, z) of any `ground` with heightAt(x, z), by central differences. */
+export function groundNormal(ground, x, z) {
+    const dx = ground.heightAt(x + NORMAL_STEP, z) - ground.heightAt(x - NORMAL_STEP, z);
+    const dz = ground.heightAt(x, z + NORMAL_STEP) - ground.heightAt(x, z - NORMAL_STEP);
+    return normalize({ x: -dx, y: 2 * NORMAL_STEP, z: -dz });
+}
+
 /** The ground of a stage: road and shoulders, the drop below the edge, the mountain and valley
  *  beyond. The renderer builds its meshes from it and a car going over the edge lands on it. */
 export class Landscape {
@@ -64,9 +71,7 @@ export class Landscape {
 
     /** Upward unit normal of the ground at (x, z). */
     normalAt(x, z) {
-        const dx = this.heightAt(x + NORMAL_STEP, z) - this.heightAt(x - NORMAL_STEP, z);
-        const dz = this.heightAt(x, z + NORMAL_STEP) - this.heightAt(x, z - NORMAL_STEP);
-        return normalize({ x: -dx, y: 2 * NORMAL_STEP, z: -dz });
+        return groundNormal(this, x, z);
     }
 
     /** Vertical relief carved into the drop face at world (x, z), `depth` metres below the road. */
