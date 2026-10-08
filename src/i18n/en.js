@@ -31,9 +31,21 @@ export const EN = {
         start: 'Press ENTER to start',
         tap: 'Tap to start',
         controls:
-            'Arrows: steer / gas / brake    A / Z: shift up / down    Q / E: look left / right    I: digital readout    M: mute    P: pause',
+            'Arrows: steer / gas / brake    A / Z: shift up / down    Drag or Q/E/R/F: look    C: centre    I: readout    M: mute    P: pause',
         badge: 'TD',
         credit: 'A fan tribute to Test Drive by Distinctive Software and Accolade (1987).',
+    },
+    preview: {
+        assetRetry: 'ENTER to retry',
+        title: 'Cabin inspection — {{car}}',
+        controls: 'Drag or Q/E/R/F: look    C: forward    A/Z: gears    ↑: rev    8: radar    9: damage',
+        dashboard: 'Driver dashboard',
+        console: 'Centre console',
+        left: 'Driver door',
+        right: 'Passenger door',
+        seats: 'Front seats',
+        roof: 'Roof lining',
+        rear: 'Rear cabin',
     },
     select: {
         hint: '◀ ▶  choose a car        ENTER  take it for a test drive',
@@ -58,6 +70,8 @@ export const EN = {
         timeAxis: 'TIME (SEC)',
     },
     drive: {
+        assetError: 'The cabin could not be loaded.',
+        assetRetry: 'ENTER to retry    ESC to choose another car',
         stageIntro: 'STAGE {{n}} OF {{total}} — {{name}}',
         startHint: 'Hold ↑ to pull away in first gear, then press A to shift up',
         shiftUp: 'Press A to shift up',

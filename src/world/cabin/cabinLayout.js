@@ -2,6 +2,8 @@
  *  The driver's eye sits at (ROAD.eyeOffset, ROAD.eyeHeight, 0). Proportions follow the 930 blueprint
  *  (1775 mm wide, 1310 mm high) and the owner photo of a 1987 911 Turbo cabin. */
 export const CABIN = {
+    glass: { color: '#0a0e12', roughness: 0.04, opacity: 0.05, envMapIntensity: 0.5 },
+    radarLight: { off: '#2a0505', on: '#ff1a0a', intensity: 1.4 },
     halfWidth: 0.7,
     floor: 0.2,
     roof: 1.235,

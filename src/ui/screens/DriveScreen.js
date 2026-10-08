@@ -2,7 +2,7 @@ import { DriveSoundscape } from '../../audio/DriveSoundscape.js';
 import { CockpitState } from '../../cockpit/CockpitState.js';
 import { HeadMotion } from '../../cockpit/HeadMotion.js';
 import { instrumentReadings, lampStates } from '../../cockpit/instruments.js';
-import { tripLines } from '../../cockpit/tripDisplay.js';
+import { tripInfo, tripLines } from '../../cockpit/tripDisplay.js';
 import { GAME, MOTION, PHYS } from '../../config.js';
 import { gearLabel } from '../../data/cars.js';
 import { STAGES } from '../../data/stages.js';
@@ -49,6 +49,9 @@ export class DriveScreen {
         Object.assign(this, { game, audio, input, world });
         this.state = 'loading';
         this.loadingShown = false;
+        this.loadingStarted = false;
+        this.loadError = false;
+        this.exited = false;
         this.time = 0;
         this.paused = false;
         this.digital = false;
@@ -58,22 +61,41 @@ export class DriveScreen {
     }
 
     enter({ session }) {
+        this.input.setLookEnabled(true);
         this.session = session;
         this.car = session.car;
         session.beginStage();
     }
 
     exit() {
+        this.exited = true;
+        this.input.setLookEnabled(false);
         this.soundscape?.stop();
         this.soundscape = null;
     }
 
     /** Builds the stage (heavy) one frame after the loading notice has been shown. */
     _load() {
+        if (this.loadingStarted) return;
+        this.loadingStarted = true;
+        const preparation = this.world.prepare(this.car);
+        if (!preparation) {
+            this._build();
+            return;
+        }
+        preparation.then((asset) => {
+            if (!this.exited) this._build(asset);
+        }).catch((error) => {
+            console.error('[world] Cabin preparation failed', error);
+            if (!this.exited) this.loadError = true;
+        });
+    }
+
+    _build(cabinAsset = null) {
         const { car, session } = this;
         this.track = buildTrack(session.stage);
         this.landscape = new Landscape(this.track, session.stage);
-        this.world.load(this.track, session.stage, car, this.landscape);
+        this.world.load(this.track, session.stage, car, this.landscape, cabinAsset);
         this.vehicle = new VehicleDynamics(car);
         this.vehicle.reset(this.track.startS, LANE);
         this.traffic = new TrafficManager(this.track, session.stage);
@@ -99,9 +121,17 @@ export class DriveScreen {
     update(dt) {
         this.time += dt;
         if (this.state === 'loading') {
-            // The loading notice gets a frame on screen before the heavy build starts.
-            if (!this.loadingShown) return;
+            if (this.loadError && this.input.pressed('back')) {
+                this._leave('select', { carId: this.car.id });
+                return;
+            }
+            if (this.loadError && this.input.pressed('confirm')) {
+                this.loadError = false;
+                this.loadingStarted = false;
+            }
+            if (!this.loadingShown || this.loadError) return;
             this._load();
+            if (this.state === 'loading') return;
         }
         const input = this.input;
         if (input.pressed('pause') || (input.pressed('back') && !this.paused)) {
@@ -113,7 +143,7 @@ export class DriveScreen {
         if (input.pressed('toggleDigital')) this.digital = !this.digital;
         if (!this.paused) this._advance(dt);
         if (this.state === 'results') return;
-        this.view = this._view(this.paused ? 0 : dt);
+        this.view = this._view(dt);
         this._sound(dt);
     }
 
@@ -274,7 +304,7 @@ export class DriveScreen {
     render(ctx) {
         if (this.state === 'loading') {
             this.world.clear();
-            drawLoading(ctx, this.time);
+            drawLoading(ctx, this.time, this.loadError);
             this.loadingShown = true;
             return;
         }
@@ -294,8 +324,7 @@ export class DriveScreen {
         const progress = (vehicle.s - track.startS) / (track.finishS - track.startS);
         const readings = instrumentReadings(telemetry, car, { fuel: 1 - progress * FUEL_USED });
         this.cockpit.update(dt, readings, telemetry.gear);
-        const look = (this.input.isDown('lookRight') ? 1 : 0) - (this.input.isDown('lookLeft') ? 1 : 0);
-        const head = this.head.update(dt, telemetry, look);
+        const head = this.head.update(dt, { ...telemetry, speed: this.paused ? 0 : telemetry.speed }, this.input.look());
         const g = PHYS.g;
         this.bodyPitch = approach(
             this.bodyPitch,
@@ -326,15 +355,7 @@ export class DriveScreen {
                 crack: this.crack,
                 time: this.time,
                 trip: tripLines({
-                    trip: {
-                        stage: session.stageIndex + 1,
-                        total: STAGES.length,
-                        elapsed: session.elapsed,
-                        remaining: Math.max(0, track.finishS - vehicle.s),
-                        summit: Boolean(session.stage.summit),
-                        chances: session.chances,
-                        maxChances: GAME.chances,
-                    },
+                    trip: tripInfo(session, track.finishS - vehicle.s),
                     readings,
                     digital: this.digital,
                     gearLabel: gearLabel(car, telemetry.gear),

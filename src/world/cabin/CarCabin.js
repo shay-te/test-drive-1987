@@ -39,6 +39,8 @@ export class CarCabin {
     }
 
     dispose() {
+        this.dashboard.displays.dispose();
+        this.shell.crack.dispose();
         this.root.traverse((object) => {
             object.geometry?.dispose();
         });

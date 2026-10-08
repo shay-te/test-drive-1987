@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Sky } from 'three/addons/Sky.js';
+import { Sky } from 'three/addons/objects/Sky.js';
 import { VIEW } from '../config.js';
 import { DEG } from '../util/math.js';
 import { WorldMaterials } from './Materials.js';
@@ -7,6 +7,9 @@ import { WorldBuilder } from './WorldBuilder.js';
 import { Terrain } from './Terrain.js';
 import { buildTrees } from './Props.js';
 import { VehicleModels } from './VehicleModels.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { AssetCabin } from './cabin/AssetCabin.js';
+import { validateCabinNodes } from './cabin/cabinAsset.js';
 import { CarCabin } from './cabin/CarCabin.js';
 import { CABIN } from './cabin/cabinLayout.js';
 import { CABIN_LAYER } from './cabin/shapes.js';
@@ -50,6 +53,7 @@ export class WorldView {
             WORLD_NEAR,
             FAR,
         );
+        this.camera.rotation.order = 'YXZ';
         this.camera.setViewOffset(
             VIEW.width,
             VIRTUAL_HEIGHT,
@@ -58,7 +62,6 @@ export class WorldView {
             VIEW.width,
             VIEW.height,
         );
-        this.camera.rotation.order = 'YXZ';
         const m = CABIN.mirror;
         this.mirrorCamera = new THREE.PerspectiveCamera(MIRROR_VFOV, m.w / m.h, 0.5, MIRROR_FAR);
         this.mirrorTarget = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
@@ -93,8 +96,22 @@ export class WorldView {
         this.scale = scale;
     }
 
-    /** Builds the 3D scene for a stage on its `landscape`, with `car`'s cabin around the driver. */
-    load(track, stage, car, landscape) {
+    /** Loads and validates the car's cached cabin asset before scene construction. */
+    prepare(car) {
+        if (!car.cockpit.model) return null;
+        return this.resources.model(car.cockpit.model, async (url) => {
+            const asset = await new GLTFLoader().loadAsync(url);
+            const nodes = [];
+            asset.scene.traverse((node) => { nodes.push(node); });
+            const bindings = validateCabinNodes(nodes);
+            for (const name of ['instrument_surface', 'trip_surface', 'mirror_surface', 'windshield_surface']) {
+                if (!bindings[name].geometry.attributes.uv) throw new Error(`Cabin surface "${name}" has no UVs`);
+            }
+            return asset.scene;
+        });
+    }
+
+    load(track, stage, car, landscape, cabinAsset = null) {
         this.dispose();
         this.track = track;
         const scene = new THREE.Scene();
@@ -104,13 +121,25 @@ export class WorldView {
         scene.add(builder.build(track), terrain.mesh, terrain.ring);
         scene.add(buildTrees([...builder.treePlacements(track), ...terrain.treePlacements()], materials));
         scene.fog = new THREE.FogExp2(stage.fog.color, stage.fog.density);
+        this._installCabin(scene, stage, car, cabinAsset);
+    }
+
+    loadPreview(stage, car, cabinAsset) {
+        this.dispose();
+        this.track = null;
+        this._installCabin(new THREE.Scene(), stage, car, cabinAsset);
+    }
+
+    _installCabin(scene, stage, car, cabinAsset) {
         this._addSkyAndSun(scene, stage);
         this.renderer.toneMappingExposure = stage.sky.exposure;
-        this.cabin = new CarCabin(
+        const Cabin = car.cockpit.model ? AssetCabin : CarCabin;
+        this.cabin = new Cabin(
             car,
             this.resources,
             this.renderer.capabilities.getMaxAnisotropy(),
             this.mirrorTarget.texture,
+            cabinAsset,
         );
         this.cabin.root.rotation.order = 'YXZ';
         this.cabin.eye.add(this.camera);
@@ -190,7 +219,8 @@ export class WorldView {
         const pmrem = new THREE.PMREMGenerator(this.renderer);
         const skyScene = new THREE.Scene();
         skyScene.add(this.sky.clone());
-        const texture = pmrem.fromScene(skyScene).texture;
+        this.environmentTarget = pmrem.fromScene(skyScene);
+        const texture = this.environmentTarget.texture;
         pmrem.dispose();
         return texture;
     }
@@ -202,7 +232,7 @@ export class WorldView {
         this._placeCar(view);
         this._syncVehicles(view.vehicles, view.time);
         this.cabin.update(view.cockpit);
-        const focus = this.track.toWorld(view.s + SHADOW_AHEAD, 0);
+        const focus = view.pose?.position ?? this.track.toWorld(view.s + SHADOW_AHEAD, 0);
         this.sun.target.position.set(focus.x, focus.y, focus.z);
         this.sun.position.copy(this.sun.target.position).addScaledVector(this.sunDirection, 450);
         const car = this.cabin.root.position;
@@ -287,9 +317,21 @@ export class WorldView {
         this.scene.remove(this.cabin.root);
         this.cabin.dispose();
         this.cabin = null;
+        for (const model of this.models.values()) this.scene.remove(model);
+        const materials = new Set();
+        const textures = new Set();
         this.scene.traverse((object) => {
             object.geometry?.dispose();
+            object.shadow?.dispose();
+            const entries = Array.isArray(object.material) ? object.material : [object.material];
+            for (const material of entries) if (material) materials.add(material);
         });
+        for (const material of materials) {
+            for (const value of Object.values(material)) if (value?.isTexture) textures.add(value);
+            material.dispose();
+        }
+        for (const texture of textures) texture.dispose();
+        this.environmentTarget?.dispose();
         this.models.clear();
         this.scene = null;
     }

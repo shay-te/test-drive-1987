@@ -104,6 +104,7 @@ export const CARS = [
         },
         cockpit: {
             cluster: 'porsche',
+            model: 'assets/models/porsche/cabin.glb',
             dash: { top: '#a4a5a2', face: '#959693', panel: '#141415', accent: '#2c2c2e', grain: 'leather' },
             wheel: { spokes: 4, hub: 'pad', rim: '#141414', spoke: '#1b1b1d', marker: false, emblem: 'make' },
             shifter: { type: 'boot', pattern: 'porsche4', knob: '#1a1a1a' },
