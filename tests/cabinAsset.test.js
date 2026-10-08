@@ -5,13 +5,32 @@ import { readGlb } from '../scripts/glb.mjs';
 import { CABIN_VIEWS } from '../src/data/cabinViews.js';
 import { CARS } from '../src/data/cars.js';
 import { LOOK } from '../src/config.js';
-import { validateCabinNodes } from '../src/world/cabin/cabinAsset.js';
+import { SURFACES, validateCabinNodes } from '../src/world/cabin/cabinAsset.js';
 import { leverAngles, radarLights, wheelAngle } from '../src/world/cabin/cabinAnimation.js';
+import { profileFrame } from '../src/world/profileFrame.js';
 
 const AUTHORED = CARS.filter((car) => { return car.cockpit.model; });
 const modelUrl = (car) => { return new URL(`../${car.cockpit.model}`, import.meta.url); };
 const assets = new Map(AUTHORED.map((car) => { return [car.id, readGlb(modelUrl(car))]; }));
 const asset = assets.get('porsche');
+
+/** Car-space bounds of the batched static body and cabin, whose rotations batching must bake. */
+function staticBounds(model) {
+    const min = [Infinity, Infinity, Infinity];
+    const max = [-Infinity, -Infinity, -Infinity];
+    for (const node of model.nodes.filter((node) => { return node.name.startsWith('static_'); })) {
+        assert.equal(node.rotation, undefined, 'static batching bakes rotations');
+        for (const primitive of model.meshes[node.mesh].primitives) {
+            const bounds = model.accessors[primitive.attributes.POSITION];
+            for (let axis = 0; axis < 3; axis++) {
+                const offset = node.translation?.[axis] ?? 0;
+                min[axis] = Math.min(min[axis], bounds.min[axis] + offset);
+                max[axis] = Math.max(max[axis], bounds.max[axis] + offset);
+            }
+        }
+    }
+    return { min, max };
+}
 
 test('the Porsche and the Ferrari drive authored cabins; the rest stay procedural', () => {
     assert.deepEqual(
@@ -33,26 +52,27 @@ for (const car of AUTHORED) {
         assert.ok(primitives.length <= 50, 'main-pass mesh draw budget');
         assert.ok(statSync(modelUrl(car)).size <= 8 * 1024 * 1024);
         assert.ok((model.images ?? []).every((image) => { return image.bufferView !== undefined && !image.uri; }));
-        const staticMeshes = model.nodes.filter((node) => { return node.name.startsWith('static_'); });
-        const min = [Infinity, Infinity, Infinity];
-        const max = [-Infinity, -Infinity, -Infinity];
-        for (const node of staticMeshes) {
-            assert.equal(node.rotation, undefined, 'static batching bakes rotations');
-            for (const primitive of model.meshes[node.mesh].primitives) {
-                const bounds = model.accessors[primitive.attributes.POSITION];
-                for (let axis = 0; axis < 3; axis++) {
-                    const offset = node.translation?.[axis] ?? 0;
-                    min[axis] = Math.min(min[axis], bounds.min[axis] + offset);
-                    max[axis] = Math.max(max[axis], bounds.max[axis] + offset);
-                }
-            }
-        }
+        const { min, max } = staticBounds(model);
         const { width, height, length, eye } = car.body;
         assert.ok(max[0] - min[0] >= width, 'complete width, including both exterior mirrors');
         assert.ok(min[1] < 0.02 && max[1] > height - 0.01, 'tyres reach the road and roof is present');
         assert.ok(Math.abs(min[2] + eye) < 0.006, 'front bumper matches the body data, relative to the seated eye');
         const overhang = max[2] - (length - eye);
         assert.ok(overhang >= 0 && overhang < 0.05, 'rear bumper and exhaust stay within the body overhang');
+    });
+
+    test(`the ${car.fullName} title photo frames it nose-left on the road, sharp on a 2x display`, () => {
+        const { min, max } = staticBounds(model);
+        const point = ([x, y, z]) => { return { x, y, z }; };
+        const frame = profileFrame(point(min), point(max));
+        assert.equal(frame.left, min[2], 'the nose (-z) sits on the left edge');
+        assert.equal(frame.right, max[2]);
+        assert.equal(frame.bottom, 0, 'the road is the bottom edge');
+        assert.ok(frame.top > max[1], 'the roof stays clear of the top edge');
+        const across = (frame.right - frame.left) / frame.width;
+        const up = (frame.top - frame.bottom) / frame.height;
+        assert.ok(Math.abs(across / up - 1) < 0.01, 'square pixels keep the car in proportion');
+        assert.ok(frame.width >= 2 * 560, 'covers the title car width (560) at the 2x display cap');
     });
 
     test(`${car.fullName} batching keeps moving controls separate, pivots neutral and surfaces mapped`, () => {
@@ -70,7 +90,7 @@ for (const car of AUTHORED) {
         assert.ok(Math.abs(rotation[1]) > 1 - 1e-6, 'mirror faces backwards');
         assert.ok([0, 2, 3].every((axis) => { return Math.abs(rotation[axis]) < 1e-6; }));
         assert.equal(bindings.driver_eye.translation[2], 0, 'body bounds are measured from the seated eye');
-        for (const name of ['instrument_surface', 'trip_surface', 'mirror_surface', 'windshield_surface']) {
+        for (const name of SURFACES) {
             const primitives = model.meshes[bindings[name].mesh].primitives;
             assert.equal(primitives.length, 1);
             assert.ok(primitives.every((primitive) => { return primitive.attributes.TEXCOORD_0 !== undefined; }));

@@ -14,6 +14,17 @@ const CHROME = [
     [1, '#dfe3e8'],
 ];
 
+/** The soft shadow a car `width` long casts on the ground beneath it. */
+export function drawGroundShadow(ctx, x, groundY, width) {
+    ctx.fillStyle = radialGradient(ctx, x + width / 2, groundY, 10, width * 0.55, [
+        [0, 'rgba(0,0,0,0.55)'],
+        [1, 'rgba(0,0,0,0)'],
+    ]);
+    ctx.beginPath();
+    ctx.ellipse(x + width / 2, groundY + 4, width * 0.56, width * 0.035, 0, 0, TAU);
+    ctx.fill();
+}
+
 /** Side-view illustration of a car from its `body` data (metres): paint, glass, wheels, details. */
 export function drawCarArt(ctx, car, x, groundY, width) {
     const body = car.body;
@@ -31,13 +42,7 @@ export function drawCarArt(ctx, car, x, groundY, width) {
     };
 
     ctx.save();
-    ctx.fillStyle = radialGradient(ctx, x + width / 2, groundY, 10, width * 0.55, [
-        [0, 'rgba(0,0,0,0.55)'],
-        [1, 'rgba(0,0,0,0)'],
-    ]);
-    ctx.beginPath();
-    ctx.ellipse(x + width / 2, groundY + 4, width * 0.56, width * 0.035, 0, 0, TAU);
-    ctx.fill();
+    drawGroundShadow(ctx, x, groundY, width);
 
     const top = py(body.height);
     ctx.fillStyle = linearGradient(ctx, 0, top, 0, groundY, [

@@ -10,6 +10,8 @@ const FRAME = 1 / 60;
 const silentAudio = { unlock() { return Promise.resolve(); }, play() {} };
 /** Brochure renders are DOM images; in Node they simply never finish loading. */
 const pendingImages = { image() { return new Promise(() => {}); } };
+/** Photographing models needs WebGL, so the menus get a world with no photos to offer. */
+const offscreenWorld = { clear() {}, profile() { return null; } };
 
 /** A real menu screen driven through a real InputManager, recording where it sends the game. */
 function openMenu(Screen, params) {
@@ -20,7 +22,7 @@ function openMenu(Screen, params) {
         audio: silentAudio,
         resources: pendingImages,
         input,
-        world: { clear() {} },
+        world: offscreenWorld,
     });
     screen.enter(params);
     const press = (code) => {

@@ -2,7 +2,7 @@ import { VIEW } from '../../config.js';
 import { CARS, carById, isLocked, neighbourCar } from '../../data/cars.js';
 import { t } from '../../i18n/i18n.js';
 import { clamp } from '../../util/math.js';
-import { drawCarArt } from '../CarArt.js';
+import { drawCarArt, drawGroundShadow } from '../CarArt.js';
 import { paintScenery } from '../scenery.js';
 import { COLORS } from '../theme.js';
 import { drawLogo, drawPrompt, drawStamp, drawText } from '../widgets.js';
@@ -11,21 +11,32 @@ const FADE_SECONDS = 0.25;
 const LOCKED_ALPHA = 0.35;
 const STAMP = { y: 515, size: 64 };
 const ART_WIDTH = 560;
+/** The car's canvas: side padding, ground line and height, in logical pixels. */
+const ART = { pad: 20, ground: 230, height: 260 };
 const HORIZON = 470;
 
-/** Title: sunset over the mountains, the chrome logo and the car chosen with the arrows. */
+/** Title: sunset over the mountains, the chrome logo and the car chosen with the arrows, side-on. */
 export class TitleScreen {
     constructor({ game, display, resources, audio, input, world }) {
         Object.assign(this, { game, display, resources, audio, input, world });
         this.time = 0;
         this.car = CARS[0];
         this.chosenAt = 0;
+        this.photos = new Map();
     }
 
     /** Shows `carId` when coming back from the brochure, otherwise the first car. */
     enter({ carId } = {}) {
         this.world.clear();
         this.car = carById(carId);
+        for (const car of CARS) {
+            this.world.profile(car)?.then((photo) => {
+                this.photos.set(car.id, photo);
+                if (car === this.car) this.chosenAt = this.time;
+            }).catch((error) => {
+                console.error(`Profile photo failed for ${car.id}; using profile artwork`, error);
+            });
+        }
     }
 
     update(dt) {
@@ -65,19 +76,26 @@ export class TitleScreen {
 
         const car = this.car;
         const locked = isLocked(car);
+        const photo = this.photos.get(car.id);
         const art = this.resources.scaledCanvas(
-            `art:${car.id}:${ART_WIDTH}`,
-            ART_WIDTH + 40,
-            260,
+            `${photo ? 'photo' : 'art'}:${car.id}:${ART_WIDTH}`,
+            ART_WIDTH + 2 * ART.pad,
+            ART.height,
             scale,
             (c) => {
-                drawCarArt(c, car, 20, 230, ART_WIDTH);
+                if (!photo) {
+                    drawCarArt(c, car, ART.pad, ART.ground, ART_WIDTH);
+                    return;
+                }
+                const height = (ART_WIDTH * photo.height) / photo.width;
+                drawGroundShadow(c, ART.pad, ART.ground, ART_WIDTH);
+                c.drawImage(photo, ART.pad, ART.ground - height, ART_WIDTH, height);
             },
         );
         const fade = clamp((this.time - this.chosenAt) / FADE_SECONDS, 0, 1);
         ctx.save();
         ctx.globalAlpha = fade * (locked ? LOCKED_ALPHA : 1);
-        ctx.drawImage(art, (VIEW.width - ART_WIDTH) / 2 - 20, 360, ART_WIDTH + 40, 260);
+        ctx.drawImage(art, (VIEW.width - ART_WIDTH) / 2 - ART.pad, 360, ART_WIDTH + 2 * ART.pad, ART.height);
         ctx.globalAlpha = fade;
         if (locked) drawStamp(ctx, t('general.locked'), VIEW.width / 2, STAMP.y, STAMP.size);
         drawText(ctx, t('title.choice', { car: car.fullName }), VIEW.width / 2, 640, {

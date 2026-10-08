@@ -1,6 +1,7 @@
 import { CABIN } from './cabinLayout.js';
 
-const SURFACES = ['instrument_surface', 'trip_surface', 'mirror_surface', 'windshield_surface'];
+/** Runtime-owned display meshes: the cluster, trip display, mirror picture and windshield. */
+export const SURFACES = ['instrument_surface', 'trip_surface', 'mirror_surface', 'windshield_surface'];
 const PARTS = ['driver_eye', 'mirror_camera', 'steering_wheel', 'gear_lever', ...SURFACES];
 for (let i = 0; i < CABIN.radar.leds; i++) PARTS.push(`radar_led_${i}`);
 

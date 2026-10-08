@@ -68,8 +68,8 @@ The Porsche uses a simple integration GLB with live instruments, animated contro
 Porsche 911 Turbo, Ferrari Testarossa, Lamborghini Countach 5000 QV, Lotus Esprit Turbo and
 Chevrolet Corvette. Each uses its real gear ratios, final drive, tyre size, weight and torque
 curve; the simulation self-calibrates to the published 0-60 mph time and top speed.
-Choose with ◀ ▶ on the title screen or in the brochure. Cars without an authored model are
-marked LOCKED and cannot be driven yet.
+Choose with ◀ ▶ on the title screen or in the brochure. The title shows a car with an authored
+model as a side-on photo of that model; cars without one are marked LOCKED and cannot be driven yet.
 
 ## Engine sound
 

@@ -9,10 +9,11 @@ import { buildTrees } from './Props.js';
 import { VehicleModels } from './VehicleModels.js';
 import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 import { AssetCabin } from './cabin/AssetCabin.js';
-import { validateCabinNodes } from './cabin/cabinAsset.js';
+import { SURFACES, validateCabinNodes } from './cabin/cabinAsset.js';
 import { CarCabin } from './cabin/CarCabin.js';
 import { CABIN } from './cabin/cabinLayout.js';
 import { CABIN_LAYER } from './cabin/shapes.js';
+import { photographProfile } from './profilePhoto.js';
 
 const FAR = 24000;
 const SKY_SCALE = 18000;
@@ -100,10 +101,18 @@ export class WorldView {
             const nodes = [];
             asset.scene.traverse((node) => { nodes.push(node); });
             const bindings = validateCabinNodes(nodes);
-            for (const name of ['instrument_surface', 'trip_surface', 'mirror_surface', 'windshield_surface']) {
+            for (const name of SURFACES) {
                 if (!bindings[name].geometry.attributes.uv) throw new Error(`Cabin surface "${name}" has no UVs`);
             }
             return asset.scene;
+        });
+    }
+
+    /** A side-on photo of the car's authored model (null without one), taken once per session. */
+    profile(car) {
+        if (!car.cockpit.model) return null;
+        return this.resources.memo(`profile:${car.id}`, async () => {
+            return photographProfile(await this.prepare(car));
         });
     }
 
