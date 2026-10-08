@@ -10,6 +10,7 @@
         "lint": "npx --yes eslint@9.39.1 .",
         "dedup": "npx --yes jscpd@4.0.5 --config .jscpd.json",
         "assets": "node scripts/validate-cabin.mjs",
+        "browser": "node scripts/check-cabin-browser.mjs",
         "orphans": "node scripts/find-orphans.mjs",
         "format": "npx --yes prettier@3.8.1 --write src tests scripts",
         "check": "npm run lint && npm run dedup && npm run orphans && npm test"

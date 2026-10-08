@@ -55,15 +55,17 @@ npm run check
 
 Run `npm start`, then open `http://localhost:8080/preview.html`. URL parameters select the car, lighting stage, and initial view; for example `preview.html?car=porsche&stage=4&view=rear`. In both the game and preview, keys 1–7 select dashboard, console, driver door, passenger door, front seats, roof, and rear cabin. Q/E rotate horizontally, R/F rotate vertically, C centres, and dragging adjusts both axes. The gamepad right stick looks around; its press centres. The preview also supports live steering, A/Z shifting, up-arrow revving, and keys 8/9 toggling radar and windshield damage.
 
-`scripts/check-cabin-browser.mjs` exercises the real browser renderer, exports screenshots, checks cache ownership and actual controls, and measures rendering. It requires a running game server, Chrome, and Puppeteer Core as a development tool. It does not add runtime dependencies. A temporary tool install is sufficient:
+`npm run browser` uses Playwright to exercise the real renderer, export screenshots, check cache ownership and controls, and measure rendering. It rejects unexpected console errors, including caught loading failures. It also starts real Firefox and tests versionless, major-only, and conventional Firefox user-agent strings in Chromium. It requires a running game server and Playwright as a development tool. A temporary tool install is sufficient:
 
 ```sh
-npm install --prefix /tmp/test-drive-tools --no-save puppeteer-core@24.39.1
-PUPPETEER_MODULE=/tmp/test-drive-tools/node_modules/puppeteer-core/lib/esm/puppeteer/puppeteer-core.js \
-    BROWSER_BIN=/path/to/chrome node scripts/check-cabin-browser.mjs
+npm install --prefix /tmp/test-drive-tools --no-save playwright@1.64.0
+node /tmp/test-drive-tools/node_modules/playwright/cli.js install chromium firefox
+PLAYWRIGHT_MODULE=/tmp/test-drive-tools/node_modules/playwright/index.mjs npm run browser
 ```
 
 `GAME_URL` changes the server URL and `CABIN_EVIDENCE` changes the default `/tmp/test-drive-cabin-evidence` output directory. Browser verification uses the actual pinned three.js CDN modules. Screenshots and benchmark results are evidence, not game assets.
+
+`BROWSER_BIN` optionally selects an existing Chromium installation. `CABIN_REGRESSION_ONLY=1` runs the shorter loading/rendering matrix; this is required before GitHub Pages publication. The renderer and addons remain pinned to 0.180.0. GLTFLoader alone is locally patched to guard a failing Firefox version match; its license and exact changes are recorded in `vendor/three/README.md`.
 
 ## Modeling handoff
 

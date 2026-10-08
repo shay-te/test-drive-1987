@@ -7,7 +7,7 @@ import { WorldBuilder } from './WorldBuilder.js';
 import { Terrain } from './Terrain.js';
 import { buildTrees } from './Props.js';
 import { VehicleModels } from './VehicleModels.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 import { AssetCabin } from './cabin/AssetCabin.js';
 import { validateCabinNodes } from './cabin/cabinAsset.js';
 import { CarCabin } from './cabin/CarCabin.js';

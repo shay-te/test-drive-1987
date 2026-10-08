@@ -23,12 +23,22 @@ jobs:
                   node-version: 22
             - name: Test
               run: npm test
+            - name: Browser regression
+              run: |
+                  browser_tools="$RUNNER_TEMP/test-drive-tools"
+                  npm install --prefix "$browser_tools" --no-save playwright@1.64.0
+                  node "$browser_tools/node_modules/playwright/cli.js" install --with-deps chromium firefox
+                  python3 -m http.server 8080 --bind 127.0.0.1 > "$RUNNER_TEMP/test-drive-server.log" 2>&1 &
+                  server_pid=$!
+                  trap 'kill "$server_pid"' EXIT
+                  curl --retry 10 --retry-connrefused --retry-delay 1 --fail http://127.0.0.1:8080/ -o /dev/null
+                  PLAYWRIGHT_MODULE="$browser_tools/node_modules/playwright/index.mjs" CABIN_REGRESSION_ONLY=1 npm run browser
             - name: Copy the site into the gh-pages branch (no build step; three.js comes from the CDN)
               run: |
                   git fetch origin gh-pages
                   git worktree add site origin/gh-pages
-                  rm -rf site/index.html site/css site/src site/assets site/LICENSE
-                  cp -r index.html preview.html css src assets LICENSE site/
+                  rm -rf site/index.html site/css site/src site/assets site/vendor site/LICENSE
+                  cp -r index.html preview.html css src assets vendor LICENSE site/
                   touch site/.nojekyll
                   cd site
                   git add -A
