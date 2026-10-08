@@ -24,22 +24,26 @@ patrol cars and a gas station at the end of every stage.
 - `src/ui/screens/`: title, brochure with the acceleration graph, driving, gas station, results.
 - The outside camera (V, the gamepad's left-stick press, or ◫ on touch): above and behind the car,
   with a speed and gear readout. From the driver's seat the gear is always shown bottom left.
+- Working door mirrors on every car (the Porsche has the driver's only, as the model does): each
+  shows the lane behind, just past the car's flank.
 
 ### Next (queued, in order)
 
 1. **The cars you drive, as in reality:** each car's real engine sound, its real turbo and rev
    behaviour, and handling that matches the real car; always show which gear you are in.
-2. **Working side mirrors:** the door mirrors show the road behind, like the rear-view mirror.
-3. **A visible driver, as in Wing Commander (1990):** hands on the wheel, feet working the clutch,
+2. **Outside view instruments:** revs with a warning before the engine blows, and turbo boost.
+3. **Crashes you can watch:** no freeze-frame; cars hit each other and fly through the air as the
+   physics says, and the glass breaks when the car lands after a fall, hits something or hits a car.
+4. **A visible driver, as in Wing Commander (1990):** hands on the wheel, feet working the clutch,
    brake and throttle, a hand moving to the gear lever on every shift.
-4. **A Sea-to-Sky Highway setting:** the coastal road from Horseshoe Bay to Squamish above Howe
+5. **A Sea-to-Sky Highway setting:** the coastal road from Horseshoe Bay to Squamish above Howe
    Sound (one lane each way, cut into the cliffs; see the 1966 TranBC footage). Start with one
    polished 500 m section (bend, rock wall, drop, trees, distant mountains), then extend it; rock
    assets from Poly Haven (CC0), terrain from Natural Resources Canada elevation data.
-5. **Sea-to-Sky lighting:** driving north, a late-afternoon summer sun in the west (to the left),
+6. **Sea-to-Sky lighting:** driving north, a late-afternoon summer sun in the west (to the left),
    and its glint on the water to the left, moving across the view as the road turns.
-6. **Over the edge into the sea:** the car sinks, with fish and rising air bubbles.
-7. Test on phones (touch controls, performance of the cabin pass).
+7. **Over the edge into the sea:** the car sinks, with fish and rising air bubbles.
+8. Test on phones (touch controls, performance of the cabin pass).
 
 ## Play it
 

@@ -5,7 +5,8 @@ import { readFloats, readGlb } from '../scripts/glb.mjs';
 import { CABIN_VIEWS } from '../src/data/cabinViews.js';
 import { CARS } from '../src/data/cars.js';
 import { LOOK } from '../src/config.js';
-import { SURFACES, validateCabinNodes } from '../src/world/cabin/cabinAsset.js';
+import { SURFACES, sideMirrorNodes, validateCabinNodes } from '../src/world/cabin/cabinAsset.js';
+import { rotate } from '../src/util/quaternion.js';
 import { leverAngles, radarLights, wheelAngle } from '../src/world/cabin/cabinAnimation.js';
 import { profileFrame } from '../src/world/profileFrame.js';
 
@@ -150,4 +151,28 @@ test('shared wheel, lever, and radar animation handles neutral, limits, and blin
     assert.deepEqual(radarLights(0, 0, 6), Array(6).fill(false));
     assert.deepEqual(radarLights(1, 0, 6), Array(6).fill(true));
     assert.deepEqual(radarLights(1, 0.2, 6), Array(6).fill(false));
+});
+
+test('door mirrors: the Porsche has the driver\'s, every other car both, each looking back and out', () => {
+    const sides = Object.fromEntries(AUTHORED.map((car) => {
+        return [car.id, Object.keys(sideMirrorNodes(assets.get(car.id).nodes))];
+    }));
+    assert.deepEqual(sides, { porsche: ['left'], ferrari: ['left', 'right'], lamborghini: ['left', 'right'], lotus: ['left', 'right'], corvette: ['left', 'right'] });
+    for (const car of AUTHORED) {
+        const model = assets.get(car.id);
+        for (const [side, { surface, camera }] of Object.entries(sideMirrorNodes(model.nodes))) {
+            const [x, y, z, w] = camera.rotation;
+            const look = rotate({ x, y, z, w }, { x: 0, y: 0, z: -1 });
+            assert.ok(look.z > 0.85, `${car.id} ${side}: looks back down the road`);
+            assert.ok(Math.sign(look.x) === (side === 'left' ? -1 : 1), `${car.id} ${side}: looks out along its own side`);
+            assert.ok(Math.sign(camera.translation[0]) === (side === 'left' ? -1 : 1), `${car.id} ${side}: on its own door`);
+            const uv = readFloats(modelUrl(car), model, model.meshes[surface.mesh].primitives[0].attributes.TEXCOORD_0);
+            assert.ok(Math.min(...uv) === 0 && Math.max(...uv) === 1, `${car.id} ${side}: the picture covers the glass`);
+        }
+    }
+});
+
+test('a door mirror surface without its camera is refused', () => {
+    const nodes = assets.get('ferrari').nodes.filter((node) => { return node.name !== 'mirror_right_camera'; });
+    assert.throws(() => { sideMirrorNodes(nodes); }, /right door mirror/);
 });

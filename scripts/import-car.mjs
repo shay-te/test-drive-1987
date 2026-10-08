@@ -37,6 +37,8 @@ const SURFACE_OFFSET = 0.003;
 const ROUND_SEGMENTS = 16;
 const MIRROR = { housingDepth: 0.03, stem: [0.02, 0.02, 0.02] };
 const LED_SIZE = [0.007, 0.005, 0.003];
+/** Where a set door mirror looks, metres from its glass: back down the road, out past the flank, down. */
+const DOOR_MIRROR_AIM = { back: 20, out: 1.5, down: 0.6 };
 const LEVER = { stickRadius: 0.006, gate: [0.09, 0.006, 0.12], boot: { radius: 0.05, height: 0.07 } };
 const RIG_MATERIALS = {
     black: { color: [0.02, 0.02, 0.02, 1], roughness: 0.55, metallic: 0 },
@@ -628,6 +630,18 @@ function addRig() {
         root.addChild(placed(staticName('mirror housing'), box(housing), materials.black, add(mirror, [0, 0, -housing[2] / 2 - 0.001])));
         root.addChild(placed(staticName('mirror stem'), box(MIRROR.stem), materials.black,
             add(mirror, [0, housing[1] / 2 + MIRROR.stem[1] / 2, -housing[2] / 2])));
+    }
+
+    // Door mirrors: a picture on the glass, and a camera looking where a driver sets the mirror, back
+    // down the lane just past the car's own flank (the camera looks down its local -z).
+    for (const door of config.sideMirrors ?? []) {
+        const normal = unit(door.normal);
+        root.addChild(placed(`mirror_${door.side}_surface`, quad(...door.size), materials.display,
+            add(door.centre, scale(normal, SURFACE_OFFSET)), normal));
+        const out = door.side === 'left' ? -1 : 1;
+        const look = unit([out * DOOR_MIRROR_AIM.out, -DOOR_MIRROR_AIM.down, DOOR_MIRROR_AIM.back]);
+        root.addChild(doc.createNode(`mirror_${door.side}_camera`).setTranslation(door.centre)
+            .setRotation(quaternion(frame(scale(look, -1)))));
     }
 
     const r = CABIN.radar;

@@ -3,12 +3,13 @@ import { CabinDisplays } from './CabinDisplays.js';
 import { CabinWindshield } from './CabinWindshield.js';
 import { leverAngles, radarLights, wheelAngle } from './cabinAnimation.js';
 import { CABIN } from './cabinLayout.js';
-import { validateCabinNodes } from './cabinAsset.js';
+import { sideMirrorNodes, validateCabinNodes } from './cabinAsset.js';
 import { onCabinLayer } from './shapes.js';
 
 /** An authored cabin instance sharing cached geometry and owning its live display resources. */
 export class AssetCabin {
-    constructor(car, resources, anisotropy, mirrorTexture, template) {
+    /** `sideTextures` holds the door mirror pictures ({ left, right }) for the mirrors this cabin has. */
+    constructor(car, resources, anisotropy, mirrorTexture, template, sideTextures) {
         if (!template) throw new Error(`Cabin asset was not prepared for ${car.id}`);
         this.root = template.clone(true);
         const nodes = [];
@@ -17,7 +18,10 @@ export class AssetCabin {
         this.eye = this.bindings.driver_eye;
         this.mirrorMount = this.bindings.mirror_camera;
         this.materials = new Set();
+        this.mirrorGeometries = [];
         this._displays(car, resources, anisotropy, mirrorTexture);
+        this.sideMirrors = sideMirrorNodes(nodes);
+        for (const [side, mirror] of Object.entries(this.sideMirrors)) this._mirror(mirror.surface, sideTextures[side]);
     }
 
     _displays(car, resources, anisotropy, mirrorTexture) {
@@ -29,12 +33,7 @@ export class AssetCabin {
             this.materials.add(material);
             b[name].material = material;
         };
-        // Render-target UVs are bottom-up; glTF image UVs are top-down.
-        this.mirrorGeometry = b.mirror_surface.geometry.clone();
-        const uv = this.mirrorGeometry.attributes.uv;
-        for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
-        b.mirror_surface.geometry = this.mirrorGeometry;
-        assign('mirror_surface', new THREE.MeshBasicMaterial({ map: mirrorTexture }));
+        this._mirror(b.mirror_surface, mirrorTexture);
         assign('windshield_surface', new THREE.MeshStandardMaterial({
             ...CABIN.glass, transparent: true, depthWrite: false, side: THREE.DoubleSide,
         }));
@@ -61,6 +60,18 @@ export class AssetCabin {
         onCabinLayer(this.root);
     }
 
+    /** Shows a mirror picture (a render target) on `surface`. */
+    _mirror(surface, texture) {
+        // Render-target UVs are bottom-up; glTF image UVs are top-down.
+        const geometry = surface.geometry.clone();
+        const uv = geometry.attributes.uv;
+        for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
+        surface.geometry = geometry;
+        this.mirrorGeometries.push(geometry);
+        surface.material = new THREE.MeshBasicMaterial({ map: texture });
+        this.materials.add(surface.material);
+    }
+
     update(cockpit) {
         this.displays.update(cockpit.state, cockpit.readings, cockpit.lamps, cockpit.trip);
         this.windshield.update(cockpit.crack);
@@ -78,7 +89,7 @@ export class AssetCabin {
 
     dispose() {
         for (const material of this.materials) material.dispose();
-        this.mirrorGeometry.dispose();
+        for (const geometry of this.mirrorGeometries) geometry.dispose();
         this.displays.dispose();
         this.windshield.dispose();
         this.materials.clear();

@@ -59,7 +59,8 @@ photographed with the player's car at its `bay` for the refuelling screen. The c
   that select its triangles from a larger glass mesh.
 - `instrument`, `trip`, `mirror`, `radar`, `lever`, `console` — where the live dials, trip display,
   rear-view mirror, radar detector and gear lever sit (centre, facing normal, width).
-  `instrument.backing` blanks a model's own painted dials; `mirror.housing: false` keeps a model's own
+  `sideMirrors` lists the door mirror glasses ({ side, centre, normal, size }) that show the road
+  behind; `instrument.backing` blanks a model's own painted dials; `mirror.housing: false` keeps a model's own
   mirror body; `lever.parts` hangs a model's own gear lever on the pivot instead of a generated one,
   or `lever.box` lifts it out of larger meshes by region; `console` adds a tunnel where a model has
   none.
@@ -147,6 +148,9 @@ The budgets are 100,000 triangles, 50 primitives and 8 MiB per car (`tests/cabin
 ## Contract
 
 Export glTF 2.0 as a self-contained, uncompressed GLB. Use metres, X right, Y up, and forward along -Z in the exported asset. The origin is the driver's longitudinal eye position at road height. Apply object scale before export; keep animation pivots as separate named nodes with their neutral orientation intact.
+
+Door mirrors are optional: a `mirror_left_surface` or `mirror_right_surface` mesh (UV-mapped like the
+other surfaces) with its `mirror_left_camera` or `mirror_right_camera`, which looks down its local -z.
 
 The runtime requires unique nodes named `driver_eye`, `mirror_camera`, `steering_wheel`, `gear_lever`, `instrument_surface`, `trip_surface`, `mirror_surface`, `windshield_surface`, and `radar_led_0` through `radar_led_5`. The four surfaces must be UV-mapped meshes. Surface UVs cover the full image, using standard glTF image coordinates (the exported top edge is V=0). The wheel rotates around its local Z axis; the lever tilts around its local X and Z axes. The mirror camera points backwards along the car's +Z axis. The driver camera is attached to `driver_eye` and stays seated.
 

@@ -9,21 +9,132 @@
     "yawDeg": 180,
     "centreOn": "Main Body",
     "remove": [
-        "Cube.003", "some wires", "Radiator or idk", "fan", "Filter", "idk", "ummm, blinker fluid?", "another filter idk",
-        "wires", "some random thing no one will care about", "Belt", "key", "Big Wires", "Oil or smth"
+        "Cube.003",
+        "some wires",
+        "Radiator or idk",
+        "fan",
+        "Filter",
+        "idk",
+        "ummm, blinker fluid?",
+        "another filter idk",
+        "wires",
+        "some random thing no one will care about",
+        "Belt",
+        "key",
+        "Big Wires",
+        "Oil or smth"
     ],
-    "translucent": { "material": "Main_Body__0", "parts": ["Front Window", "Door Window", "Back Window", "Back Windshield"] },
-    "materials": {
-        "Main_Body__0": { "alphaMode": "OPAQUE" },
-        "Glass": { "alphaMode": "BLEND", "color": [0.1, 0.12, 0.14], "opacity": 0.25, "roughness": 0.05 }
+    "translucent": {
+        "material": "Main_Body__0",
+        "parts": [
+            "Front Window",
+            "Door Window",
+            "Back Window",
+            "Back Windshield"
+        ]
     },
-    "textures": { "baseColor": 2048, "other": 1024 },
-    "eye": [-0.36, 1.06],
-    "steeringWheel": { "parts": ["Steering Wheel__0"] },
-    "windshield": { "node": "Windshield_Glass_0" },
-    "instrument": { "centre": [-0.3155, 0.893, -0.618], "normal": [0, 0.13, 0.99], "width": 0.35, "backing": [0.44, 0.08] },
-    "trip": { "centre": [0.088, 0.845, -0.582], "normal": [0, 0.17, 0.99], "width": 0.1 },
-    "mirror": { "centre": [0, 1.145, -0.385] },
-    "radar": { "centre": [-0.52, 1.1, -0.42] },
-    "lever": { "base": [0, 0.43, -0.42], "length": 0.24, "stick": "black", "boot": true }
+    "materials": {
+        "Main_Body__0": {
+            "alphaMode": "OPAQUE"
+        },
+        "Glass": {
+            "alphaMode": "BLEND",
+            "color": [
+                0.1,
+                0.12,
+                0.14
+            ],
+            "opacity": 0.25,
+            "roughness": 0.05
+        }
+    },
+    "textures": {
+        "baseColor": 2048,
+        "other": 1024
+    },
+    "eye": [
+        -0.36,
+        1.06
+    ],
+    "steeringWheel": {
+        "parts": [
+            "Steering Wheel__0"
+        ]
+    },
+    "windshield": {
+        "node": "Windshield_Glass_0"
+    },
+    "instrument": {
+        "centre": [
+            -0.3155,
+            0.893,
+            -0.618
+        ],
+        "normal": [
+            0,
+            0.13,
+            0.99
+        ],
+        "width": 0.35,
+        "backing": [
+            0.44,
+            0.08
+        ]
+    },
+    "trip": {
+        "centre": [
+            0.088,
+            0.845,
+            -0.582
+        ],
+        "normal": [
+            0,
+            0.17,
+            0.99
+        ],
+        "width": 0.1
+    },
+    "mirror": {
+        "centre": [
+            0,
+            1.145,
+            -0.385
+        ]
+    },
+    "sideMirrors": [
+        {
+            "side": "left",
+            "centre": [
+                -0.879,
+                0.843,
+                -0.651
+            ],
+            "normal": [
+                0.103,
+                -0.007,
+                0.995
+            ],
+            "size": [
+                0.11,
+                0.058
+            ]
+        }
+    ],
+    "radar": {
+        "centre": [
+            -0.52,
+            1.1,
+            -0.42
+        ]
+    },
+    "lever": {
+        "base": [
+            0,
+            0.43,
+            -0.42
+        ],
+        "length": 0.24,
+        "stick": "black",
+        "boot": true
+    }
 }
