@@ -1,0 +1,19 @@
+{
+    "source": "68_vw_beetle_bumblebee_skin_gmod.glb",
+    "credit": {
+        "title": "68 VW Beetle Bumblebee Skin GMOD",
+        "author": "Pipogame",
+        "url": "https://sketchfab.com/3d-models/68-vw-beetle-bumblebee-skin-gmod-c0755aa173044afbaf2998ba389d4461",
+        "license": "CC-BY-4.0"
+    },
+    "yawDeg": 0,
+    "pitchDeg": 90,
+    "triangles": 12000,
+    "textures": {
+        "baseColor": 512,
+        "other": 256
+    },
+    "normals": {
+        "creaseDeg": 35
+    }
+}

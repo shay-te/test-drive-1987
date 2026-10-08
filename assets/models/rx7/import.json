@@ -1,0 +1,18 @@
+{
+    "source": "mazda_rx-7_fc.glb",
+    "credit": {
+        "title": "Mazda RX-7 FC",
+        "author": "Lexyc16",
+        "url": "https://sketchfab.com/3d-models/mazda-rx-7-fc-8ac0df459f514950ab83ac37109a06ab",
+        "license": "CC-BY-4.0"
+    },
+    "yawDeg": 180,
+    "triangles": 12000,
+    "textures": {
+        "baseColor": 512,
+        "other": 256
+    },
+    "remove": [
+        "Plane_9"
+    ]
+}

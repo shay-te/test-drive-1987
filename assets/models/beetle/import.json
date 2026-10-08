@@ -1,0 +1,18 @@
+{
+    "source": "1968_volkswagen_beetle.glb",
+    "credit": {
+        "title": "1968 Volkswagen Beetle",
+        "author": "Ddiaz Design",
+        "url": "https://sketchfab.com/3d-models/1968-volkswagen-beetle-969a477451ee40bb8e715ec0907d187e",
+        "license": "CC-BY-NC-SA-4.0"
+    },
+    "yawDeg": 180,
+    "triangles": 12000,
+    "textures": {
+        "baseColor": 512,
+        "other": 256
+    },
+    "normals": {
+        "creaseDeg": 35
+    }
+}
