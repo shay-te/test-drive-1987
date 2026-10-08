@@ -5,7 +5,7 @@ import { clamp } from '../../util/math.js';
 import { drawCarArt, drawGroundShadow } from '../CarArt.js';
 import { paintScenery } from '../scenery.js';
 import { COLORS } from '../theme.js';
-import { requestProfilePhoto } from '../profilePhotos.js';
+import { whenPhotographed } from '../photos.js';
 import { drawLogo, drawPrompt, drawStamp, drawText } from '../widgets.js';
 
 const FADE_SECONDS = 0.25;
@@ -51,7 +51,7 @@ export class TitleScreen {
     /** Photographs the car on show; the others wait until they are chosen. */
     _showPhoto() {
         const car = this.car;
-        requestProfilePhoto(this.world, car, (photo) => {
+        whenPhotographed(this.world.profile(car), car.id, (photo) => {
             if (this.photos.get(car.id) === photo) return;
             this.photos.set(car.id, photo);
             if (car === this.car) this.chosenAt = this.time;

@@ -60,7 +60,7 @@ Gamepads (standard mapping) and touch controls work too. The right stick looks a
 
 ## Cabin assets
 
-The Porsche (Johnny Silverhand's 930 by valvetin, CC BY 4.0), the Ferrari (1986 Testarossa by Res1n) the Lamborghini (1985 Countach LP5000 QV by OUTPISTON, CC BY-NC-SA 4.0), the Lotus (1983 Esprit Turbo by esprit3d.website, CC BY 4.0), the Corvette (C4 by Randomness, CC BY 4.0) and the patrol car (2001 Crown Victoria Police Interceptor by 8sianDude, CC BY 4.0) are Sketchfab models, converted by `scripts/import-car.mjs` into cabins with live instruments, animated controls and a seated camera. Inspect them at [preview.html](preview.html); use keys 1–7 for repeatable interior viewpoints. See [the import pipeline, credits and asset contract](assets/models/README.md) before changing a model.
+The Porsche (Johnny Silverhand's 930 by valvetin, CC BY 4.0), the Ferrari (1986 Testarossa by Res1n) the Lamborghini (1985 Countach LP5000 QV by OUTPISTON, CC BY-NC-SA 4.0), the Lotus (1983 Esprit Turbo by esprit3d.website, CC BY 4.0), the Corvette (C4 by Randomness, CC BY 4.0) the patrol car (2001 Crown Victoria Police Interceptor by 8sianDude, CC BY 4.0) and the gas station (Lowpoly Gas Station by AspectStudios, CC BY 4.0) are Sketchfab models, converted by `scripts/import-car.mjs` into cabins with live instruments, animated controls and a seated camera. Inspect them at [preview.html](preview.html); use keys 1–7 for repeatable interior viewpoints. See [the import pipeline, credits and asset contract](assets/models/README.md) before changing a model.
 
 ## The cars
 

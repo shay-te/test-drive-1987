@@ -1,0 +1,14 @@
+{
+    "source": "lowpoly_gas_station.glb",
+    "credit": {
+        "title": "Lowpoly Gas Station",
+        "author": "AspectStudios",
+        "url": "https://sketchfab.com/3d-models/lowpoly-gas-station-02a11319cb744999adddd7236a46bf8e",
+        "license": "CC-BY-4.0"
+    },
+    "yawDeg": 180,
+    "scale": 0.65,
+    "ground": 0,
+    "triangles": 20000,
+    "textures": { "baseColor": 512, "other": 256 }
+}

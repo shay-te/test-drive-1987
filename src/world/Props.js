@@ -1,19 +1,13 @@
 import * as THREE from 'three';
 import { ROAD } from '../config.js';
+import { SCENERY_MODELS } from '../data/scenery.js';
 import { createRng } from '../util/math.js';
 
 const POST_SPACING = 6;
 const SIGN_SIZE = 0.95;
-const STATION_COLORS = {
-    wall: '#e9e4d8',
-    trim: '#c8201b',
-    roof: '#3a3a3e',
-    pump: '#d8d4cc',
-    glass: '#1d2a33',
-};
 
 /** Roadside objects: posts, rail posts, boulders, signs, the gas station and the summit dealership. */
-export function buildProps(track, materials, stage) {
+export function buildProps(track, materials, stage, authored) {
     const group = new THREE.Group();
     const rng = createRng(stage.seed + 5);
     const posts = [];
@@ -52,7 +46,7 @@ export function buildProps(track, materials, stage) {
 
     for (const prop of track.props) {
         if (prop.type === 'sign') group.add(buildSign(track, materials, prop));
-        if (prop.type === 'station') group.add(buildStation(track, materials, prop));
+        if (prop.type === 'station') group.add(buildStation(track, authored, prop));
         if (prop.type === 'dealership') group.add(buildDealership(track, materials, prop));
     }
     return group;
@@ -146,29 +140,15 @@ function buildSign(track, materials, prop) {
     return group;
 }
 
-function buildStation(track, materials, prop) {
+/** The authored gas station, its forecourt towards the road. */
+function buildStation(track, authored, prop) {
     const group = anchored(track, prop.s, prop.u);
-    const c = STATION_COLORS;
-    group.add(box(10, 4.6, 16, c.wall, 6, 2.3, 0));
-    group.add(box(10.4, 0.5, 16.4, c.roof, 6, 4.85, 0));
-    group.add(box(0.1, 1.6, 12, c.glass, 0.96, 1.6, 0));
-    group.add(box(9, 0.6, 14, c.trim, -8, 5.3, 0));
-    for (const [x, z] of [
-        [-11.8, -6],
-        [-11.8, 6],
-        [-4.2, -6],
-        [-4.2, 6],
-    ]) {
-        group.add(box(0.35, 5, 0.35, c.pump, x, 2.5, z));
-    }
-    for (const z of [-4, 0, 4]) {
-        group.add(box(0.8, 1.6, 0.5, c.trim, -8, 0.8, z));
-        group.add(box(0.82, 0.5, 0.52, c.pump, -8, 1.35, z));
-    }
-    const fascia = signPanel(materials.sign('gasPole'), 2.4, 2.4, 5.3);
-    fascia.position.x = -12.6;
-    fascia.rotation.y = -Math.PI / 2;
-    group.add(fascia);
+    const station = authored.instance(SCENERY_MODELS.station.model);
+    station.traverse((node) => {
+        node.castShadow = true;
+        node.receiveShadow = true;
+    });
+    group.add(station);
     return group;
 }
 

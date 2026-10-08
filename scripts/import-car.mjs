@@ -1,9 +1,9 @@
-/** Converts a downloaded car model into a game asset: a player car's cabin (car space measured from the
- *  seated eye, budgets, runtime parts) or a road user's model (centred, flashing light bar).
+/** Converts a downloaded model into a game asset: a player car's cabin (car space measured from the
+ *  seated eye, budgets, runtime parts), a road user's model (centred, flashing light bar) or scenery.
  *  Tools: npm i --no-save --no-package-lock @gltf-transform/core@4 @gltf-transform/functions@4
  *         @gltf-transform/extensions@4 meshoptimizer@0 sharp@0
- *  Usage: node scripts/import-car.mjs <carId|roadUserId> [--aligned <out.glb>]
- *  (reads assets/models/<id>/import.json; writes cabin.glb for a car, model.glb for a road user) */
+ *  Usage: node scripts/import-car.mjs <carId|roadUserId|sceneryId> [--aligned <out.glb>]
+ *  (reads assets/models/<id>/import.json; writes cabin.glb for a car, model.glb for the others) */
 import { readFileSync } from 'node:fs';
 import { NodeIO, PropertyType } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -15,6 +15,7 @@ import { MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 import { CLUSTERS, clusterBounds } from '../src/cockpit/clusters.js';
 import { CARS } from '../src/data/cars.js';
+import { SCENERY_MODELS } from '../src/data/scenery.js';
 import { TRAFFIC_TYPES } from '../src/data/traffic.js';
 import { CABIN } from '../src/world/cabin/cabinLayout.js';
 
@@ -46,11 +47,9 @@ const RIG_MATERIALS = {
 const [id, flag, alignedPath] = process.argv.slice(2);
 const car = CARS.find((candidate) => { return candidate.id === id; });
 const roadUser = car ? null : TRAFFIC_TYPES[id];
-if (!car && !roadUser) throw new Error(`"${id}" is neither a car nor a road user`);
+const scenery = car || roadUser ? null : SCENERY_MODELS[id];
+if (!car && !roadUser && !scenery) throw new Error(`"${id}" is not a car, a road user or scenery`);
 const folder = `assets/models/${id}`;
-// A player car is placed from the seated eye, `body.eye` behind its nose; a road user from its centre.
-const length = car ? car.body.length : roadUser.length;
-const noseZ = car ? -car.body.eye : -roadUser.length / 2;
 /** Meshes the runtime draws or animates itself, kept out of the static batches. */
 const RUNTIME_MESHES = new Set(['windshield_surface', ...Object.values(roadUser?.lightBar ?? {})]);
 const config = JSON.parse(readFileSync(`${folder}/import.json`, 'utf8'));
@@ -120,8 +119,10 @@ function fixMaterials(fixes) {
     }
 }
 
-/** Turns the model nose-first along -z, scales it to its length and puts it on the road (wheels on y = 0),
- *  centred across on `config.centreOn` (or the whole), with the nose at `noseZ`. */
+/** Turns the model nose-first along -z (`yawDeg`), scales it, puts it on the ground and centres it across on
+ *  `config.centreOn` (or the whole). A player car is scaled to its length with the seated eye at the
+ *  origin, `body.eye` behind the nose; a road user to its traffic length, and scenery by `config.scale`,
+ *  both centred. The ground is the model's lowest point, or `config.ground` in the source's units. */
 function align() {
     const turn = (config.yawDeg * Math.PI) / 360;
     const root = doc.createNode('align').setRotation([0, Math.sin(turn), 0, Math.cos(turn)]);
@@ -132,9 +133,12 @@ function align() {
     scene().addChild(root);
     const whole = getBounds(scene());
     const across = config.centreOn ? getBounds(named([config.centreOn])[0]) : whole;
-    const s = length / (whole.max[2] - whole.min[2]);
+    const depth = whole.max[2] - whole.min[2];
+    const s = scenery ? config.scale : (car ? car.body.length : roadUser.length) / depth;
+    const nose = car ? -car.body.eye : (-s * depth) / 2;
+    const ground = config.ground ?? whole.min[1];
     root.setScale([s, s, s]);
-    root.setTranslation([-s * (across.min[0] + across.max[0]) / 2, -s * whole.min[1], noseZ - s * whole.min[2]]);
+    root.setTranslation([-s * (across.min[0] + across.max[0]) / 2, -s * ground, nose - s * whole.min[2]]);
 }
 
 /** Bakes every mesh node's world transform into its geometry and drops the empty hierarchy. A generic
@@ -717,7 +721,7 @@ if (car) {
     batchStatic();
     addRig();
 } else {
-    if (roadUser.lightBar) await extractLights(config.lights, roadUser.lightBar);
+    if (roadUser?.lightBar) await extractLights(config.lights, roadUser.lightBar);
     await weldAndDecimate(config.triangles);
     batchStatic();
 }

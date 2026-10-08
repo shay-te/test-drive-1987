@@ -7,6 +7,8 @@ import { WorldBuilder } from './WorldBuilder.js';
 import { Terrain } from './Terrain.js';
 import { buildTrees } from './Props.js';
 import { VehicleModels } from './VehicleModels.js';
+import { AuthoredModels } from './AuthoredModels.js';
+import { SCENERY_MODELS } from '../data/scenery.js';
 import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 import { AssetCabin } from './cabin/AssetCabin.js';
 import { SURFACES, validateCabinNodes } from './cabin/cabinAsset.js';
@@ -14,6 +16,7 @@ import { CarCabin } from './cabin/CarCabin.js';
 import { CABIN } from './cabin/cabinLayout.js';
 import { CABIN_LAYER } from './cabin/shapes.js';
 import { photographProfile } from './profilePhoto.js';
+import { photographStation } from './stationPhoto.js';
 
 const FAR = 24000;
 const SKY_SCALE = 18000;
@@ -65,7 +68,8 @@ export class WorldView {
         // A mirror shows the rear view flipped left to right.
         this.mirrorTarget.texture.wrapS = THREE.RepeatWrapping;
         this.mirrorTarget.texture.repeat.x = -1;
-        this.vehicles = new VehicleModels(resources);
+        this.authored = new AuthoredModels(resources);
+        this.vehicles = new VehicleModels(this.authored);
         this.models = new Map();
         this.scene = null;
         this.cabin = null;
@@ -94,9 +98,9 @@ export class WorldView {
     }
 
     /** Loads everything a stage with `car` needs before scene construction: its cabin (resolved, null
-     *  without one) and the road users' models. */
+     *  without one), the road users' and the scenery models. */
     prepare(car) {
-        return Promise.all([this.prepareCabin(car), this.vehicles.prepare()]).then(([cabin]) => { return cabin; });
+        return Promise.all([this.prepareCabin(car), this.authored.prepare()]).then(([cabin]) => { return cabin; });
     }
 
     /** Loads and validates the car's cached cabin asset (null for a car without one). */
@@ -122,12 +126,23 @@ export class WorldView {
         });
     }
 
+    /** The gas station with `car` filling up, photographed once per car for a screen of the given `look`
+     *  ({ width, height, horizonY, ground }); null for a car without a model. */
+    stationScene(car, look) {
+        if (!car.cockpit.model) return null;
+        const station = SCENERY_MODELS.station;
+        return this.resources.memo(`station-scene:${car.id}`, async () => {
+            const [template, cabin] = await Promise.all([this.authored.load(station.model), this.prepareCabin(car)]);
+            return photographStation(template, cabin, { ...look, bay: station.bay });
+        });
+    }
+
     load(track, stage, car, landscape, cabinAsset = null) {
         this.dispose();
         this.track = track;
         const scene = new THREE.Scene();
         const materials = new WorldMaterials(this.resources, this.renderer, stage);
-        const builder = new WorldBuilder(materials, stage, landscape);
+        const builder = new WorldBuilder(materials, stage, landscape, this.authored);
         const terrain = new Terrain(landscape, stage, materials);
         scene.add(builder.build(track), terrain.mesh, terrain.ring);
         scene.add(buildTrees([...builder.treePlacements(track), ...terrain.treePlacements()], materials));
