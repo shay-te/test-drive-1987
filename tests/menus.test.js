@@ -14,7 +14,7 @@ const pendingImages = { image() { return new Promise(() => {}); } };
 const offscreenWorld = { clear() {}, profile() { return null; } };
 
 /** A real menu screen driven through a real InputManager, recording where it sends the game. */
-function openMenu(Screen, params) {
+function openMenu(Screen, params, world = offscreenWorld) {
     const { input, key } = keyboardInput();
     const visits = [];
     const screen = new Screen({
@@ -22,7 +22,7 @@ function openMenu(Screen, params) {
         audio: silentAudio,
         resources: pendingImages,
         input,
-        world: offscreenWorld,
+        world,
     });
     screen.enter(params);
     const press = (code) => {
@@ -53,6 +53,14 @@ test('on the title the arrows choose the car and ENTER opens its brochure', () =
     assert.equal(screen.car.id, 'ferrari');
     press('Enter');
     assert.deepEqual(visits, [['select', { carId: 'ferrari' }]]);
+});
+
+test('the title photographs only the car on show, and the next one once it is chosen', () => {
+    const asked = [];
+    const { press } = openMenu(TitleScreen, {}, { clear() {}, profile(car) { asked.push(car.id); return null; } });
+    assert.deepEqual(asked, ['porsche']);
+    press('ArrowRight');
+    assert.deepEqual(asked, ['porsche', 'ferrari']);
 });
 
 test('a locked car on the title goes no further', () => {

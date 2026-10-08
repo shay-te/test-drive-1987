@@ -5,7 +5,7 @@ import { clamp } from '../../util/math.js';
 import { drawCarArt, drawGroundShadow } from '../CarArt.js';
 import { paintScenery } from '../scenery.js';
 import { COLORS } from '../theme.js';
-import { loadProfilePhotos } from '../profilePhotos.js';
+import { requestProfilePhoto } from '../profilePhotos.js';
 import { drawLogo, drawPrompt, drawStamp, drawText } from '../widgets.js';
 
 const FADE_SECONDS = 0.25;
@@ -30,10 +30,7 @@ export class TitleScreen {
     enter({ carId } = {}) {
         this.world.clear();
         this.car = carById(carId);
-        loadProfilePhotos(this.world, (car, photo) => {
-            this.photos.set(car.id, photo);
-            if (car === this.car) this.chosenAt = this.time;
-        });
+        this._showPhoto();
     }
 
     update(dt) {
@@ -42,12 +39,23 @@ export class TitleScreen {
         if (step) {
             this.car = neighbourCar(this.car, step);
             this.chosenAt = this.time;
+            this._showPhoto();
             this._click();
         }
         if (this.input.pressed('confirm') && !isLocked(this.car)) {
             this._click();
             this.game.go('select', { carId: this.car.id });
         }
+    }
+
+    /** Photographs the car on show; the others wait until they are chosen. */
+    _showPhoto() {
+        const car = this.car;
+        requestProfilePhoto(this.world, car, (photo) => {
+            if (this.photos.get(car.id) === photo) return;
+            this.photos.set(car.id, photo);
+            if (car === this.car) this.chosenAt = this.time;
+        });
     }
 
     _click() {

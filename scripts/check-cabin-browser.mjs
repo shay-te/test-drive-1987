@@ -97,10 +97,10 @@ async function confirmLoading(browser, label, userAgent) {
         await page.waitForFunction(() => { return globalThis.__cabinDrawCalls > 0; }, null, { timeout: LOAD_TIMEOUT_MS });
         assert.ok(downloads.includes(200), `${label}: actual cabin download`);
         assert.deepEqual(failures, [], `${label}: browser errors`);
-        await page.screenshot({ path: `${output}/${label}-driving.png` });
+        await page.screenshot({ path: `${output}/${label}-driving.png`, timeout: LOAD_TIMEOUT_MS });
         return { userAgent: await page.evaluate(() => { return navigator.userAgent; }), rendered: true, errors: failures };
     } catch (error) {
-        await page.screenshot({ path: `${output}/${label}-failed.png` });
+        await page.screenshot({ path: `${output}/${label}-failed.png`, timeout: LOAD_TIMEOUT_MS });
         throw new Error(`${label}: ${error.message}; console: ${failures.join('; ')}`, { cause: error });
     } finally {
         await page.close();
