@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CARS, carById } from '../src/data/cars.js';
 import { GATES, gatePosition, stepKnob } from '../src/cockpit/shiftGate.js';
-import { dialAngle, formatReading, instrumentReadings, lampStates } from '../src/cockpit/instruments.js';
+import { boostPsi, dialAngle, formatReading, instrumentReadings, lampStates, revState } from '../src/cockpit/instruments.js';
 import { CLUSTERS } from '../src/cockpit/clusters.js';
 import { formatClock, formatMiles } from '../src/util/format.js';
 import { Spring } from '../src/util/math.js';
@@ -98,4 +98,19 @@ test('the oil level gauge drops to zero when the engine is blown', () => {
     const blown = instrumentReadings({ mph: 0, rpm: 0, boost: 0, blown: true }, porsche);
     assert.ok(running.oilLevel > 0.5);
     assert.equal(blown.oilLevel, 0);
+});
+
+test('the outside readout warns as the revs near the redline, and past it the engine is wearing out', () => {
+    const porsche = carById('porsche');
+    const { redline } = porsche.engine;
+    assert.equal(revState({ rpm: redline - 1000, overRev: 0 }, porsche), 'normal');
+    assert.equal(revState({ rpm: redline - 100, overRev: 0 }, porsche), 'high');
+    assert.equal(revState({ rpm: redline + 200, overRev: 0 }, porsche), 'over');
+    assert.equal(revState({ rpm: redline - 2000, overRev: 0.4 }, porsche), 'over', 'still recovering from over-revving');
+});
+
+test('boost reads in psi up to each turbo car\'s real peak; atmospheric cars have none', () => {
+    assert.equal(boostPsi({ boost: 1 }, carById('porsche')), 11.6);
+    assert.equal(boostPsi({ boost: 0.5 }, carById('lotus')), 4);
+    assert.equal(boostPsi({ boost: 1 }, carById('ferrari')), null);
 });

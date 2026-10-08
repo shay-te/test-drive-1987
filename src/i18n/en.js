@@ -14,6 +14,7 @@ export const EN = {
         fuel: 'FUEL',
         volts: 'VOLTS',
         boost: 'BOOST',
+        psi: 'PSI',
         turbo: 'TURBO',
         radar: 'RADAR',
         paused: 'PAUSED',
