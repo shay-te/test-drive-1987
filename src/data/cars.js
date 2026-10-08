@@ -107,8 +107,19 @@ export const CARS = [
             cluster: 'porsche',
             speedoMax: 180,
             tachMax: 8,
-            dash: { top: '#1d1d1f', face: '#2a2a2c', panel: '#232325', accent: '#3b3b3e', grain: 'leather' },
-            wheel: { spokes: 4, rim: '#151515', spoke: '#202022' },
+            // The 930's own cabin: long cowl over five dials, key left of the wheel, radio and
+            // climate stack, glovebox, slim A-pillars, the windshield mirror and a padded 4-spoke wheel.
+            layout: {
+                left: 'ignition',
+                center: 'radio',
+                right: 'glovebox',
+                pillars: true,
+                cowl: { x0: 64, x1: 896, peak: 418, lip: 500 },
+                lever: { x: 866, y: 772 },
+            },
+            mirror: { radius: 30, housingRadius: 28, bezel: 12, taper: 5, tab: true },
+            dash: { top: '#18181a', face: '#1f1f21', panel: '#1f1f21', accent: '#3b3b3e', grain: 'leather' },
+            wheel: { spokes: 4, hub: 'pad', rim: '#151515', spoke: '#1d1d1f' },
             shifter: { type: 'boot', pattern: 'porsche4', knob: '#1a1a1a' },
         },
         body: {

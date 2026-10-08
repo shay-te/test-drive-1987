@@ -106,41 +106,41 @@ export class Cockpit {
     }
 
     _trip(ctx, view) {
-        const { trip } = LAYOUT;
+        const trip = this.interior.tripRect;
+        const k = trip.h / LAYOUT.trip.h;
         const info = view.trip;
-        const left = trip.x + 14;
-        const right = trip.x + trip.w - 14;
+        const left = trip.x + 14 * k;
+        const right = trip.x + trip.w - 14 * k;
         ctx.save();
         ctx.fillStyle = COLORS.lcd;
         ctx.shadowColor = COLORS.lcd;
         ctx.shadowBlur = 6;
-        ctx.font = font(17, 'mono', 'bold');
+        ctx.font = font(17 * k, 'mono', 'bold');
         ctx.textBaseline = 'alphabetic';
         ctx.textAlign = 'left';
-        ctx.fillText(t('trip.stage', { n: info.stage, total: info.total }), left, trip.y + 26);
+        ctx.fillText(t('trip.stage', { n: info.stage, total: info.total }), left, trip.y + 26 * k);
         ctx.fillText(
             t(info.summit ? 'trip.toSummit' : 'trip.toGas', { mi: formatMiles(info.remaining) }),
             left,
-            trip.y + 52,
+            trip.y + 52 * k,
         );
         ctx.textAlign = 'right';
-        ctx.fillText(formatClock(info.elapsed), right, trip.y + 26);
-        if (view.digital) {
-            const r = view.readings;
-            ctx.fillText(
-                `${Math.round(r.speed)} ${t('general.mph')}  ${Math.round(r.rpm * 1000)} ${t('general.rpm')}  ${view.gearLabel}`,
-                right,
-                trip.y + 52,
-            );
-        }
+        ctx.fillText(formatClock(info.elapsed), right, trip.y + 26 * k);
         ctx.textAlign = 'left';
-        ctx.font = font(12, 'mono', 'bold');
-        ctx.fillText(t('general.chances'), left, trip.y + 88);
-        for (let i = 0; i < info.maxChances; i++) {
-            ctx.globalAlpha = i < info.chances ? 1 : 0.15;
-            ctx.beginPath();
-            ctx.arc(left + 96 + i * 20, trip.y + 84, 6, 0, TAU);
-            ctx.fill();
+        if (view.digital) {
+            // The digital readout (I key) takes the bottom line in place of the chances.
+            const r = view.readings;
+            const readout = `${Math.round(r.speed)} ${t('general.mph')} ${Math.round(r.rpm * 1000)} ${t('general.rpm')} ${view.gearLabel}`;
+            ctx.fillText(readout, left, trip.y + 88 * k);
+        } else {
+            ctx.font = font(12 * k, 'mono', 'bold');
+            ctx.fillText(t('general.chances'), left, trip.y + 88 * k);
+            for (let i = 0; i < info.maxChances; i++) {
+                ctx.globalAlpha = i < info.chances ? 1 : 0.15;
+                ctx.beginPath();
+                ctx.arc(left + (96 + i * 20) * k, trip.y + 84 * k, 6 * k, 0, TAU);
+                ctx.fill();
+            }
         }
         ctx.restore();
     }

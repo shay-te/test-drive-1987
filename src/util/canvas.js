@@ -19,6 +19,28 @@ export function multilineText(ctx, text, x, y, lineHeight) {
     });
 }
 
+/** Path of a rounded trapezoid whose bottom edge is `taper` narrower on each side. */
+export function roundedTrapezoidPath(ctx, x, y, w, h, r, taper = 0) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w - taper, y + h, r);
+    ctx.arcTo(x + w - taper, y + h, x + taper, y + h, r);
+    ctx.arcTo(x + taper, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+}
+
+/** Fills a polygon given as [[x, y], ...]. */
+export function fillPolygon(ctx, points) {
+    ctx.beginPath();
+    points.forEach(([px, py], i) => {
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    });
+    ctx.closePath();
+    ctx.fill();
+}
+
 /** Linear gradient from a list of [offset, colour] stops. */
 export function linearGradient(ctx, x0, y0, x1, y1, stops) {
     const gradient = ctx.createLinearGradient(x0, y0, x1, y1);

@@ -35,6 +35,7 @@ export class GearLever {
     constructor(car) {
         this.style = car.cockpit.shifter;
         this.gate = GATES[this.style.pattern];
+        this.layout = { ...LAYOUT.lever, ...car.cockpit.layout?.lever };
         this.knob = [...NEUTRAL];
     }
 
@@ -43,7 +44,7 @@ export class GearLever {
     }
 
     draw(ctx) {
-        const l = LAYOUT.lever;
+        const l = this.layout;
         if (this.style.type === 'gate') this._plate(ctx, l);
         else this._boot(ctx, l);
         const kx = l.x + this.knob[0] * l.col;

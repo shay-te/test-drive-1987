@@ -75,12 +75,17 @@ export class SteeringWheel {
     }
 
     _hub(ctx, w) {
-        ctx.fillStyle = radialGradient(ctx, -w.hub * 0.3, -w.hub * 0.4, w.hub * 0.1, w.hub * 1.2, [
+        ctx.fillStyle = radialGradient(ctx, -w.hub * 0.3, -w.hub * 0.4, w.hub * 0.1, w.hub * 1.4, [
             [0, '#3c3c3f'],
             [1, '#070707'],
         ]);
         ctx.beginPath();
-        ctx.arc(0, 0, w.hub, 0, TAU);
+        if (this.style.hub === 'pad') {
+            // The big padded centre of the 1980s 911 four-spoke wheel.
+            ctx.roundRect(-w.hub * 1.25, -w.hub * 0.85, w.hub * 2.5, w.hub * 1.75, w.hub * 0.5);
+        } else {
+            ctx.arc(0, 0, w.hub, 0, TAU);
+        }
         ctx.fill();
         speckle(ctx, w.hub, w.hub, { count: 200, alpha: 0.08, seed: 4 });
         ctx.fillStyle = linearGradient(ctx, 0, -w.badge, 0, w.badge, [
