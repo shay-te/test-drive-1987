@@ -11,7 +11,7 @@ import { AuthoredModels } from './AuthoredModels.js';
 import { SCENERY_MODELS } from '../data/scenery.js';
 import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 import { AssetCabin } from './cabin/AssetCabin.js';
-import { SURFACES, validateCabinNodes } from './cabin/cabinAsset.js';
+import { SIDE_MIRRORS, SURFACES, validateCabinNodes } from './cabin/cabinAsset.js';
 import { CarCabin } from './cabin/CarCabin.js';
 import { CABIN } from './cabin/cabinLayout.js';
 import { CABIN_LAYER } from './cabin/shapes.js';
@@ -27,6 +27,16 @@ const MIRROR_VFOV = 13;
 const MIRROR_FAR = 2500;
 /** Mirror picture width in pixels at 1x scale. */
 const MIRROR_TEXELS = 512;
+/** Door mirrors: a small picture each, redrawn on alternate frames; the view a flat glass gives. */
+const DOOR_MIRROR = { texels: 256, vfovDeg: 12 };
+
+/** A render target for a mirror picture, flipped left to right as a mirror shows it. */
+function mirrorTarget() {
+    const target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
+    target.texture.wrapS = THREE.RepeatWrapping;
+    target.texture.repeat.x = -1;
+    return target;
+}
 const WORLD_NEAR = 0.3;
 /** The cabin pass sees from the eye to the back of the car. */
 const CABIN_NEAR = 0.02;
@@ -65,10 +75,13 @@ export class WorldView {
         );
         const m = CABIN.mirror;
         this.mirrorCamera = new THREE.PerspectiveCamera(MIRROR_VFOV, m.w / m.h, 0.5, MIRROR_FAR);
-        this.mirrorTarget = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
-        // A mirror shows the rear view flipped left to right.
-        this.mirrorTarget.texture.wrapS = THREE.RepeatWrapping;
-        this.mirrorTarget.texture.repeat.x = -1;
+        this.mirrorTarget = mirrorTarget();
+        this.doorMirrors = Object.fromEntries(SIDE_MIRRORS.map((side) => {
+            const camera = new THREE.PerspectiveCamera(DOOR_MIRROR.vfovDeg, 1, 0.5, MIRROR_FAR);
+            return [side, { camera, target: mirrorTarget(), aspect: 1 }];
+        }));
+        this.activeDoorMirrors = [];
+        this.frame = 0;
         this.authored = new AuthoredModels(resources);
         this.vehicles = new VehicleModels(this.authored);
         // The outside view sees the car (cabin layer) and the world in one pass, lit by the world's sun.
@@ -100,6 +113,9 @@ export class WorldView {
             Math.round(MIRROR_TEXELS * scale),
             Math.round((MIRROR_TEXELS * scale * m.h) / m.w),
         );
+        for (const mirror of Object.values(this.doorMirrors)) {
+            mirror.target.setSize(Math.round(DOOR_MIRROR.texels * scale), Math.round((DOOR_MIRROR.texels * scale) / mirror.aspect));
+        }
         this.scale = scale;
     }
 
@@ -172,15 +188,32 @@ export class WorldView {
             this.renderer.capabilities.getMaxAnisotropy(),
             this.mirrorTarget.texture,
             cabinAsset,
+            Object.fromEntries(Object.entries(this.doorMirrors).map(([side, mirror]) => { return [side, mirror.target.texture]; })),
         );
         this.cabin.root.rotation.order = 'YXZ';
         this.cabin.eye.add(this.camera);
         this.cabin.mirrorMount.add(this.mirrorCamera);
+        this._mountDoorMirrors(this.cabin.sideMirrors ?? {});
         scene.add(this.cabin.root);
         this._addCabinLights(scene);
         scene.environment = this._environment(scene);
         scene.environmentIntensity = LIGHTING.environmentIntensity;
         this.scene = scene;
+    }
+
+    /** Hangs a camera on each door mirror the cabin has, shaped like its glass. */
+    _mountDoorMirrors(sideMirrors) {
+        this.activeDoorMirrors = Object.entries(sideMirrors).map(([side, { surface, camera: mount }]) => {
+            const mirror = this.doorMirrors[side];
+            surface.geometry.computeBoundingBox();
+            const size = surface.geometry.boundingBox.getSize(new THREE.Vector3());
+            mirror.aspect = size.x / size.y;
+            mirror.camera.aspect = mirror.aspect;
+            mirror.camera.updateProjectionMatrix();
+            mount.add(mirror.camera);
+            return mirror;
+        });
+        this._resize(this.scale);
     }
 
     /** The cabin's own sun (with a tight, sharp shadow map over the car) and the sky through the glass. */
@@ -304,10 +337,12 @@ export class WorldView {
             return;
         }
         this.chaseYaw = null;
-        this.mirrorCamera.getWorldPosition(this.sky.position);
-        r.setRenderTarget(this.mirrorTarget);
-        r.render(this.scene, this.mirrorCamera);
-        r.setRenderTarget(null);
+        this._renderMirror(this.mirrorCamera, this.mirrorTarget);
+        const doors = this.activeDoorMirrors;
+        if (doors.length) {
+            const door = doors[this.frame++ % doors.length];
+            this._renderMirror(door.camera, door.target);
+        }
 
         this.camera.getWorldPosition(this.sky.position);
         this._lens(0, WORLD_NEAR, FAR);
@@ -331,6 +366,14 @@ export class WorldView {
         this.chaseCamera.position.set(...position);
         this.chaseCamera.lookAt(...aim);
         this.chaseCamera.updateMatrixWorld();
+    }
+
+    _renderMirror(camera, target) {
+        const r = this.renderer;
+        camera.getWorldPosition(this.sky.position);
+        r.setRenderTarget(target);
+        r.render(this.scene, camera);
+        r.setRenderTarget(null);
     }
 
     _lens(layer, near, far) {

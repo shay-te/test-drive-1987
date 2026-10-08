@@ -7,12 +7,110 @@
         "license": "CC-BY-4.0"
     },
     "yawDeg": -90,
-    "eye": [0.37, 0.95],
-    "steeringWheel": { "parts": ["steering_leather_0"] },
-    "windshield": { "node": "front_wind_glass_0" },
-    "instrument": { "centre": [0.37, 0.751, -0.804], "normal": [0, 0.147, 0.989], "width": 0.22 },
-    "trip": { "centre": [0, 0.635, -0.731], "normal": [0, 0.174, 0.985], "width": 0.14 },
-    "mirror": { "centre": [0.015, 0.952, -0.325], "normal": [0.072, -0.119, 0.99], "width": 0.13, "housing": false },
-    "radar": { "centre": [0.45, 0.972, -0.42] },
-    "lever": { "base": [0, 0.525, -0.6], "parts": ["shift_lever_muffler_0", "grip__17___Default_0"] }
+    "eye": [
+        0.37,
+        0.95
+    ],
+    "steeringWheel": {
+        "parts": [
+            "steering_leather_0"
+        ]
+    },
+    "windshield": {
+        "node": "front_wind_glass_0"
+    },
+    "instrument": {
+        "centre": [
+            0.37,
+            0.751,
+            -0.804
+        ],
+        "normal": [
+            0,
+            0.147,
+            0.989
+        ],
+        "width": 0.22
+    },
+    "trip": {
+        "centre": [
+            0,
+            0.635,
+            -0.731
+        ],
+        "normal": [
+            0,
+            0.174,
+            0.985
+        ],
+        "width": 0.14
+    },
+    "mirror": {
+        "centre": [
+            0.015,
+            0.952,
+            -0.325
+        ],
+        "normal": [
+            0.072,
+            -0.119,
+            0.99
+        ],
+        "width": 0.13,
+        "housing": false
+    },
+    "sideMirrors": [
+        {
+            "side": "left",
+            "centre": [
+                -0.899,
+                0.801,
+                -0.692
+            ],
+            "normal": [
+                0.248,
+                -0.165,
+                0.955
+            ],
+            "size": [
+                0.11,
+                0.068
+            ]
+        },
+        {
+            "side": "right",
+            "centre": [
+                0.888,
+                0.803,
+                -0.694
+            ],
+            "normal": [
+                -0.248,
+                -0.165,
+                0.955
+            ],
+            "size": [
+                0.11,
+                0.068
+            ]
+        }
+    ],
+    "radar": {
+        "centre": [
+            0.45,
+            0.972,
+            -0.42
+        ]
+    },
+    "lever": {
+        "base": [
+            0,
+            0.525,
+            -0.6
+        ],
+        "parts": [
+            "shift_lever_muffler_0",
+            "grip__17___Default_0"
+        ]
+    }
 }
