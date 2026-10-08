@@ -103,3 +103,16 @@ test('leaving during preparation does not build a late cabin or resurrect the dr
     assert.equal(screen.vehicle, undefined);
     assert.equal(screen.input.lookEnabled, false);
 });
+
+test('V switches between the driver seat and the outside view, which the next stage keeps', () => {
+    const { screen, tap } = startStage();
+    assert.equal(screen.view.outside, false);
+    tap('KeyV');
+    assert.equal(screen.view.outside, true);
+    tap('KeyV');
+    assert.equal(screen.view.outside, false);
+    const visits = [];
+    const next = new DriveScreen({ game: { go(name, params) { visits.push([name, params]); } }, audio: screen.audio, input: screen.input, world: screen.world });
+    next.enter({ session: new Session(carById('porsche')), outside: true });
+    assert.equal(next.outside, true);
+});

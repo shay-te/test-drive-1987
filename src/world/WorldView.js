@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { LIGHTING, VIEW } from '../config.js';
+import { CHASE, LIGHTING, VIEW } from '../config.js';
 import { DEG } from '../util/math.js';
 import { WorldMaterials } from './Materials.js';
 import { WorldBuilder } from './WorldBuilder.js';
@@ -17,6 +17,7 @@ import { CABIN } from './cabin/cabinLayout.js';
 import { CABIN_LAYER } from './cabin/shapes.js';
 import { photographProfile } from './profilePhoto.js';
 import { photographStation } from './stationPhoto.js';
+import { chasePose, followYaw } from './chaseView.js';
 
 const FAR = 24000;
 const SKY_SCALE = 18000;
@@ -70,6 +71,11 @@ export class WorldView {
         this.mirrorTarget.texture.repeat.x = -1;
         this.authored = new AuthoredModels(resources);
         this.vehicles = new VehicleModels(this.authored);
+        // The outside view sees the car (cabin layer) and the world in one pass, lit by the world's sun.
+        this.chaseCamera = new THREE.PerspectiveCamera(CHASE.verticalFovDeg, VIEW.width / VIEW.height, WORLD_NEAR, FAR);
+        this.chaseCamera.layers.enable(CABIN_LAYER);
+        this.chaseYaw = null;
+        this.chaseTime = null;
         this.models = new Map();
         this.scene = null;
         this.cabin = null;
@@ -195,7 +201,8 @@ export class WorldView {
         shadow.normalBias = LIGHTING.cabinShadowNormalBias;
         const sky = this.skyLight.clone();
         sky.intensity *= LIGHTING.cabinSky;
-        for (const light of [this.cabinSun, sky]) light.layers.set(CABIN_LAYER);
+        this.cabinLights = [this.cabinSun, sky];
+        for (const light of this.cabinLights) light.layers.set(CABIN_LAYER);
         scene.add(this.cabinSun, this.cabinSun.target, sky);
     }
 
@@ -289,6 +296,14 @@ export class WorldView {
         this.scene.updateMatrixWorld();
 
         const r = this.renderer;
+        for (const light of this.cabinLights) light.visible = !view.outside;
+        if (view.outside) {
+            this._placeChase(view.time);
+            this.chaseCamera.getWorldPosition(this.sky.position);
+            r.render(this.scene, this.chaseCamera);
+            return;
+        }
+        this.chaseYaw = null;
         this.mirrorCamera.getWorldPosition(this.sky.position);
         r.setRenderTarget(this.mirrorTarget);
         r.render(this.scene, this.mirrorCamera);
@@ -303,6 +318,19 @@ export class WorldView {
         r.clearDepth();
         r.render(this.scene, this.camera);
         r.autoClear = true;
+    }
+
+    /** Behind and above the car, its yaw easing after the car's heading (also while it tumbles). */
+    _placeChase(time) {
+        const root = this.cabin.root;
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(root.quaternion);
+        const dt = this.chaseTime === null ? 0 : Math.max(0, time - this.chaseTime);
+        this.chaseTime = time;
+        this.chaseYaw = followYaw(this.chaseYaw, Math.atan2(-forward.x, -forward.z), dt);
+        const { position, aim } = chasePose(root.position, this.chaseYaw);
+        this.chaseCamera.position.set(...position);
+        this.chaseCamera.lookAt(...aim);
+        this.chaseCamera.updateMatrixWorld();
     }
 
     _lens(layer, near, far) {

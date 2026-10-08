@@ -22,20 +22,24 @@ patrol cars and a gas station at the end of every stage.
 - `src/cockpit/`: readings, sprung needles and gear knob (`CockpitState`), the driver's head
   (`HeadMotion`: leans in bends, nods under braking, road buzz, crash jolt, looking around).
 - `src/ui/screens/`: title, brochure with the acceleration graph, driving, gas station, results.
+- The outside camera (V, the gamepad's left-stick press, or ◫ on touch): above and behind the car,
+  with a speed and gear readout.
 
 ### Next (queued, in order)
 
 1. **The cars you drive, as in reality:** each car's real engine sound, its real turbo and rev
    behaviour, and handling that matches the real car; always show which gear you are in.
-2. **An outside camera,** above and behind the car.
-3. **A Sea-to-Sky Highway setting:** the coastal road from Horseshoe Bay to Squamish above Howe
+2. **Working side mirrors:** the door mirrors show the road behind, like the rear-view mirror.
+3. **A visible driver, as in Wing Commander (1990):** hands on the wheel, feet working the clutch,
+   brake and throttle, a hand moving to the gear lever on every shift.
+4. **A Sea-to-Sky Highway setting:** the coastal road from Horseshoe Bay to Squamish above Howe
    Sound (one lane each way, cut into the cliffs; see the 1966 TranBC footage). Start with one
    polished 500 m section (bend, rock wall, drop, trees, distant mountains), then extend it; rock
    assets from Poly Haven (CC0), terrain from Natural Resources Canada elevation data.
-4. **Sea-to-Sky lighting:** driving north, a late-afternoon summer sun in the west (to the left),
+5. **Sea-to-Sky lighting:** driving north, a late-afternoon summer sun in the west (to the left),
    and its glint on the water to the left, moving across the view as the road turns.
-5. **Over the edge into the sea:** the car sinks, with fish and rising air bubbles.
-6. Test on phones (touch controls, performance of the cabin pass).
+6. **Over the edge into the sea:** the car sinks, with fish and rising air bubbles.
+7. Test on phones (touch controls, performance of the cabin pass).
 
 ## Play it
 
@@ -61,6 +65,7 @@ Any static web server works; no build step. three.js 0.180.0 is loaded from jsDe
 | R / F | look up / down |
 | C | return to forward view |
 | 1–7 | inspect dashboard, console, doors, seats, roof and rear cabin |
+| V | outside view (above and behind the car) / driver's seat |
 | I | digital mph / rpm readout |
 | M | mute, P pause |
 

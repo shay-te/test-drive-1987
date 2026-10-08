@@ -7,6 +7,8 @@ import { drawPanel, drawPrompt, drawText } from './widgets.js';
 const CENTER = VIEW.width / 2;
 const TICKET = { x: 400, y: 150, w: 480, h: 470, line: 46 };
 const BANNER = { w: 760, h: 120, y: 120 };
+/** The outside view's readout, bottom centre: speed and gear (the dials are inside the car). */
+const READOUT = { w: 300, h: 92, bottom: 28, size: 44, label: 15 };
 
 // Messages drawn over the windshield while driving: stage intro, crash, ticket, pause, notices.
 
@@ -84,6 +86,19 @@ export function drawTicket(ctx, car, mph, time) {
         ctx.fillRect(k.x + 28, y + 16, k.w - 56, 1);
     });
     drawPrompt(ctx, t('crash.continue'), time, k.y + k.h - 40);
+}
+
+/** Speed and gear for the outside view, where the instruments cannot be seen. */
+export function drawReadout(ctx, mph, gear) {
+    const r = READOUT;
+    const x = CENTER - r.w / 2;
+    const y = VIEW.height - r.bottom - r.h;
+    drawPanel(ctx, x, y, r.w, r.h);
+    for (const [i, value, label] of [[0, String(Math.round(mph)), t('general.mph')], [1, gear, t('general.gear')]]) {
+        const cx = x + (r.w / 4) * (1 + 2 * i);
+        drawText(ctx, value, cx, y + r.h * 0.42, { size: r.size, family: 'display', color: COLORS.white });
+        drawText(ctx, label, cx, y + r.h * 0.82, { size: r.label, color: COLORS.chrome });
+    }
 }
 
 export function drawPaused(ctx) {
