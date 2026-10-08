@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { TRAFFIC_TYPES } from '../data/traffic.js';
-import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 
 const BEVEL = {
     bevelEnabled: true,
@@ -15,9 +14,8 @@ const LIGHT_BAR_GLOW = { flash: 6, idle: 0.2 };
 
 /** Builds and caches 3D models of the road users (extruded side profiles, semis, authored models). */
 export class VehicleModels {
-    constructor(resources) {
-        this.resources = resources;
-        this.templates = new Map();
+    constructor(authored) {
+        this.authored = authored;
         this.geometries = new Map();
         this.materials = new Map();
         this.glass = new THREE.MeshStandardMaterial({ color: '#10161c', roughness: 0.06, metalness: 0.5 });
@@ -34,21 +32,6 @@ export class VehicleModels {
             emissive: '#fff4d0',
             emissiveIntensity: 0.25,
         });
-    }
-
-    /** Loads the road users that have an authored model (cached; every stage reuses them). */
-    prepare() {
-        return Promise.all(Object.values(TRAFFIC_TYPES).filter((spec) => { return spec.model; }).map((spec) => {
-            return this.resources.model(spec.model, async (url) => {
-                const scene = (await new GLTFLoader().loadAsync(url)).scene;
-                for (const name of Object.values(spec.lightBar ?? {})) {
-                    if (!scene.getObjectByName(name)?.isMesh) throw new Error(`${spec.model} has no light bar mesh "${name}"`);
-                }
-                return scene;
-            }).then((scene) => {
-                this.templates.set(spec.model, scene);
-            });
-        }));
     }
 
     /** A new model group for `vehicle`; local -z is its front. */
@@ -72,9 +55,7 @@ export class VehicleModels {
 
     /** A copy of the authored model; its light bar lenses get materials of their own to flash. */
     _modelled(vehicle, spec) {
-        const template = this.templates.get(spec.model);
-        if (!template) throw new Error(`Road user model ${spec.model} was not prepared`);
-        const group = template.clone(true);
+        const group = this.authored.instance(spec.model);
         if (spec.lightBar) {
             const lens = (name) => {
                 const mesh = group.getObjectByName(name);

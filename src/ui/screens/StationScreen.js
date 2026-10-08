@@ -5,6 +5,7 @@ import { linearGradient } from '../../util/canvas.js';
 import { formatClock } from '../../util/format.js';
 import { clamp } from '../../util/math.js';
 import { drawCarArt } from '../CarArt.js';
+import { whenPhotographed } from '../photos.js';
 import { paintScenery } from '../scenery.js';
 import { COLORS, font } from '../theme.js';
 import { drawPanel, drawPrompt, drawText } from '../widgets.js';
@@ -34,16 +35,23 @@ const DAY = {
 
 /** The gas station between stages: the stage sheet while the tank fills, then on up the mountain. */
 export class StationScreen {
-    constructor({ game, display, resources, audio, input }) {
-        Object.assign(this, { game, display, resources, audio, input });
+    constructor({ game, display, resources, audio, input, world }) {
+        Object.assign(this, { game, display, resources, audio, input, world });
         this.time = 0;
         this.full = false;
+        this.photo = null;
     }
 
+    /** Fills up in the authored station once its photo with this car is ready; drawn until then. */
     enter({ session, result }) {
         this.session = session;
         this.result = result;
         this.audio.play('pump', { volume: 0.7 });
+        const car = session.car;
+        const look = { width: VIEW.width, height: VIEW.height, horizonY: HORIZON, ground: DAY.ground };
+        whenPhotographed(this.world.stationScene(car, look), `the station with ${car.id}`, (photo) => {
+            this.photo = photo;
+        });
     }
 
     update(dt) {
@@ -60,13 +68,18 @@ export class StationScreen {
 
     render(ctx) {
         const car = this.session.car;
+        const photo = this.photo;
         const scene = this.resources.scaledCanvas(
-            `station:${car.id}`,
+            `station:${photo ? 'photo' : 'drawn'}:${car.id}`,
             VIEW.width,
             VIEW.height,
             this.display.scale,
             (c) => {
                 paintScenery(c, DAY, HORIZON);
+                if (photo) {
+                    c.drawImage(photo, 0, 0, VIEW.width, VIEW.height);
+                    return;
+                }
                 paintStation(c);
                 drawCarArt(c, car, 250, CANOPY.ground, 420);
             },

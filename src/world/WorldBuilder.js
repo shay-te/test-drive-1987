@@ -11,10 +11,11 @@ const FACE_ROWS = 12;
 const SLOPE_ROWS = 6;
 /** Builds the static scenery of a stage: road, shoulders, the rock face, the drop, rails and props. */
 export class WorldBuilder {
-    constructor(materials, stage, landscape) {
+    constructor(materials, stage, landscape, authored) {
         this.materials = materials;
         this.stage = stage;
         this.landscape = landscape;
+        this.authored = authored;
         this.noise = new Noise(stage.seed + 99);
     }
 
@@ -60,7 +61,7 @@ export class WorldBuilder {
         group.add(setShadows(this._upperSlope(track), true, true));
         group.add(setShadows(this._drop(track), false, true));
         group.add(this._rails(track));
-        group.add(buildProps(track, m, this.stage));
+        group.add(buildProps(track, m, this.stage, this.authored));
         return group;
     }
 
