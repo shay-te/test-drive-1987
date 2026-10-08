@@ -1,0 +1,16 @@
+{
+    "source": "2001_crown_victoria_police_interceptor_game_prop.glb",
+    "credit": {
+        "title": "2001 Crown Victoria Police Interceptor Game Prop",
+        "author": "8sianDude",
+        "url": "https://sketchfab.com/3d-models/2001-crown-victoria-police-interceptor-game-prop-9f30d360cee343efb5a441978ddb57bd",
+        "license": "CC-BY-4.0"
+    },
+    "yawDeg": 180,
+    "materials": {
+        "glass": { "transmission": false }
+    },
+    "lights": { "node": "fs_vector_bulbs_base_low_fs_vector_0" },
+    "triangles": 20000,
+    "textures": { "baseColor": 1024, "other": 512 }
+}

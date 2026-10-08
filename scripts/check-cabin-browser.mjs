@@ -50,7 +50,7 @@ async function lighting(page, screen, stageIndex) {
     await page.evaluate(async ({ preview, index }) => {
         const { STAGES } = await import('/src/data/stages.js');
         preview.stage = STAGES[index];
-        preview.world.loadPreview(preview.stage, preview.car, await preview.world.prepare(preview.car));
+        preview.world.loadPreview(preview.stage, preview.car, await preview.world.prepareCabin(preview.car));
     }, { preview: screen, index: stageIndex });
 }
 
@@ -188,11 +188,11 @@ try {
         await page.keyboard.press('C');
         results.preview = await page.evaluate(async (preview) => {
             const world = preview.world;
-            const template = await world.prepare(preview.car);
+            const template = await world.prepareCabin(preview.car);
             let disposed = false;
             const geometry = template.getObjectByName('instrument_surface').geometry;
             geometry.addEventListener('dispose', () => { disposed = true; });
-            for (let i = 0; i < 3; i++) world.loadPreview(preview.stage, preview.car, await world.prepare(preview.car));
+            for (let i = 0; i < 3; i++) world.loadPreview(preview.stage, preview.car, await world.prepareCabin(preview.car));
             if (disposed) throw new Error('Cabin teardown disposed cached geometry');
             const { AssetCabin } = await import('/src/world/cabin/AssetCabin.js');
             if (!(world.cabin instanceof AssetCabin)) throw new Error('Porsche does not use its authored asset');

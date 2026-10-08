@@ -1,7 +1,9 @@
-/** Converts a downloaded car model into the game's cabin asset: car space, budgets, runtime parts.
+/** Converts a downloaded car model into a game asset: a player car's cabin (car space measured from the
+ *  seated eye, budgets, runtime parts) or a road user's model (centred, flashing light bar).
  *  Tools: npm i --no-save --no-package-lock @gltf-transform/core@4 @gltf-transform/functions@4
  *         @gltf-transform/extensions@4 meshoptimizer@0 sharp@0
- *  Usage: node scripts/import-car.mjs <carId> [--aligned <out.glb>]  (reads assets/models/<carId>/import.json) */
+ *  Usage: node scripts/import-car.mjs <carId|roadUserId> [--aligned <out.glb>]
+ *  (reads assets/models/<id>/import.json; writes cabin.glb for a car, model.glb for a road user) */
 import { readFileSync } from 'node:fs';
 import { NodeIO, PropertyType } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -12,11 +14,17 @@ import {
 import { MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 import { CLUSTERS, clusterBounds } from '../src/cockpit/clusters.js';
-import { carById } from '../src/data/cars.js';
+import { CARS } from '../src/data/cars.js';
+import { TRAFFIC_TYPES } from '../src/data/traffic.js';
 import { CABIN } from '../src/world/cabin/cabinLayout.js';
 
 /** Whole-asset triangle target, under the 100k budget with room for the generated parts. */
 const TRIANGLE_TARGET = 95_000;
+/** Lens colours on a light bar's texture, 0..255 RGB: strongly red, or strongly blue. */
+const LENS = {
+    red: ([r, g, b]) => { return r > 140 && g < 90 && b < 90; },
+    blue: ([r, g, b]) => { return b > 140 && r < 90 && g < 130; },
+};
 /** Triangles the generated rig adds (lever, knob, housings, LEDs, surfaces), with margin. */
 const GENERATED_TRIANGLES = 2_000;
 /** Bounds of the absolute simplification error searched for that target, in metres. */
@@ -35,10 +43,16 @@ const RIG_MATERIALS = {
     display: { color: [0.05, 0.05, 0.05, 1], roughness: 0.5, metallic: 0 },
 };
 
-const [carId, flag, alignedPath] = process.argv.slice(2);
-const car = carById(carId);
-if (car.id !== carId) throw new Error(`Unknown car "${carId}"`);
-const folder = `assets/models/${car.id}`;
+const [id, flag, alignedPath] = process.argv.slice(2);
+const car = CARS.find((candidate) => { return candidate.id === id; });
+const roadUser = car ? null : TRAFFIC_TYPES[id];
+if (!car && !roadUser) throw new Error(`"${id}" is neither a car nor a road user`);
+const folder = `assets/models/${id}`;
+// A player car is placed from the seated eye, `body.eye` behind its nose; a road user from its centre.
+const length = car ? car.body.length : roadUser.length;
+const noseZ = car ? -car.body.eye : -roadUser.length / 2;
+/** Meshes the runtime draws or animates itself, kept out of the static batches. */
+const RUNTIME_MESHES = new Set(['windshield_surface', ...Object.values(roadUser?.lightBar ?? {})]);
 const config = JSON.parse(readFileSync(`${folder}/import.json`, 'utf8'));
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
 let doc = await io.read(`${folder}/${config.source}`);
@@ -106,8 +120,8 @@ function fixMaterials(fixes) {
     }
 }
 
-/** Turns the model nose-first along -z, scales it to the car's length and puts the seated eye at the
- *  origin: nose `body.eye` ahead, wheels on y = 0, centred across on `config.centreOn` (or the whole). */
+/** Turns the model nose-first along -z, scales it to its length and puts it on the road (wheels on y = 0),
+ *  centred across on `config.centreOn` (or the whole), with the nose at `noseZ`. */
 function align() {
     const turn = (config.yawDeg * Math.PI) / 360;
     const root = doc.createNode('align').setRotation([0, Math.sin(turn), 0, Math.cos(turn)]);
@@ -118,9 +132,9 @@ function align() {
     scene().addChild(root);
     const whole = getBounds(scene());
     const across = config.centreOn ? getBounds(named([config.centreOn])[0]) : whole;
-    const s = car.body.length / (whole.max[2] - whole.min[2]);
+    const s = length / (whole.max[2] - whole.min[2]);
     root.setScale([s, s, s]);
-    root.setTranslation([-s * (across.min[0] + across.max[0]) / 2, -s * whole.min[1], -car.body.eye - s * whole.min[2]]);
+    root.setTranslation([-s * (across.min[0] + across.max[0]) / 2, -s * whole.min[1], noseZ - s * whole.min[2]]);
 }
 
 /** Bakes every mesh node's world transform into its geometry and drops the empty hierarchy. A generic
@@ -160,8 +174,8 @@ function meshNode(name, geometry, material) {
     return doc.createNode(name).setMesh(doc.createMesh(name).addPrimitive(primitive(geometry, material)));
 }
 
-/** Splits the triangles of `node` for which `keep(centroid, normal)` holds into a node of their own
- *  (null when none do). */
+/** Splits the triangles of `node` for which `keep(centroid, normal, uv)` holds into a node of their own
+ *  (null when none do); `uv` is the triangle's texture-space centroid, if it has one. */
 function splitTriangles(node, keep, name) {
     const prim = node.getMesh().listPrimitives()[0];
     const { position, index } = readPrimitive(prim);
@@ -173,7 +187,10 @@ function splitTriangles(node, keep, name) {
         const corners = [0, 1, 2].map((k) => { return Array.from(position.subarray(index[t + k] * 3, index[t + k] * 3 + 3)); });
         const centroid = scale(corners.reduce(add), 1 / 3);
         const normal = unit(cross(sub(corners[1], corners[0]), sub(corners[2], corners[0])));
-        (keep(centroid, normal) ? kept : rest).push(index[t], index[t + 1], index[t + 2]);
+        const uv = uvs && [0, 1].map((axis) => {
+            return [0, 1, 2].reduce((sum, k) => { return sum + uvs[index[t + k] * 2 + axis]; }, 0) / 3;
+        });
+        (keep(centroid, normal, uv) ? kept : rest).push(index[t], index[t + 1], index[t + 2]);
     }
     if (!kept.length) return null;
     const geometry = { position: [], normal: [], uv: [], index: [] };
@@ -459,7 +476,7 @@ async function decimateTo(target) {
 function batchStatic() {
     const byMaterial = new Map();
     for (const node of scene().listChildren()) {
-        if (!node.getMesh() || node.getName() === 'windshield_surface') continue;
+        if (!node.getMesh() || RUNTIME_MESHES.has(node.getName())) continue;
         for (const prim of node.getMesh().listPrimitives()) {
             const list = byMaterial.get(prim.getMaterial()) ?? [];
             list.push(prim);
@@ -557,7 +574,7 @@ function shift(geometry, offset) {
     return { ...geometry, position: geometry.position.map((v, i) => { return v + offset[i % 3]; }) };
 }
 
-const staticName = (label) => { return `static_${car.fullName} • ${label}`; };
+const staticName = (label) => { return `static_${car?.fullName ?? id} • ${label}`; };
 
 function placed(name, geometry, material, at, normal = null) {
     const node = meshNode(name, geometry, material).setTranslation(at);
@@ -629,6 +646,28 @@ function addRig() {
     }
 }
 
+/** Splits the light bar's lenses into one node per colour (`names`: { red, blue } node names), chosen by
+ *  the colour of their texture, each with an emissive copy of the material for the runtime to flash. */
+async function extractLights({ node: name }, names) {
+    const [node] = named([name]);
+    if (!node) throw new Error(`No light bar node "${name}"`);
+    const material = node.getMesh().listPrimitives()[0].getMaterial();
+    const texture = material.getBaseColorTexture();
+    const { data, info } = await sharp(texture.getImage()).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    const pixel = ([u, v]) => {
+        const x = Math.min(info.width - 1, Math.floor((u - Math.floor(u)) * info.width));
+        const y = Math.min(info.height - 1, Math.floor((v - Math.floor(v)) * info.height));
+        return Array.from(data.subarray((y * info.width + x) * 3, (y * info.width + x) * 3 + 3));
+    };
+    for (const [colour, nodeName] of Object.entries(names)) {
+        const lens = splitTriangles(node, (c, n, uv) => { return Boolean(uv) && LENS[colour](pixel(uv)); }, nodeName);
+        if (!lens) throw new Error(`No ${colour} lens on "${name}"`);
+        const glow = material.clone().setName(`light • ${colour}`).setEmissiveTexture(texture).setEmissiveFactor([1, 1, 1]);
+        lens.getMesh().listPrimitives()[0].setMaterial(glow);
+        console.info(`${nodeName}: ${triangles(lens.getMesh().listPrimitives()[0])} triangles`);
+    }
+}
+
 /** Downscales the embedded textures: { baseColor: size, other: size } in pixels. JPEG, except normal
  *  maps and images whose alpha is used (window regions of an atlas), which stay PNG. */
 async function shrinkTextures(sizes) {
@@ -657,26 +696,36 @@ if (flag === '--aligned') {
     await io.write(alignedPath, doc);
     process.exit(0);
 }
-const eye = [...config.eye, 0];
-extractWindshield(config.windshield);
-mountSteeringWheel(config.steeringWheel, eye);
-if (config.lever.parts || config.lever.box) mountLever(config.lever);
-// Flat-shaded sources weld by position alone so the decimator can work; their normals are rebuilt after.
-const crease = config.normals?.creaseDeg;
-keepAttributes(crease ? ['POSITION'] : ['POSITION', 'NORMAL', 'TEXCOORD_0']);
-if (!crease) ensureUVs();
-await doc.transform(weld());
-await decimateTo(TRIANGLE_TARGET - GENERATED_TRIANGLES);
-if (crease) for (const prim of allPrimitives()) creaseNormals(prim, crease);
-ensureUVs();
-mapWindshield(named(['windshield_surface'])[0]);
-batchStatic();
-addRig();
+/** Welds, then decimates the whole model down to `target` triangles. Flat-shaded sources weld by
+ *  position alone so the decimator can work; their normals are rebuilt after. */
+async function weldAndDecimate(target) {
+    const crease = config.normals?.creaseDeg;
+    keepAttributes(crease ? ['POSITION'] : ['POSITION', 'NORMAL', 'TEXCOORD_0']);
+    if (!crease) ensureUVs();
+    await doc.transform(weld());
+    await decimateTo(target);
+    if (crease) for (const prim of allPrimitives()) creaseNormals(prim, crease);
+    ensureUVs();
+}
+
+if (car) {
+    extractWindshield(config.windshield);
+    mountSteeringWheel(config.steeringWheel, [...config.eye, 0]);
+    if (config.lever.parts || config.lever.box) mountLever(config.lever);
+    await weldAndDecimate(TRIANGLE_TARGET - GENERATED_TRIANGLES);
+    mapWindshield(named(['windshield_surface'])[0]);
+    batchStatic();
+    addRig();
+} else {
+    if (roadUser.lightBar) await extractLights(config.lights, roadUser.lightBar);
+    await weldAndDecimate(config.triangles);
+    batchStatic();
+}
 if (config.textures) await shrinkTextures(config.textures);
 // Keeps the empty eye/mirror-camera markers and the UVs the runtime draws on; the radar LEDs need
 // their own meshes for their runtime materials, so only data is shared.
 await doc.transform(prune({ keepLeaves: true, keepAttributes: true }), dedup({ propertyTypes: [PropertyType.ACCESSOR, PropertyType.TEXTURE] }));
-const out = `${folder}/cabin.glb`;
+const out = `${folder}/${car ? 'cabin' : 'model'}.glb`;
 await io.write(out, doc);
 const bounds = getBounds(scene());
 console.info(`${out}: ${countTriangles()} triangles; ${bounds.min.map((v) => { return v.toFixed(3); })} .. ${bounds.max.map((v) => { return v.toFixed(3); })}`);

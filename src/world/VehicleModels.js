@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TRAFFIC_TYPES } from '../data/traffic.js';
+import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 
 const BEVEL = {
     bevelEnabled: true,
@@ -10,10 +11,13 @@ const BEVEL = {
 };
 const GLASS_INSET = 0.12;
 const LIGHT_BAR_FLASH_HZ = 2.6;
+const LIGHT_BAR_GLOW = { flash: 6, idle: 0.2 };
 
-/** Builds and caches 3D models of the road users (extruded side profiles, semis, patrol cars). */
+/** Builds and caches 3D models of the road users (extruded side profiles, semis, authored models). */
 export class VehicleModels {
-    constructor() {
+    constructor(resources) {
+        this.resources = resources;
+        this.templates = new Map();
         this.geometries = new Map();
         this.materials = new Map();
         this.glass = new THREE.MeshStandardMaterial({ color: '#10161c', roughness: 0.06, metalness: 0.5 });
@@ -32,10 +36,25 @@ export class VehicleModels {
         });
     }
 
+    /** Loads the road users that have an authored model (cached; every stage reuses them). */
+    prepare() {
+        return Promise.all(Object.values(TRAFFIC_TYPES).filter((spec) => { return spec.model; }).map((spec) => {
+            return this.resources.model(spec.model, async (url) => {
+                const scene = (await new GLTFLoader().loadAsync(url)).scene;
+                for (const name of Object.values(spec.lightBar ?? {})) {
+                    if (!scene.getObjectByName(name)?.isMesh) throw new Error(`${spec.model} has no light bar mesh "${name}"`);
+                }
+                return scene;
+            }).then((scene) => {
+                this.templates.set(spec.model, scene);
+            });
+        }));
+    }
+
     /** A new model group for `vehicle`; local -z is its front. */
     create(vehicle) {
         const spec = TRAFFIC_TYPES[vehicle.type];
-        const group = spec.semi ? this._semi(vehicle) : this._car(vehicle, spec);
+        const group = spec.model ? this._modelled(vehicle, spec) : spec.semi ? this._semi(vehicle) : this._car(vehicle, spec);
         group.traverse((child) => {
             child.castShadow = true;
         });
@@ -47,8 +66,25 @@ export class VehicleModels {
         const bar = group.userData.lightBar;
         if (!bar) return;
         const phase = Math.floor(time * LIGHT_BAR_FLASH_HZ * 2) % 2;
-        bar.red.emissiveIntensity = group.userData.siren && phase === 0 ? 6 : 0.2;
-        bar.blue.emissiveIntensity = group.userData.siren && phase === 1 ? 6 : 0.2;
+        bar.red.emissiveIntensity = group.userData.siren && phase === 0 ? LIGHT_BAR_GLOW.flash : LIGHT_BAR_GLOW.idle;
+        bar.blue.emissiveIntensity = group.userData.siren && phase === 1 ? LIGHT_BAR_GLOW.flash : LIGHT_BAR_GLOW.idle;
+    }
+
+    /** A copy of the authored model; its light bar lenses get materials of their own to flash. */
+    _modelled(vehicle, spec) {
+        const template = this.templates.get(spec.model);
+        if (!template) throw new Error(`Road user model ${spec.model} was not prepared`);
+        const group = template.clone(true);
+        if (spec.lightBar) {
+            const lens = (name) => {
+                const mesh = group.getObjectByName(name);
+                mesh.material = mesh.material.clone();
+                return mesh.material;
+            };
+            group.userData.lightBar = { red: lens(spec.lightBar.red), blue: lens(spec.lightBar.blue) };
+            group.userData.siren = Boolean(vehicle.siren);
+        }
+        return group;
     }
 
     paint(color) {
@@ -91,25 +127,7 @@ export class VehicleModels {
         }
         group.add(box(width * 0.98, 0.16, 0.12, this.trim, 0, 0.42, length / 2));
         group.add(box(width * 0.98, 0.16, 0.12, this.trim, 0, 0.42, -length / 2));
-        if (spec.lightBar) this._addLightBar(group, body.roof + 0.1, vehicle);
         return group;
-    }
-
-    _addLightBar(group, y, vehicle) {
-        const red = new THREE.MeshStandardMaterial({
-            color: '#600',
-            emissive: '#ff1010',
-            emissiveIntensity: 0.2,
-        });
-        const blue = new THREE.MeshStandardMaterial({
-            color: '#006',
-            emissive: '#2050ff',
-            emissiveIntensity: 0.2,
-        });
-        group.add(box(0.55, 0.14, 0.28, red, -0.3, y, 0.2), box(0.55, 0.14, 0.28, blue, 0.3, y, 0.2));
-        group.add(box(1.7, 0.18, 0.04, this.trim, 0, 0.62, 0));
-        group.userData.lightBar = { red, blue };
-        group.userData.siren = Boolean(vehicle.siren);
     }
 
     _semi(vehicle) {

@@ -65,7 +65,7 @@ export class WorldView {
         // A mirror shows the rear view flipped left to right.
         this.mirrorTarget.texture.wrapS = THREE.RepeatWrapping;
         this.mirrorTarget.texture.repeat.x = -1;
-        this.vehicles = new VehicleModels();
+        this.vehicles = new VehicleModels(resources);
         this.models = new Map();
         this.scene = null;
         this.cabin = null;
@@ -93,8 +93,14 @@ export class WorldView {
         this.scale = scale;
     }
 
-    /** Loads and validates the car's cached cabin asset before scene construction. */
+    /** Loads everything a stage with `car` needs before scene construction: its cabin (resolved, null
+     *  without one) and the road users' models. */
     prepare(car) {
+        return Promise.all([this.prepareCabin(car), this.vehicles.prepare()]).then(([cabin]) => { return cabin; });
+    }
+
+    /** Loads and validates the car's cached cabin asset (null for a car without one). */
+    prepareCabin(car) {
         if (!car.cockpit.model) return null;
         return this.resources.model(car.cockpit.model, async (url) => {
             const asset = await new GLTFLoader().loadAsync(url);
@@ -112,7 +118,7 @@ export class WorldView {
     profile(car) {
         if (!car.cockpit.model) return null;
         return this.resources.memo(`profile:${car.id}`, async () => {
-            return photographProfile(await this.prepare(car));
+            return photographProfile(await this.prepareCabin(car));
         });
     }
 

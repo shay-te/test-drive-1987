@@ -14,6 +14,7 @@ The Lotus model is a right-hand-drive car, so its driver sits on the right.
 | Lamborghini Countach | [1985 Lamborghini Countach LP5000 QV](https://sketchfab.com/3d-models/1985-lamborghini-countach-lp5000-qv-1bd6795f12ea4476bf8afe1b3d988ed7) | OUTPISTON | [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/) |
 | Lotus Esprit Turbo | [Lotus Esprit Turbo 1983](https://sketchfab.com/3d-models/lotus-esprit-turbo-1983-886bcf8ce52f46e3b36115e01319ec44) | esprit3d.website | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
 | Chevrolet Corvette | [Chevrolet Corvette C4](https://sketchfab.com/3d-models/chevrolet-corvette-c4-944ec751e0334d58b249cb983147e7e9) | Randomness | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
+| Police car (traffic) | [2001 Crown Victoria Police Interceptor Game Prop](https://sketchfab.com/3d-models/2001-crown-victoria-police-interceptor-game-prop-9f30d360cee343efb5a441978ddb57bd) | 8sianDude | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
 
 The Countach model is non-commercial and share-alike: it and its derived `lamborghini/cabin.glb` stay
 under CC BY-NC-SA 4.0, not the repository's MIT license.
@@ -25,7 +26,10 @@ materials adjusted, and the runtime parts below added. The game loads only `cabi
 ## Import pipeline
 
 `scripts/import-car.mjs <carId>` turns `assets/models/<carId>/<source>.glb` into
-`assets/models/<carId>/cabin.glb`, following `assets/models/<carId>/import.json`:
+`assets/models/<carId>/cabin.glb`, following `assets/models/<carId>/import.json`. Given a road-user id
+from `src/data/traffic.js` instead (`police`), it writes `model.glb`: centred on the road at the
+traffic length, decimated to `triangles`, with the light bar's lenses split by colour (`lights.node`)
+into the meshes named by the type's `lightBar`, which the game flashes. The cabin options are:
 
 - `yawDeg`, `centreOn` — turn the model nose-first along −z and centre it across. It is scaled to
   `body.length` from `src/data/cars.js`, put on the road, and moved so the nose is `body.eye` ahead of
@@ -114,6 +118,7 @@ Work files go to `tmp/` (ignored by git). The browser tools need `npm start` run
 | Lamborghini Countach | 93,091 | 45 | 4.7 MB | 1.3 mm |
 | Lotus Esprit Turbo | 93,073 | 34 | 4.9 MB | 1.8 mm |
 | Chevrolet Corvette | 93,062 | 41 | 5.4 MB | 0.3 mm |
+| Police car | 19,999 | 9 | 2.9 MB | 1.4 mm |
 
 The budgets are 100,000 triangles, 50 primitives and 8 MiB per car (`tests/cabinAsset.test.js`).
 

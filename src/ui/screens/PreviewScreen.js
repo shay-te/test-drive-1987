@@ -44,7 +44,7 @@ export class PreviewScreen {
 
     _prepare() {
         this.failed = false;
-        Promise.resolve(this.world.prepare(this.car)).then((asset) => {
+        Promise.resolve(this.world.prepareCabin(this.car)).then((asset) => {
             this.world.loadPreview(this.stage, this.car, asset);
             this.ready = true;
         }).catch((error) => {
