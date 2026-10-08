@@ -6,9 +6,9 @@ a mountain road with a rock face on one side and a sheer drop on the other, truc
 patrol cars and a gas station at the end of every stage.
 
 > **Status: playable, being polished.** Title, car brochure, all five stages, gas station,
-> results and high scores work end to end. You sit in a real 3D cabin (the Porsche 930's is
-> modelled from an owner photo and the factory blueprint); the other cars use the same cabin with
-> their own instruments, wheel and shifter until they get their own.
+> results and high scores work end to end. The Porsche uses an editable GLB integration cabin;
+> the other cars retain procedural cabins with their own instruments, wheel and shifter.
+> Detailed cabin modeling and reference-based visual acceptance are the next phase.
 
 ### Done
 
@@ -26,7 +26,7 @@ patrol cars and a gas station at the end of every stage.
 
 ### Next
 
-1. Model the other four cabins (Testarossa, Countach, Esprit, C4) like the 930's.
+1. Model the Porsche's full interior against references, then the other four cabins.
 2. Tune the cabin materials and lighting against the reference photos; handling feedback pass.
 3. Test on phones (touch controls, performance of the cabin pass).
 
@@ -50,11 +50,18 @@ Any static web server works; no build step. three.js 0.180.0 is loaded from jsDe
 | ← → | steer |
 | ↑ / ↓ | accelerate / brake |
 | A / Z | shift up / down (you start in neutral) |
-| Q / E | look left / right |
+| Drag or Q / E | look left / right (view stays where you leave it) |
+| R / F | look up / down |
+| C | return to forward view |
+| 1–7 | inspect dashboard, console, doors, seats, roof and rear cabin |
 | I | digital mph / rpm readout |
 | M | mute, P pause |
 
-Gamepads (standard mapping) and touch controls work too.
+Gamepads (standard mapping) and touch controls work too. The right stick looks around; press it to centre the view. Drag on the world canvas to look on touch devices while the buttons control driving. Looking around also works while paused.
+
+## Cabin assets
+
+The Porsche uses a simple integration GLB with live instruments, animated controls, and a seated camera. Detailed visual modeling is the next phase. Inspect it at [preview.html](preview.html); use keys 1–7 for repeatable interior viewpoints. See [the asset contract and Blender workflow](assets/models/README.md) before replacing its geometry.
 
 ## The cars
 

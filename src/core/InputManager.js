@@ -1,3 +1,5 @@
+import { CABIN_VIEWS } from '../data/cabinViews.js';
+import { LOOK } from '../config.js';
 import { clamp } from '../util/math.js';
 
 /** Keys of the 1987 PC version (arrows + A/Z) plus a few modern conveniences. */
@@ -14,6 +16,11 @@ const KEY_BINDINGS = {
     mute: ['KeyM'],
     lookLeft: ['KeyQ'],
     lookRight: ['KeyE'],
+    lookUp: ['KeyR'],
+    lookDown: ['KeyF'],
+    centerLook: ['KeyC'],
+    previewRadar: ['Digit8'],
+    previewCrack: ['Digit9'],
     toggleDigital: ['KeyI'],
     up: ['ArrowUp'],
     down: ['ArrowDown'],
@@ -28,6 +35,7 @@ const PAD_BUTTONS = {
     pause: [9],
     shiftUp: [5, 3],
     shiftDown: [4, 2],
+    centerLook: [11],
     up: [12],
     down: [13],
     left: [14],
@@ -45,6 +53,10 @@ export class InputManager {
         this.padButtons = [];
         this.prevPadButtons = [];
         this.padAxes = [0, 0];
+        this.padLook = [0, 0];
+        this.lookEnabled = false;
+        this.pointerLook = { x: 0, y: 0 };
+        this.drag = null;
         this.padTriggers = [0, 0];
         this.typed = [];
         target.addEventListener('keydown', (e) => {
@@ -55,12 +67,56 @@ export class InputManager {
         });
         target.addEventListener('blur', () => {
             this.keys.clear();
+            this.touchActions.clear();
+            this.drag = null;
+            this.pointerLook = { x: 0, y: 0 };
         });
         this._bindTouch(touchRoot);
-        // A click or tap anywhere outside the touch buttons confirms (menus, "press ENTER").
-        target.addEventListener('pointerdown', (e) => {
-            if (!e.target.closest?.('[data-action]')) this.pressedTouch.add('confirm');
+        this._bindLook(target);
+    }
+
+    setLookEnabled(enabled) {
+        this.lookEnabled = enabled;
+        this.drag = null;
+        this.pointerLook = { x: 0, y: 0 };
+    }
+
+    _bindLook(target) {
+        target.addEventListener('pointerdown', (event) => {
+            if (event.target.closest?.('[data-action]')) return;
+            if (this.lookEnabled && event.target.closest?.('canvas') && event.button === 0) {
+                this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY, distance: 0 };
+                event.target.setPointerCapture?.(event.pointerId);
+            } else this.pressedTouch.add('confirm');
         });
+        target.addEventListener('pointermove', (event) => {
+            if (!this.drag || this.drag.id !== event.pointerId) return;
+            const dx = event.clientX - this.drag.x;
+            const dy = event.clientY - this.drag.y;
+            this.drag.x = event.clientX;
+            this.drag.y = event.clientY;
+            this.drag.distance += Math.hypot(dx, dy);
+            this.pointerLook.x += dx;
+            this.pointerLook.y += dy;
+        });
+        target.addEventListener('pointerup', (event) => {
+            if (!this.drag || this.drag.id !== event.pointerId) return;
+            if (this.drag.distance < LOOK.dragThreshold) this.pressedTouch.add('confirm');
+            this.drag = null;
+        });
+        target.addEventListener('pointercancel', () => { this.drag = null; });
+    }
+
+    look() {
+        const axis = (value) => { return Math.abs(value) > PAD_DEADZONE ? value : 0; };
+        return {
+            yaw: clamp((this.isDown('lookRight') ? 1 : 0) - (this.isDown('lookLeft') ? 1 : 0) + axis(this.padLook[0]), -1, 1),
+            pitch: clamp((this.isDown('lookUp') ? 1 : 0) - (this.isDown('lookDown') ? 1 : 0) - axis(this.padLook[1]), -1, 1),
+            pointerX: this.pointerLook.x,
+            pointerY: this.pointerLook.y,
+            center: this.pressed('centerLook'),
+            view: CABIN_VIEWS.find((_, index) => { return this.pressedKeys.has(`Digit${index + 1}`); }),
+        };
     }
 
     _onKey(event, down) {
@@ -102,6 +158,7 @@ export class InputManager {
               })
             : [];
         this.padAxes = pad ? [pad.axes[0] ?? 0, pad.axes[1] ?? 0] : [0, 0];
+        this.padLook = pad ? [pad.axes[2] ?? 0, pad.axes[3] ?? 0] : [0, 0];
         this.padTriggers = pad ? [pad.buttons[6]?.value ?? 0, pad.buttons[7]?.value ?? 0] : [0, 0];
     }
 
@@ -153,6 +210,8 @@ export class InputManager {
     }
 
     endFrame() {
+        this.pointerLook.x = 0;
+        this.pointerLook.y = 0;
         this.pressedKeys.clear();
         this.pressedTouch.clear();
     }

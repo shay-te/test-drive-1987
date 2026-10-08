@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { leverAngles } from './cabinAnimation.js';
 import { CABIN } from './cabinLayout.js';
 import { part } from './shapes.js';
 
@@ -25,8 +26,8 @@ export class CabinShifter {
 
     /** Tilts the lever so its knob sits at gate position `knob` = [column, row]. */
     update(knob) {
-        const s = CABIN.shifter;
-        this.pivot.rotation.z = -Math.atan2(knob[0] * s.col, s.length);
-        this.pivot.rotation.x = Math.atan2(knob[1] * s.row, s.length);
+        const angles = leverAngles(knob);
+        this.pivot.rotation.z = angles.z;
+        this.pivot.rotation.x = angles.x;
     }
 }

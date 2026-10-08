@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { t } from '../../i18n/i18n.js';
 import { font } from '../../ui/theme.js';
-import { DEG, clamp } from '../../util/math.js';
+import { DEG } from '../../util/math.js';
+import { wheelAngle } from './cabinAnimation.js';
 import { CABIN } from './cabinLayout.js';
 import { part, roundedSlab } from './shapes.js';
 
@@ -32,7 +33,7 @@ export class CabinWheel {
 
     /** Turns the wheel for `steer` (-1..1, right positive). */
     update(steer) {
-        this.spin.rotation.z = -clamp(steer, -1, 1) * CABIN.wheel.maxTurnDeg * DEG;
+        this.spin.rotation.z = wheelAngle(steer);
     }
 
     _spoke(angle, material) {

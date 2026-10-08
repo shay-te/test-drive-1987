@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { normalMapFromHeights } from '../../util/canvas.js';
 import { shadeHex } from '../../util/color.js';
+import { CABIN } from './cabinLayout.js';
 import { createRng } from '../../util/math.js';
 
 const GRAIN_PIXELS = 256;
@@ -41,12 +42,9 @@ export class CabinMaterials {
         this.knob = plain(car.cockpit.shifter.knob, 0.35);
         this.chrome = new THREE.MeshStandardMaterial({ color: '#d9dde2', metalness: 1, roughness: 0.16 });
         this.glass = new THREE.MeshStandardMaterial({
-            color: '#0a0e12',
-            roughness: 0.04,
+            ...CABIN.glass,
             transparent: true,
-            opacity: 0.05,
             side: THREE.DoubleSide,
-            envMapIntensity: 0.5,
             depthWrite: false,
         });
         this.paint = new THREE.MeshPhysicalMaterial({
@@ -56,11 +54,11 @@ export class CabinMaterials {
             clearcoat: 1,
             clearcoatRoughness: 0.06,
         });
-        this.ledOff = plain('#2a0505', 0.4);
+        this.ledOff = plain(CABIN.radarLight.off, 0.4);
         this.ledOn = new THREE.MeshStandardMaterial({
-            color: '#ff1a0a',
-            emissive: '#ff1a0a',
-            emissiveIntensity: 1.4,
+            color: CABIN.radarLight.on,
+            emissive: CABIN.radarLight.on,
+            emissiveIntensity: CABIN.radarLight.intensity,
         });
         this.power = new THREE.MeshStandardMaterial({
             color: '#9dff7a',

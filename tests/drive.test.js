@@ -9,17 +9,17 @@ import { DriveScreen } from '../src/ui/screens/DriveScreen.js';
 
 const FRAME = 1 / 60;
 /** The 3D world needs WebGL, so the drive screen gets one that only accepts calls. */
-const offscreenWorld = { load() {}, render() {}, clear() {} };
+const offscreenWorld = { prepare() { return null; }, load() {}, render() {}, clear() {} };
 
 /** A real drive screen on a real stage, played through a real InputManager. */
-function startStage(carId = 'porsche') {
+function startStage(carId = 'porsche', world = offscreenWorld) {
     const keyboard = new EventTarget();
     const input = new InputManager(keyboard, null);
     const screen = new DriveScreen({
         game: { go() {} },
         audio: new AudioManager(new ResourceManager()),
         input,
-        world: offscreenWorld,
+        world,
     });
     screen.enter({ session: new Session(carById(carId)) });
     const key = (type, code) => {
@@ -78,4 +78,35 @@ test('near the redline below top gear the driver is told to shift up, and the hi
     run(0.5);
     assert.equal(screen.vehicle.engine.gear, 2);
     assert.equal(screen.shiftHint, false);
+});
+
+
+test('driving waits for model preparation and advances only after the asset is ready', async () => {
+    let complete;
+    let calls = 0;
+    const preparation = new Promise((resolve) => { complete = resolve; });
+    const { screen, run } = startStage('porsche', {
+        ...offscreenWorld,
+        prepare() { calls++; return preparation; },
+    });
+    run(1);
+    assert.equal(calls, 1);
+    assert.equal(screen.state, 'loading');
+    assert.equal(screen.session.stageTime, 0);
+    complete(null);
+    await preparation;
+    assert.equal(screen.state, 'driving');
+    run(1);
+    assert.ok(screen.session.stageTime > 0);
+});
+
+test('leaving during preparation does not build a late cabin or resurrect the drive', async () => {
+    let complete;
+    const preparation = new Promise((resolve) => { complete = resolve; });
+    const { screen } = startStage('porsche', { ...offscreenWorld, prepare() { return preparation; } });
+    screen.exit();
+    complete(null);
+    await preparation;
+    assert.equal(screen.vehicle, undefined);
+    assert.equal(screen.input.lookEnabled, false);
 });

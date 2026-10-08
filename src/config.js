@@ -64,13 +64,31 @@ export const MOTION = Object.freeze({
     nodPerG: 0.035,
     headPitchPerG: 0.04,
     headRollPerG: 0.06,
-    /** Turning to look out of a side window. */
-    lookYaw: 1.15,
     /** Vertical road vibration (m) at 30 m/s, and its spatial frequency (cycles per metre). */
     buzz: Object.freeze({ asphalt: 0.0015, gravel: 0.007 }),
     buzzPerMetre: 0.8,
     /** Head velocity kick (m/s) per m/s of crash impact. */
     impactKick: 0.05,
+});
+
+/** Seated look-around limits, angular rate, pointer response, and tap threshold. */
+export const LOOK = Object.freeze({
+    yawLimit: 2.8,
+    pitchUp: 0.9,
+    pitchDown: 1.1,
+    speed: 1.8,
+    pointerSensitivity: 0.004,
+    dragThreshold: 5,
+});
+
+/** Layout and demonstration settings for the isolated cabin inspection screen. */
+export const PREVIEW = Object.freeze({
+    titleY: 30,
+    hintsY: 60,
+    viewsY: 90,
+    viewSpacing: 170,
+    crack: { x: 640, y: 200, seed: 1987 },
+    radar: 0.75,
 });
 
 /** A car over the edge is a rigid body tumbling down to the valley. Contact values are per hull point. */

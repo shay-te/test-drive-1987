@@ -1,14 +1,12 @@
 import * as THREE from 'three';
-import { ROAD, VIEW } from '../../config.js';
-import { drawCrack } from '../../cockpit/Windshield.js';
+import { ROAD } from '../../config.js';
+import { CabinWindshield } from './CabinWindshield.js';
 import { DEG } from '../../util/math.js';
 import { CABIN } from './cabinLayout.js';
 import { RadarDetector } from './RadarDetector.js';
 import { beam, part, profileSweep, roundedSlab } from './shapes.js';
 
 const DOOR_THICKNESS = 0.07;
-/** The crack is painted in screen-like units across the glass (see drawCrack). */
-const CRACK_CANVAS = { w: VIEW.width, h: 480 };
 const SEAT = { width: 0.5, cushion: 0.5, back: 0.62, thickness: 0.13 };
 
 /** Everything around the driver that does not move on its own: roof, pillars, doors, glass, seats,
@@ -111,19 +109,8 @@ export class CabinShell {
         windshield.computeVertexNormals();
         this.windshield = new THREE.Mesh(windshield, this.materials.glass);
         this.windshield.renderOrder = 1;
-        const canvas = document.createElement('canvas');
-        canvas.width = CRACK_CANVAS.w;
-        canvas.height = CRACK_CANVAS.h;
-        this.crackTexture = new THREE.CanvasTexture(canvas);
-        this.crackTexture.colorSpace = THREE.SRGBColorSpace;
-        this.crack = new THREE.Mesh(
-            windshield,
-            new THREE.MeshBasicMaterial({ map: this.crackTexture, transparent: true, depthWrite: false }),
-        );
-        this.crack.renderOrder = 2;
-        this.crack.visible = false;
-        this.crackSeed = null;
-        this.group.add(this.windshield, this.crack);
+        this.crack = new CabinWindshield(windshield);
+        this.group.add(this.windshield, this.crack.mesh);
         // Side windows run from the A-pillar back to the B-pillar, above the belt line.
         const outline = new THREE.Shape([
             new THREE.Vector2(w.baseZ, CABIN.belt),
@@ -142,14 +129,7 @@ export class CabinShell {
 
     /** Shatters the windshield from `crack` = {x, y, seed} (layout px), or clears it with null. */
     setCrack(crack) {
-        this.crack.visible = crack !== null;
-        if (!crack || crack.seed === this.crackSeed) return;
-        this.crackSeed = crack.seed;
-        const canvas = this.crackTexture.image;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawCrack(ctx, crack);
-        this.crackTexture.needsUpdate = true;
+        this.crack.update(crack);
     }
 
     _floor() {

@@ -10,11 +10,11 @@ const BANNER = { w: 760, h: 120, y: 120 };
 
 // Messages drawn over the windshield while driving: stage intro, crash, ticket, pause, notices.
 
-export function drawLoading(ctx, time) {
+export function drawLoading(ctx, time, failed = false, retryKey = 'drive.assetRetry') {
     ctx.fillStyle = COLORS.ink;
     ctx.fillRect(0, 0, VIEW.width, VIEW.height);
-    drawText(ctx, t('drive.loading'), CENTER, VIEW.height / 2, { size: 26, color: COLORS.chrome });
-    drawPrompt(ctx, t('general.loading'), time, VIEW.height / 2 + 50);
+    drawText(ctx, t(failed ? 'drive.assetError' : 'drive.loading'), CENTER, VIEW.height / 2, { size: 26, color: COLORS.chrome });
+    drawPrompt(ctx, t(failed ? retryKey : 'general.loading'), time, VIEW.height / 2 + 50);
 }
 
 /** "STAGE 2 OF 5 — name" and how to pull away, fading out after `time` seconds. */

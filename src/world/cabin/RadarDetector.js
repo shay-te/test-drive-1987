@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { t } from '../../i18n/i18n.js';
 import { font } from '../../ui/theme.js';
+import { radarLights } from './cabinAnimation.js';
 import { CABIN } from './cabinLayout.js';
 import { part } from './shapes.js';
 
-const LED_BLINK_HZ = 6;
 const LABEL_TEXELS = 2400;
 
 /** The radar detector clipped to the sun visor: a row of red LEDs that fill up as the signal grows. */
@@ -28,10 +28,9 @@ export class RadarDetector {
 
     /** Lights LEDs for a 0..1 `signal`, blinking when it is strong. */
     update(signal, time) {
-        const lit = Math.ceil(signal * this.leds.length);
-        const blinkOff = signal > 0.85 && Math.floor(time * LED_BLINK_HZ) % 2 === 1;
+        const lights = radarLights(signal, time, this.leds.length);
         this.leds.forEach((led, i) => {
-            led.material = i < lit && !blinkOff ? this.materials.ledOn : this.materials.ledOff;
+            led.material = lights[i] ? this.materials.ledOn : this.materials.ledOff;
         });
     }
 

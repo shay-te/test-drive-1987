@@ -57,12 +57,20 @@ export class ResourceManager {
         if (!this.pending.has(key)) {
             const promise = loader().then((value) => {
                 this.cache.set(key, value);
-                this.pending.delete(key);
                 return value;
+            }).finally(() => {
+                this.pending.delete(key);
             });
             this.pending.set(key, promise);
         }
         return this.pending.get(key);
+    }
+
+    /** Caches a loaded model while leaving format decoding to the renderer's loader. */
+    model(path, loader) {
+        return this._load(`model:${path}`, () => {
+            return loader(this.url(path));
+        });
     }
 
     font(family, descriptor = '16px') {

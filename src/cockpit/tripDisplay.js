@@ -1,8 +1,23 @@
+import { GAME } from '../config.js';
+import { STAGES } from '../data/stages.js';
 import { t } from '../i18n/i18n.js';
 import { COLORS, font } from '../ui/theme.js';
 import { radialGradient } from '../util/canvas.js';
 import { formatClock, formatMiles } from '../util/format.js';
 import { TAU } from '../util/math.js';
+
+/** Maps a real session and remaining road distance to the trip computer's information. */
+export function tripInfo(session, remaining) {
+    return {
+        stage: session.stageIndex + 1,
+        total: STAGES.length,
+        elapsed: session.elapsed,
+        remaining: Math.max(0, remaining),
+        summit: Boolean(session.stage.summit),
+        chances: session.chances,
+        maxChances: GAME.chances,
+    };
+}
 
 /** Text lines of the trip computer: what changes between frames decides when to repaint. */
 export function tripLines(view) {

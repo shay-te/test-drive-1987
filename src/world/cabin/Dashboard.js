@@ -1,43 +1,33 @@
 import * as THREE from 'three';
-import { ClusterFace } from '../../cockpit/ClusterFace.js';
+import { CabinDisplays } from './CabinDisplays.js';
 import { CLUSTERS, POD_RADIUS } from '../../cockpit/clusters.js';
-import { paintTripDisplay } from '../../cockpit/tripDisplay.js';
 import { DEG } from '../../util/math.js';
 import { CABIN } from './cabinLayout.js';
 import { beam, part, profileSweep, roundedRect, roundedSlab } from './shapes.js';
 
 /** Margin of the black pod panel around the instrument face (m). */
 const PANEL_MARGIN = 0.03;
-const TRIP_TEXELS = 3200;
 const SLAT = 0.011;
-const DIAL_GLOW = 0.45;
 
 /** The dashboard: padded top and hood, instruments behind their pods, fascia, vents, radio, console. */
 export class Dashboard {
     constructor(car, materials, resources) {
         const cluster = CLUSTERS[car.cockpit.cluster];
         this.materials = materials;
+        this.displays = new CabinDisplays(car, resources);
         this.group = new THREE.Group();
         this._body();
-        this._instruments(car, cluster, resources);
+        this._instruments(cluster);
         this._fascia();
         this._vent(CABIN.squareVent, 1);
         this._vent(CABIN.louvre, 2);
         this._radio();
         this._console();
-        this.lastTrip = '';
     }
 
     /** Repaints the live instruments and, when its text changed, the trip computer. */
     update(state, readings, lamps, tripLines) {
-        this.face.paint(state, readings, lamps);
-        this.clusterTexture.needsUpdate = true;
-        const key = JSON.stringify(tripLines);
-        if (key === this.lastTrip) return;
-        this.lastTrip = key;
-        const canvas = this.tripTexture.image;
-        paintTripDisplay(canvas.getContext('2d'), canvas.width, canvas.height, tripLines);
-        this.tripTexture.needsUpdate = true;
+        this.displays.update(state, readings, lamps, tripLines);
     }
 
     _body() {
@@ -67,10 +57,9 @@ export class Dashboard {
     }
 
     /** The cluster painted on a face under the hood, seen through a black panel with one hole per pod. */
-    _instruments(car, cluster, resources) {
+    _instruments(cluster) {
         const f = CABIN.face;
-        this.face = new ClusterFace(resources, cluster, car.cockpit.cluster);
-        const b = this.face.bounds;
+        const b = this.displays.face.bounds;
         const width = b.w * f.scale;
         const height = b.h * f.scale;
         const cx = b.x + b.w / 2;
@@ -82,20 +71,9 @@ export class Dashboard {
         const frame = new THREE.Group();
         frame.position.set(f.x, f.y, f.z);
         frame.rotation.x = -f.tiltDeg * DEG;
-        this.clusterTexture = new THREE.CanvasTexture(this.face.canvas);
-        this.clusterTexture.colorSpace = THREE.SRGBColorSpace;
-        this.clusterTexture.anisotropy = 4;
         const dial = new THREE.Mesh(
             new THREE.PlaneGeometry(width, height),
-            // Lit from behind as well, so the dials stay readable in the hood's shade.
-            new THREE.MeshStandardMaterial({
-                map: this.clusterTexture,
-                emissiveMap: this.clusterTexture,
-                emissive: '#ffffff',
-                emissiveIntensity: DIAL_GLOW,
-                roughness: 0.5,
-                envMapIntensity: 0.2,
-            }),
+            this.displays.clusterMaterial,
         );
         dial.receiveShadow = true;
         frame.add(dial);
@@ -176,14 +154,9 @@ export class Dashboard {
         body.position.set(r.x, r.y, z);
         this.group.add(body);
         const d = r.display;
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(d.w * TRIP_TEXELS);
-        canvas.height = Math.round(d.h * TRIP_TEXELS);
-        this.tripTexture = new THREE.CanvasTexture(canvas);
-        this.tripTexture.colorSpace = THREE.SRGBColorSpace;
         const screen = new THREE.Mesh(
             new THREE.PlaneGeometry(d.w, d.h),
-            new THREE.MeshBasicMaterial({ map: this.tripTexture, toneMapped: false }),
+            this.displays.tripMaterial,
         );
         screen.position.set(r.x + d.x, r.y, z + 0.0105);
         this.group.add(screen);

@@ -28,7 +28,7 @@ jobs:
                   git fetch origin gh-pages
                   git worktree add site origin/gh-pages
                   rm -rf site/index.html site/css site/src site/assets site/LICENSE
-                  cp -r index.html css src assets LICENSE site/
+                  cp -r index.html preview.html css src assets LICENSE site/
                   touch site/.nojekyll
                   cd site
                   git add -A
