@@ -283,7 +283,17 @@ const firefoxBrowser = await firefox.launch({
     firefoxUserPrefs: { 'webgl.force-enabled': true, 'gfx.webrender.software': true },
 });
 try {
-    results.firefox = await confirmLoading(firefoxBrowser, 'firefox', undefined);
+    const probe = await firefoxBrowser.newPage();
+    const webgl = await probe.evaluate(() => { return Boolean(document.createElement('canvas').getContext('webgl2')); });
+    await probe.close();
+    if (webgl) {
+        results.firefox = await confirmLoading(firefoxBrowser, 'firefox', undefined);
+    } else {
+        // GitHub's runners give headless Firefox no GL driver at all; the Chromium runs above still
+        // cover the Firefox user-agent strings that the loader patch is about.
+        results.firefox = { skipped: 'Firefox cannot create a WebGL2 context on this machine' };
+        console.warn('Real Firefox has no WebGL2 here; its loading check is skipped.');
+    }
 } finally {
     await firefoxBrowser.close();
 }
