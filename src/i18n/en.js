@@ -31,7 +31,7 @@ export const EN = {
         start: 'Press ENTER to start',
         tap: 'Tap to start',
         controls:
-            'Arrows: steer / gas / brake    A / Z: shift up / down    D: gear lever    I: digital readout    M: mute    P: pause',
+            'Arrows: steer / gas / brake    A / Z: shift up / down    Q / E: look left / right    I: digital readout    M: mute    P: pause',
         badge: 'TD',
         credit: 'A fan tribute to Test Drive by Distinctive Software and Accolade (1987).',
     },
@@ -60,7 +60,8 @@ export const EN = {
     drive: {
         stageIntro: 'STAGE {{n}} OF {{total}} — {{name}}',
         neutralHint: 'You start in neutral: press A to select first gear',
-        pausedHint: 'Press P to resume    ESC to quit to the title screen',
+        pausedHint: 'Press P to resume    ESC to choose another car',
+        loading: 'Building the road up the mountain...',
         pursuit: 'You have been clocked by a radar trap!',
         escaped: 'You lost the patrol car',
         engineWarning: 'OVER-REV',

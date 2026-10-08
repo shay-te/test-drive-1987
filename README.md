@@ -5,28 +5,30 @@ real-car physics and synthesised engine sound, while keeping the original's soul
 a mountain road with a rock face on one side and a sheer drop on the other, trucks, radar traps,
 patrol cars and a gas station at the end of every stage.
 
-> **Status: work in progress.** The simulation, audio and 3D world are in place; the cockpits,
-> menus and game loop are being built.
+> **Status: playable, being polished.** Title, car brochure, all five stages, gas station,
+> results and high scores work end to end. You sit in a real 3D cabin (the Porsche 930's is
+> modelled from an owner photo and the factory blueprint); the other cars use the same cabin with
+> their own instruments, wheel and shifter until they get their own.
 
 ### Done
 
 - `src/sim/`: drivetrain (calibrated to each car's 0-60 and top speed), tyre/vehicle dynamics,
   procedural stages (rock face right, drop left), traffic, radar traps and pursuit, scoring. Tested.
 - `src/audio/`: `AudioManager`, per-car engine synthesiser (AudioWorklet), sound bank, soundscape.
-- `src/world/`: three.js world: road, cliff, drop, terrain, trees, props, vehicles, sky lighting,
-  rear-view mirror (`WorldView`).
-- `src/cockpit/`: instrument readings, gauge drawing primitives, per-car cluster layouts
-  (`clusters.js`; the Lotus layout is the one in the original game's screenshot).
+- `src/world/`: three.js world: road, cliff, drop, terrain, trees, props, vehicles, sky lighting.
+- `src/world/cabin/`: the 3D cabin carried along at the car's pose: padded dash and hood, the
+  instrument cluster (painted live from `src/cockpit/clusters.js`) behind real pods, steering
+  wheel, shifter, pillars, doors, seats, radar detector, a real rear-view mirror, the bonnet and
+  wings seen over the dash. Drawn in its own pass with its own sun and shadows.
+- `src/cockpit/`: readings, sprung needles and gear knob (`CockpitState`), the driver's head
+  (`HeadMotion`: leans in bends, nods under braking, road buzz, crash jolt, looking around).
+- `src/ui/screens/`: title, brochure with the acceleration graph, driving, gas station, results.
 
 ### Next
 
-1. `src/cockpit/Cockpit.js`: draw the interior over the 3D view: visor with radar detector,
-   mirror frame, dash and cowl, clusters from `clusters.js`, rotating "TD" steering wheel,
-   animated H-pattern gear lever, trip computer, windshield cracks on a crash.
-2. Screens in `src/ui/screens/`: title, car-select brochure (side-view art and an acceleration
-   graph from `Drivetrain.simulateLaunch`), driving, gas station, results and high scores.
-3. `src/core/Game.js` (loop and screen switching) and `src/main.js` (composition only).
-4. Browser test pass in headless Chromium, then tune visuals and handling.
+1. Model the other four cabins (Testarossa, Countach, Esprit, C4) like the 930's.
+2. Tune the cabin materials and lighting against the reference photos; handling feedback pass.
+3. Test on phones (touch controls, performance of the cabin pass).
 
 ## Run it
 
@@ -43,7 +45,7 @@ Any static web server works; no build step. three.js 0.180.0 is loaded from jsDe
 | ← → | steer |
 | ↑ / ↓ | accelerate / brake |
 | A / Z | shift up / down (you start in neutral) |
-| D | show / hide the gear lever |
+| Q / E | look left / right |
 | I | digital mph / rpm readout |
 | M | mute, P pause |
 

@@ -1,12 +1,15 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/Sky.js';
-import { ROAD, VIEW } from '../config.js';
+import { VIEW } from '../config.js';
 import { DEG } from '../util/math.js';
 import { WorldMaterials } from './Materials.js';
 import { WorldBuilder } from './WorldBuilder.js';
 import { Terrain } from './Terrain.js';
 import { buildTrees } from './Props.js';
 import { VehicleModels } from './VehicleModels.js';
+import { CarCabin } from './cabin/CarCabin.js';
+import { CABIN } from './cabin/cabinLayout.js';
+import { CABIN_LAYER } from './cabin/shapes.js';
 
 const FAR = 24000;
 const SKY_SCALE = 18000;
@@ -14,6 +17,16 @@ const SHADOW_EXTENT = 70;
 const SHADOW_AHEAD = 35;
 const MIRROR_VFOV = 13;
 const MIRROR_FAR = 2500;
+/** Mirror picture width in pixels at 1x scale. */
+const MIRROR_TEXELS = 512;
+const WORLD_NEAR = 0.3;
+/** The cabin pass sees from the eye to the back of the car. */
+const CABIN_NEAR = 0.02;
+const CABIN_FAR = 8;
+/** Half size of the cabin's own shadow map, which only has to cover the car. */
+const CABIN_SHADOW = 1.8;
+/** Sky light reaching the cabin through the glass, relative to the open road. */
+const CABIN_SKY = 0.45;
 /** Virtual image height that puts the optical centre on VIEW.horizonY. */
 const VIRTUAL_HEIGHT = 2 * (VIEW.height - VIEW.horizonY);
 
@@ -31,7 +44,12 @@ export class WorldView {
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.camera = new THREE.PerspectiveCamera(this._verticalFov(), VIEW.width / VIRTUAL_HEIGHT, 0.1, FAR);
+        this.camera = new THREE.PerspectiveCamera(
+            this._verticalFov(),
+            VIEW.width / VIRTUAL_HEIGHT,
+            WORLD_NEAR,
+            FAR,
+        );
         this.camera.setViewOffset(
             VIEW.width,
             VIRTUAL_HEIGHT,
@@ -41,13 +59,16 @@ export class WorldView {
             VIEW.height,
         );
         this.camera.rotation.order = 'YXZ';
-        const m = VIEW.mirror;
+        const m = CABIN.mirror;
         this.mirrorCamera = new THREE.PerspectiveCamera(MIRROR_VFOV, m.w / m.h, 0.5, MIRROR_FAR);
-        this.mirrorCamera.rotation.order = 'YXZ';
+        this.mirrorTarget = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
+        // A mirror shows the rear view flipped left to right.
+        this.mirrorTarget.texture.wrapS = THREE.RepeatWrapping;
+        this.mirrorTarget.texture.repeat.x = -1;
         this.vehicles = new VehicleModels();
         this.models = new Map();
         this.scene = null;
-        this._buildMirrorOverlay();
+        this.cabin = null;
         display.onResize((scale) => {
             this._resize(scale);
         });
@@ -59,34 +80,21 @@ export class WorldView {
         return (2 * Math.atan(VIRTUAL_HEIGHT / 2 / focal)) / DEG;
     }
 
-    _buildMirrorOverlay() {
-        this.mirrorTarget = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
-        const texture = this.mirrorTarget.texture;
-        // A mirror shows the rear view flipped left to right.
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.repeat.x = -1;
-        const m = VIEW.mirror;
-        const quad = new THREE.Mesh(
-            new THREE.PlaneGeometry(m.w, m.h),
-            new THREE.MeshBasicMaterial({ map: texture }),
-        );
-        quad.position.set(m.x + m.w / 2, VIEW.height - (m.y + m.h / 2), 0);
-        this.overlayScene = new THREE.Scene();
-        this.overlayScene.add(quad);
-        this.overlayCamera = new THREE.OrthographicCamera(0, VIEW.width, VIEW.height, 0, -1, 1);
-    }
-
     _resize(scale) {
         const width = Math.round(VIEW.width * scale);
         const height = Math.round(VIEW.height * scale);
         this.renderer.setPixelRatio(1);
         this.renderer.setSize(width, height, false);
-        this.mirrorTarget.setSize(Math.round(VIEW.mirror.w * scale), Math.round(VIEW.mirror.h * scale));
+        const m = CABIN.mirror;
+        this.mirrorTarget.setSize(
+            Math.round(MIRROR_TEXELS * scale),
+            Math.round((MIRROR_TEXELS * scale * m.h) / m.w),
+        );
         this.scale = scale;
     }
 
-    /** Builds the 3D scene for a stage. */
-    load(track, stage) {
+    /** Builds the 3D scene for a stage, with `car`'s cabin around the driver. */
+    load(track, stage, car) {
         this.dispose();
         this.track = track;
         const scene = new THREE.Scene();
@@ -98,7 +106,40 @@ export class WorldView {
         scene.fog = new THREE.FogExp2(stage.fog.color, stage.fog.density);
         this._addSkyAndSun(scene, stage);
         this.renderer.toneMappingExposure = stage.sky.exposure;
+        this.cabin = new CarCabin(
+            car,
+            this.resources,
+            this.renderer.capabilities.getMaxAnisotropy(),
+            this.mirrorTarget.texture,
+        );
+        this.cabin.root.rotation.order = 'YXZ';
+        this.cabin.eye.add(this.camera);
+        this.cabin.mirrorMount.add(this.mirrorCamera);
+        scene.add(this.cabin.root);
+        this._addCabinLights(scene);
         this.scene = scene;
+    }
+
+    /** The cabin's own sun (with a tight, sharp shadow map over the car) and the sky through the glass. */
+    _addCabinLights(scene) {
+        this.cabinSun = this.sun.clone();
+        const shadow = this.cabinSun.shadow;
+        shadow.mapSize.set(1024, 1024);
+        Object.assign(shadow.camera, {
+            left: -CABIN_SHADOW,
+            right: CABIN_SHADOW,
+            top: CABIN_SHADOW,
+            bottom: -CABIN_SHADOW,
+            near: 0.5,
+            far: 20,
+        });
+        shadow.camera.updateProjectionMatrix();
+        shadow.bias = -0.0002;
+        shadow.normalBias = 0.01;
+        const sky = this.skyLight.clone();
+        sky.intensity *= CABIN_SKY;
+        for (const light of [this.cabinSun, sky]) light.layers.set(CABIN_LAYER);
+        scene.add(this.cabinSun, this.cabinSun.target, sky);
     }
 
     _addSkyAndSun(scene, stage) {
@@ -136,10 +177,12 @@ export class WorldView {
             near: 1,
             far: 900,
         });
+        shadow.camera.updateProjectionMatrix();
         shadow.bias = -0.0004;
         shadow.normalBias = 0.06;
         scene.add(this.sun, this.sun.target);
-        scene.add(new THREE.HemisphereLight('#c4daf5', '#7a6650', 3));
+        this.skyLight = new THREE.HemisphereLight('#c4daf5', '#7a6650', 3);
+        scene.add(this.skyLight);
     }
 
     /** Image-based lighting baked from the sky, so paint, glass and steel reflect it. */
@@ -152,46 +195,54 @@ export class WorldView {
         return texture;
     }
 
-    /** Renders a frame; `view` = {s, u, theta, pitch, roll, lift, shakeX, shakeY, vehicles, time}. */
+    /** Renders a frame. `view` = {s, u, theta, pitch, roll, lift, head, cockpit, vehicles, time}:
+     *  the car's pose on the road, the driver's head (HeadMotion) and the cabin's moving parts. */
     render(view) {
         if (!this.scene) return;
-        this._placeCamera(view);
+        this._placeCar(view);
         this._syncVehicles(view.vehicles, view.time);
+        this.cabin.update(view.cockpit);
         const focus = this.track.toWorld(view.s + SHADOW_AHEAD, 0);
         this.sun.target.position.set(focus.x, focus.y, focus.z);
         this.sun.position.copy(this.sun.target.position).addScaledVector(this.sunDirection, 450);
-        this.sky.position.copy(this.camera.position);
+        const car = this.cabin.root.position;
+        this.cabinSun.target.position.copy(car);
+        this.cabinSun.position.copy(car).addScaledVector(this.sunDirection, 10);
+        this.scene.updateMatrixWorld();
 
         const r = this.renderer;
-        const s = this.scale;
-        const height = Math.round(VIEW.height * s);
-        r.setScissorTest(true);
-        r.setScissor(
-            0,
-            height - Math.round(VIEW.windshieldBottom * s),
-            Math.round(VIEW.width * s),
-            Math.round(VIEW.windshieldBottom * s),
-        );
-        r.render(this.scene, this.camera);
-
-        this.sky.position.copy(this.mirrorCamera.position);
+        this.mirrorCamera.getWorldPosition(this.sky.position);
         r.setRenderTarget(this.mirrorTarget);
-        r.setScissorTest(false);
         r.render(this.scene, this.mirrorCamera);
         r.setRenderTarget(null);
+
+        this.camera.getWorldPosition(this.sky.position);
+        this._lens(0, WORLD_NEAR, FAR);
+        r.render(this.scene, this.camera);
+        // The cabin is drawn last over a cleared depth buffer, so its near plane can sit at the eye.
+        this._lens(CABIN_LAYER, CABIN_NEAR, CABIN_FAR);
         r.autoClear = false;
-        r.render(this.overlayScene, this.overlayCamera);
+        r.clearDepth();
+        r.render(this.scene, this.camera);
         r.autoClear = true;
     }
 
-    _placeCamera(view) {
-        const eye = this.track.toWorld(view.s, view.u + ROAD.eyeOffset, ROAD.eyeHeight + (view.lift ?? 0));
-        const yaw = eye.heading + view.theta;
-        this.camera.position.set(eye.x + (view.shakeX ?? 0), eye.y + (view.shakeY ?? 0), eye.z);
-        this.camera.rotation.set(view.pitch, -yaw, view.roll);
-        const mirror = this.track.toWorld(view.s - 0.4, view.u, ROAD.eyeHeight + 0.15 + (view.lift ?? 0));
-        this.mirrorCamera.position.set(mirror.x, mirror.y, mirror.z);
-        this.mirrorCamera.rotation.set(-view.pitch * 0.5, -yaw + Math.PI, 0);
+    _lens(layer, near, far) {
+        this.camera.layers.set(layer);
+        this.camera.near = near;
+        this.camera.far = far;
+        this.camera.updateProjectionMatrix();
+    }
+
+    /** Puts the car (and the cabin with it) on the road, and the driver's head in the seat. */
+    _placeCar(view) {
+        const p = this.track.toWorld(view.s, view.u, view.lift ?? 0);
+        const root = this.cabin.root;
+        root.position.set(p.x, p.y, p.z);
+        root.rotation.set(view.pitch, -(p.heading + view.theta), view.roll);
+        const head = view.head;
+        this.camera.position.set(head.x, head.y, head.z);
+        this.camera.rotation.set(head.pitch, head.yaw, head.roll);
     }
 
     _syncVehicles(vehicles, time) {
@@ -217,8 +268,18 @@ export class WorldView {
         }
     }
 
+    /** Blanks the 3D canvas (menus draw over an empty world). */
+    clear() {
+        this.renderer.setScissorTest(false);
+        this.renderer.setClearColor(0x000000, 1);
+        this.renderer.clear();
+    }
+
     dispose() {
         if (!this.scene) return;
+        this.scene.remove(this.cabin.root);
+        this.cabin.dispose();
+        this.cabin = null;
         this.scene.traverse((object) => {
             object.geometry?.dispose();
         });

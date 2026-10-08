@@ -1,8 +1,8 @@
 # Agent Rules — Test Drive 1987 (web remake)
 
 A browser remake of Accolade's 1987 *Test Drive*: vanilla ES modules, three.js 0.180.0 (pinned in
-the `index.html` import map) for the 3D world, Canvas 2D for the cockpit and menus, Web Audio for
-sound. No build step: `npm start` serves the folder.
+the `index.html` import map) for the 3D world and the car's cabin, Canvas 2D for the menus and the
+instrument textures, Web Audio for sound. No build step: `npm start` serves the folder.
 
 ## Git
 
@@ -45,7 +45,7 @@ sound. No build step: `npm start` serves the folder.
   buses, engine sound, sound effects), `InputManager` (keyboard, gamepad, touch).
 - **Simulation (`src/sim/`) is pure and renderer-free**: no DOM, no three.js, no audio. It must
   run in Node so it can be tested.
-- **Renderers draw; they do not decide.** World, cockpit and screen code only render state.
+- **Renderers draw; they do not decide.** World, cabin and screen code only render state.
   Computations (gauge angle mapping, scoring, radar strength, lap timing) live in sim modules or
   helpers next to the feature, where they can be unit-tested without a canvas.
 - **Generic primitives don't know domain concepts.** A gauge takes `value`, `min`, `max`; the

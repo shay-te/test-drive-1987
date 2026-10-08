@@ -155,3 +155,25 @@ function grad(hash, x, y, z) {
     const v = h < 4 ? y : h === 12 || h === 14 ? x : z;
     return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
 }
+
+/** A damped spring chasing a target: gauge needles and the driver's head lag and settle like the real thing. */
+export class Spring {
+    constructor(stiffness = 140, damping = 18, value = 0) {
+        this.stiffness = stiffness;
+        this.damping = damping;
+        this.value = value;
+        this.velocity = 0;
+    }
+
+    update(target, dt) {
+        const accel = (target - this.value) * this.stiffness - this.velocity * this.damping;
+        this.velocity += accel * dt;
+        this.value += this.velocity * dt;
+        return this.value;
+    }
+
+    /** Knocks the spring with an instant change of velocity (a bump or an impact). */
+    kick(velocity) {
+        this.velocity += velocity;
+    }
+}

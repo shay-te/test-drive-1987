@@ -6,12 +6,8 @@ export const VIEW = Object.freeze({
     height: 800,
     /** Screen row of the optical centre (eye-level horizon) through the windshield. */
     horizonY: 252,
-    /** Lowest screen row of the windshield that can ever be seen above the dashboard. */
-    windshieldBottom: 480,
     /** Horizontal field of view of the driver's eye. */
     hfovDeg: 78,
-    /** Rear-view mirror glass in logical pixels. */
-    mirror: Object.freeze({ x: 952, y: 92, w: 272, h: 78 }),
 });
 
 export const ROAD = Object.freeze({
@@ -51,4 +47,23 @@ export const GAME = Object.freeze({
     ticketPenaltySec: 30,
     /** Fixed physics step. */
     physicsHz: 120,
+});
+
+/** How the car body and the driver's head move with the car (the camera rides on both). */
+export const MOTION = Object.freeze({
+    /** Body pitch and roll on its springs, radians per g. */
+    bodyPitchPerG: 0.022,
+    bodyRollPerG: 0.03,
+    /** Head travel (m) and tilt (rad) per g: thrown outward in bends, forward under braking. */
+    leanPerG: 0.05,
+    nodPerG: 0.035,
+    headPitchPerG: 0.04,
+    headRollPerG: 0.06,
+    /** Turning to look out of a side window. */
+    lookYaw: 1.15,
+    /** Vertical road vibration (m) at 30 m/s, and its spatial frequency (cycles per metre). */
+    buzz: Object.freeze({ asphalt: 0.0015, gravel: 0.007 }),
+    buzzPerMetre: 0.8,
+    /** Head velocity kick (m/s) per m/s of crash impact. */
+    impactKick: 0.05,
 });

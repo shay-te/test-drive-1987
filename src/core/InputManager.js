@@ -10,9 +10,10 @@ const KEY_BINDINGS = {
     shiftDown: ['KeyZ', 'ControlLeft'],
     confirm: ['Enter', 'Space', 'NumpadEnter'],
     back: ['Escape', 'Backspace'],
-    pause: ['KeyP', 'Escape'],
+    pause: ['KeyP'],
     mute: ['KeyM'],
-    toggleShifter: ['KeyD'],
+    lookLeft: ['KeyQ'],
+    lookRight: ['KeyE'],
     toggleDigital: ['KeyI'],
     up: ['ArrowUp'],
     down: ['ArrowDown'],
@@ -56,6 +57,10 @@ export class InputManager {
             this.keys.clear();
         });
         this._bindTouch(touchRoot);
+        // A click or tap anywhere outside the touch buttons confirms (menus, "press ENTER").
+        target.addEventListener('pointerdown', (e) => {
+            if (!e.target.closest?.('[data-action]')) this.pressedTouch.add('confirm');
+        });
     }
 
     _onKey(event, down) {

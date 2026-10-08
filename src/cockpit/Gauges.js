@@ -20,11 +20,18 @@ const BEZEL = {
     ],
 };
 
-/** Static face of a round dial: well, bezel, face, ticks, numerals, red zone and label. */
+/** Static face of a round dial: well, bezel, face, ticks, numerals, red zone and label.
+ *  A dial with `sharesFace` adds a second scale to the face drawn by the dial before it. */
 export function drawDialFace(ctx, dial) {
-    const { x, y, r } = dial;
     ctx.save();
-    // Recessed well around the instrument.
+    if (!dial.sharesFace) drawWell(ctx, dial);
+    scale(ctx, dial);
+    ctx.restore();
+}
+
+/** Recessed well, bezel ring and the face itself. */
+function drawWell(ctx, dial) {
+    const { x, y, r } = dial;
     ctx.fillStyle = radialGradient(ctx, x, y, r * 0.9, r * 1.22, [
         [0, 'rgba(0,0,0,0.9)'],
         [1, 'rgba(0,0,0,0)'],
@@ -43,12 +50,17 @@ export function drawDialFace(ctx, dial) {
     ctx.beginPath();
     ctx.arc(x, y, r, 0, TAU);
     ctx.fill();
+}
 
+/** Red zone, ticks, numerals and labels along the dial's sweep. */
+function scale(ctx, dial) {
+    const { x, y, r } = dial;
     if (dial.redFrom !== undefined) {
         ctx.strokeStyle = dial.redColor ?? '#d42a1e';
         ctx.lineWidth = r * 0.07;
         ctx.beginPath();
-        ctx.arc(x, y, r * 0.86, dialAngle(dial, dial.redFrom) * DEG, dialAngle(dial, dial.max) * DEG);
+        const from = dialAngle(dial, dial.redFrom) * DEG;
+        ctx.arc(x, y, r * 0.86, from, dialAngle(dial, dial.max) * DEG, dial.endDeg < dial.startDeg);
         ctx.stroke();
     }
 
@@ -75,16 +87,16 @@ export function drawDialFace(ctx, dial) {
         const text = String(Math.round(v / (dial.labelDivisor ?? 1)));
         ctx.fillText(text, x + Math.cos(a) * r * 0.6, y + Math.sin(a) * r * 0.6);
     }
+    const labelX = x + r * (dial.labelX ?? 0);
     if (dial.label) {
         ctx.fillStyle = dial.ink ?? '#f2f2ec';
-        ctx.font = font(r * 0.13, 'gauge', 'bold');
-        ctx.fillText(dial.label, x, y + r * (dial.labelY ?? 0.4));
+        ctx.font = font(r * (dial.labelScale ?? 0.13), 'gauge', 'bold');
+        ctx.fillText(dial.label, labelX, y + r * (dial.labelY ?? 0.4));
     }
     if (dial.sublabel) {
         ctx.font = font(r * 0.09, 'gauge');
-        ctx.fillText(dial.sublabel, x, y + r * ((dial.labelY ?? 0.4) + 0.14));
+        ctx.fillText(dial.sublabel, labelX, y + r * ((dial.labelY ?? 0.4) + 0.14));
     }
-    ctx.restore();
 }
 
 /** Needle with a soft drop shadow and a centre cap. */
@@ -118,6 +130,7 @@ export function drawNeedle(ctx, dial, value) {
 
 /** Curved reflection on the dial glass, drawn over the needle. */
 export function drawGlass(ctx, dial) {
+    if (dial.sharesFace) return;
     const { x, y, r } = dial;
     ctx.save();
     ctx.beginPath();
@@ -176,5 +189,16 @@ export function drawLamp(ctx, lamp, on) {
     ctx.beginPath();
     ctx.arc(lamp.x, lamp.y, lamp.r, 0, TAU);
     ctx.fill();
+    ctx.restore();
+}
+
+/** A fixed legend printed on the cluster (e.g. "MPH" beside an LCD readout). */
+export function drawLabel(ctx, label) {
+    ctx.save();
+    ctx.fillStyle = label.color;
+    ctx.font = font(label.size, 'mono', 'bold');
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(label.text, label.x, label.y);
     ctx.restore();
 }

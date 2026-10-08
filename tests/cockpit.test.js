@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CARS, carById } from '../src/data/cars.js';
-import { GATES, gatePosition, stepKnob } from '../src/cockpit/GearLever.js';
-import { dialAngle, formatReading, lampStates, NeedleSpring } from '../src/cockpit/instruments.js';
+import { GATES, gatePosition, stepKnob } from '../src/cockpit/shiftGate.js';
+import { dialAngle, formatReading, instrumentReadings, lampStates } from '../src/cockpit/instruments.js';
 import { CLUSTERS } from '../src/cockpit/clusters.js';
 import { formatClock, formatMiles } from '../src/util/format.js';
+import { Spring } from '../src/util/math.js';
 
 test('every car has a cluster and a shift gate covering all its gears', () => {
     for (const car of CARS) {
@@ -42,7 +43,7 @@ test('dial angles span the sweep and clamp outside the range', () => {
 });
 
 test('needles settle on their reading', () => {
-    const spring = new NeedleSpring();
+    const spring = new Spring();
     for (let i = 0; i < 300; i++) spring.update(120, 1 / 60);
     assert.ok(Math.abs(spring.value - 120) < 0.5);
 });
@@ -67,4 +68,34 @@ test('clock and distance formatting', () => {
     assert.equal(formatClock(83.45), '1:23.5');
     assert.equal(formatClock(5), '0:05.0');
     assert.equal(formatMiles(1609.34), '1.0');
+});
+
+test('every instrument reads a value the cockpit provides', () => {
+    for (const car of CARS) {
+        const telemetry = { mph: 60, rpm: 3000, boost: 0.2, blown: false, gear: 2 };
+        const readings = instrumentReadings(telemetry, car);
+        for (const item of CLUSTERS[car.cockpit.cluster].instruments) {
+            if (item.source === undefined) continue;
+            assert.equal(typeof readings[item.source], 'number', `${car.id} ${item.source}`);
+        }
+    }
+});
+
+test('a second scale only shares the face of the dial drawn just before it', () => {
+    for (const [name, cluster] of Object.entries(CLUSTERS)) {
+        cluster.instruments.forEach((item, i) => {
+            if (!item.sharesFace) return;
+            const owner = cluster.instruments[i - 1];
+            assert.ok(owner && !owner.sharesFace, `${name} scale ${i} has a face to share`);
+            assert.deepEqual([owner.x, owner.y, owner.r], [item.x, item.y, item.r]);
+        });
+    }
+});
+
+test('the oil level gauge drops to zero when the engine is blown', () => {
+    const porsche = carById('porsche');
+    const running = instrumentReadings({ mph: 0, rpm: 950, boost: 0, blown: false }, porsche);
+    const blown = instrumentReadings({ mph: 0, rpm: 0, boost: 0, blown: true }, porsche);
+    assert.ok(running.oilLevel > 0.5);
+    assert.equal(blown.oilLevel, 0);
 });

@@ -58,6 +58,22 @@ const fuelDial = (x, y, r, extra) => {
     );
 };
 
+/** Two scales share one face on the 930's combination gauges, each on its own side. */
+const HALF = {
+    left: { startDeg: 128, endDeg: 232, labelX: -0.4, sharesFace: false },
+    right: { startDeg: 52, endDeg: -52, labelX: 0.4, sharesFace: true },
+};
+const UNIT = { min: 0, max: 1, majorStep: 0.5, minorStep: 0.25, labelStep: 2 };
+const PRESSURE = { min: 0, max: 80, majorStep: 20, minorStep: 10, labelStep: 80 };
+const VDO = { needle: '#ff5a1e', face: '#121213', numerals: '#f2f2ec' };
+
+const halfDial = (x, y, r, side, source, label, range, extra) => {
+    return smallDial(x, y, r, source, label, range, { ...HALF[side], labelY: 0, labelScale: 0.17, ...extra });
+};
+
+/** Opening of a dial's pod in the binnacle, per dial radius. */
+export const POD_RADIUS = 1.12;
+
 export const CLUSTERS = {
     // The cockpit in the reference screenshot: red numerals, speedo left, tach right, oil and temp between.
     lotus: {
@@ -104,34 +120,40 @@ export const CLUSTERS = {
             { x: 332, y: 712, r: 7, color: '#ff3324', source: 'warning' },
         ],
     },
+    // The 930's five VDO pods (owner photo): fuel/oil level, oil temp/pressure, tach with the
+    // boost gauge, speedo, clock. White on black, orange needles, under the padded hood.
     porsche: {
-        housing: { x: 105, y: 500, w: 750, h: 225, r: 110 },
+        housing: { style: 'pods', x: 90, y: 548, w: 770, h: 150 },
         instruments: [
-            fuelDial(178, 612, 58),
-            oilDial(318, 602, 70),
+            halfDial(150, 636, 50, 'left', 'fuel', t('general.fuel'), UNIT, VDO),
+            halfDial(150, 636, 50, 'right', 'oilLevel', t('general.oil'), UNIT, VDO),
+            halfDial(300, 628, 62, 'left', 'oilTemp', t('general.temp'), UNIT, VDO),
+            halfDial(300, 628, 62, 'right', 'oil', t('general.oil'), PRESSURE, VDO),
             {
                 type: 'dial',
                 source: 'rpm',
-                x: 480,
-                y: 592,
-                r: 112,
+                x: 470,
+                y: 622,
+                r: 84,
                 min: 0,
-                max: 8,
+                max: 7.5,
                 majorStep: 1,
                 minorStep: 0.25,
+                labelFrom: 1,
                 redFrom: 6.8,
                 ...SWEEP,
-                numerals: '#f0f0ea',
+                ...VDO,
+                numeralScale: 0.19,
                 label: t('general.rpm'),
                 sublabel: 'x1000',
-                labelY: -0.38,
+                labelY: -0.34,
             },
             {
                 type: 'dial',
                 source: 'boost',
-                x: 480,
-                y: 650,
-                r: 34,
+                x: 470,
+                y: 672,
+                r: 26,
                 min: 0,
                 max: 1,
                 majorStep: 0.5,
@@ -139,31 +161,35 @@ export const CLUSTERS = {
                 labelStep: 2,
                 startDeg: 200,
                 endDeg: 340,
+                ...VDO,
                 label: t('general.turbo'),
                 labelY: 0.35,
-                numeralScale: 0.2,
+                labelScale: 0.2,
+                numeralScale: 0.26,
             },
             {
                 type: 'dial',
                 source: 'speed',
-                x: 642,
-                y: 602,
-                r: 96,
+                x: 644,
+                y: 628,
+                r: 72,
                 min: 0,
                 max: 180,
                 majorStep: 20,
                 minorStep: 10,
-                labelStep: 20,
+                labelStep: 40,
+                labelFrom: 20,
                 ...SWEEP,
-                numerals: '#f0f0ea',
+                ...VDO,
+                numeralScale: 0.19,
                 label: t('general.mph'),
             },
             {
                 type: 'dial',
                 source: 'clock',
-                x: 785,
-                y: 612,
-                r: 58,
+                x: 800,
+                y: 636,
+                r: 52,
                 min: 0,
                 max: 12,
                 majorStep: 1,
@@ -171,14 +197,14 @@ export const CLUSTERS = {
                 labelFrom: 3,
                 startDeg: -90,
                 endDeg: 270,
-                numeralScale: 0.24,
+                ...VDO,
+                numeralScale: 0.26,
                 needleLength: 0.6,
             },
         ],
         lamps: [
-            { x: 452, y: 700, r: 5, color: '#ff3324', source: 'warning' },
-            { x: 480, y: 704, r: 5, color: '#3ee05a', source: 'signal' },
-            { x: 508, y: 700, r: 5, color: '#3d7bff', source: 'beam' },
+            { x: 392, y: 566, r: 5, color: '#ff3324', source: 'warning' },
+            { x: 552, y: 568, r: 5, color: '#3ee05a', source: 'signal' },
         ],
     },
     ferrari: {
@@ -346,3 +372,20 @@ export const CLUSTERS = {
         ],
     },
 };
+
+/** Smallest rectangle (layout px) holding the cluster's housing and every instrument's pod. */
+export function clusterBounds(cluster) {
+    const h = cluster.housing;
+    let [x0, y0, x1, y1] = [h.x, h.y, h.x + h.w, h.y + h.h];
+    for (const item of cluster.instruments) {
+        if (item.type !== 'dial') continue;
+        const r = item.r * POD_RADIUS;
+        [x0, y0, x1, y1] = [
+            Math.min(x0, item.x - r),
+            Math.min(y0, item.y - r),
+            Math.max(x1, item.x + r),
+            Math.max(y1, item.y + r),
+        ];
+    }
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}

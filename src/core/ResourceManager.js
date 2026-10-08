@@ -36,6 +36,14 @@ export class ResourceManager {
         });
     }
 
+    /** Like `canvas`, but `paint` works in logical units on a canvas `scale` times larger. */
+    scaledCanvas(key, width, height, scale, paint) {
+        return this.canvas(`${key}@${scale}`, width * scale, height * scale, (ctx) => {
+            ctx.scale(scale, scale);
+            paint(ctx);
+        });
+    }
+
     /** Drops cached canvases whose key starts with `prefix` (e.g. after a resize). */
     evict(prefix) {
         for (const key of [...this.cache.keys()]) {
