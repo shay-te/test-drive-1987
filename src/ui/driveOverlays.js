@@ -40,12 +40,14 @@ export function drawToast(ctx, text, alpha, color = COLORS.white) {
     ctx.restore();
 }
 
-export function drawCrash(ctx, causeKey, chances, over, time) {
-    drawPanel(ctx, CENTER - 330, 200, 660, 200);
+export function drawCrash(ctx, causeKey, detail, chances, over, time) {
+    drawPanel(ctx, CENTER - 330, 200, 660, detail ? 236 : 200);
     drawText(ctx, t(`crash.${causeKey}`), CENTER, 255, { size: 34, family: 'display', color: COLORS.danger });
+    if (detail) drawText(ctx, detail, CENTER, 300, { size: 20, color: COLORS.white });
     const status = over ? t('results.gameOver') : t('crash.chancesLeft', { n: chances });
-    drawText(ctx, status, CENTER, 310, { size: 22, color: COLORS.chrome });
-    drawPrompt(ctx, t('crash.continue'), time, 365);
+    const offset = detail ? 36 : 0;
+    drawText(ctx, status, CENTER, 310 + offset, { size: 22, color: COLORS.chrome });
+    drawPrompt(ctx, t('crash.continue'), time, 365 + offset);
 }
 
 /** The speeding citation, filled in like the patrolman's pad. */

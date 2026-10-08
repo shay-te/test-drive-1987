@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ROAD } from '../config.js';
+import { SHOULDER_DROP } from '../sim/Landscape.js';
 import { Noise, clamp, createRng, lerp, smoothstep } from '../util/math.js';
 import { mixRgb } from '../util/color.js';
 import { buildRibbon } from './Ribbon.js';
@@ -8,25 +9,12 @@ import { buildProps } from './Props.js';
 
 const FACE_ROWS = 12;
 const SLOPE_ROWS = 6;
-const SHOULDER_DROP = 0.06;
-/** Depth profile of the drop into the valley: [lateral offset beyond the edge, depth]. */
-const DROP_PROFILE = [
-    [0, 0.05],
-    [0.3, 0.6],
-    [0.9, 3],
-    [2.2, 9],
-    [4.5, 21],
-    [8.5, 40],
-    [16, 66],
-    [28, 96],
-    [44, 130],
-];
-
 /** Builds the static scenery of a stage: road, shoulders, the rock face, the drop, rails and props. */
 export class WorldBuilder {
-    constructor(materials, stage) {
+    constructor(materials, stage, landscape) {
         this.materials = materials;
         this.stage = stage;
+        this.landscape = landscape;
         this.noise = new Noise(stage.seed + 99);
     }
 
@@ -149,17 +137,11 @@ export class WorldBuilder {
         return points;
     }
 
-    _dropSection() {
-        return [...DROP_PROFILE].reverse().map(([out, depth]) => {
-            return { u: ROAD.edgeOffset - out, h: -depth };
-        });
-    }
-
     /** Pines dotted over the mountainside above the face and clinging to the drop below the road. */
     treePlacements(track) {
         const rng = createRng(this.stage.seed + 3);
         const placements = [];
-        const drop = this._dropSection();
+        const drop = this.landscape.dropSection;
         const place = (i, section, from, to) => {
             const k = rng.int(from, to - 1);
             const f = rng();
@@ -177,7 +159,7 @@ export class WorldBuilder {
 
     /** The sheer drop into the valley on the left. */
     _drop(track) {
-        const section = this._dropSection();
+        const section = this.landscape.dropSection;
         return buildRibbon(
             track,
             this.materials.cliff,
@@ -188,9 +170,7 @@ export class WorldBuilder {
                 alongTile: ROCK_TEXTURE_SIZE,
                 acrossTile: ROCK_TEXTURE_SIZE,
                 displace: (world, p) => {
-                    const depth = -p.h;
-                    world.y +=
-                        this.noise.fbm3(world.x * 0.05, 7.1, world.z * 0.05, 3) * Math.min(depth, 12) * 0.35;
+                    world.y += this.landscape.relief(world.x, world.z, -p.h);
                 },
                 color: (p) => {
                     return shadeVertex('#ffffff', clamp(1 + p.h / 160, 0.35, 1));
