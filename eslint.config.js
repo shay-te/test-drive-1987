@@ -1,0 +1,62 @@
+const browserGlobals = [
+    'window',
+    'document',
+    'navigator',
+    'performance',
+    'console',
+    'requestAnimationFrame',
+    'cancelAnimationFrame',
+    'setTimeout',
+    'clearTimeout',
+    'localStorage',
+    'fetch',
+    'URL',
+    'Blob',
+    'Image',
+    'HTMLCanvasElement',
+    'OffscreenCanvas',
+    'AudioContext',
+    'AudioWorkletNode',
+    'AudioWorkletProcessor',
+    'registerProcessor',
+    'sampleRate',
+    'currentTime',
+    'FontFace',
+    'ResizeObserver',
+    'matchMedia',
+    'devicePixelRatio',
+    'process',
+    'GainNode',
+    'BiquadFilterNode',
+    'AudioBufferSourceNode',
+    'DynamicsCompressorNode',
+    'OscillatorNode',
+    'KeyboardEvent',
+    'getComputedStyle',
+    'location',
+];
+
+export default [
+    { ignores: ['vendor/**', 'node_modules/**'] },
+    {
+        files: ['**/*.js', '**/*.mjs'],
+        languageOptions: {
+            ecmaVersion: 2023,
+            sourceType: 'module',
+            globals: Object.fromEntries(
+                browserGlobals.map((name) => {
+                    return [name, 'readonly'];
+                }),
+            ),
+        },
+        rules: {
+            'no-unused-vars': ['error', { args: 'after-used', argsIgnorePattern: '^_' }],
+            'no-undef': 'error',
+            'arrow-body-style': ['error', 'always'],
+            'no-var': 'error',
+            'prefer-const': 'error',
+            eqeqeq: ['error', 'always'],
+            'no-duplicate-imports': 'error',
+        },
+    },
+];

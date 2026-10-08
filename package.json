@@ -1,0 +1,17 @@
+{
+    "name": "test-drive-1987",
+    "version": "1.0.0",
+    "private": true,
+    "description": "A realistic web remake of Accolade's 1987 Test Drive.",
+    "type": "module",
+    "scripts": {
+        "start": "npx --yes http-server@14.1.1 -c-1 -p 8080 .",
+        "test": "node --test \"tests/**/*.test.js\"",
+        "lint": "eslint .",
+        "dedup": "npx --yes jscpd@4.0.5 --config .jscpd.json",
+        "orphans": "node scripts/find-orphans.mjs",
+        "format": "npx --yes prettier@3.8.1 --write src tests scripts",
+        "check": "npm run lint && npm run dedup && npm run orphans && npm test"
+    },
+    "license": "MIT"
+}

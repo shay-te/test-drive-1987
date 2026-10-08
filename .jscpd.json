@@ -1,0 +1,10 @@
+{
+    "threshold": 0.3,
+    "minLines": 6,
+    "minTokens": 60,
+    "format": ["javascript"],
+    "path": ["src", "tests", "scripts"],
+    "ignore": ["**/vendor/**"],
+    "reporters": ["console"],
+    "absolute": false
+}
