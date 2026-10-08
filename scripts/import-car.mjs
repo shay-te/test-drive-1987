@@ -6,7 +6,8 @@ import { readFileSync } from 'node:fs';
 import { NodeIO, PropertyType } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import {
-    clearNodeParent, clearNodeTransform, cloneDocument, compactPrimitive, dedup, getBounds, joinPrimitives, prune, transformMesh, weld,
+    clearNodeParent, clearNodeTransform, cloneDocument, compactPrimitive, dedup, getBounds, joinPrimitives, metalRough, prune,
+    transformMesh, weld,
 } from '@gltf-transform/functions';
 import { MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
@@ -631,6 +632,8 @@ async function shrinkTextures(sizes) {
     }
 }
 
+// three.js no longer reads specular-glossiness materials; older exports still use them.
+await doc.transform(metalRough());
 removeParts(config.remove ?? []);
 if (config.translucent) splitTranslucent(config.translucent);
 fixMaterials(config.materials ?? {});
