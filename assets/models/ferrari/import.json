@@ -7,113 +7,19 @@
         "license": "Sketchfab Standard"
     },
     "yawDeg": -90,
-    "remove": [
-        "Object_4",
-        "Object_5",
-        "Object_6",
-        "Object_7"
-    ],
-    "normals": {
-        "creaseDeg": 35
-    },
-    "pruneBelow": 0.012,
-    "eye": [
-        -0.35,
-        0.99
-    ],
-    "steeringWheel": {
-        "parts": [
-            "Object_76"
-        ],
-        "material": "black"
-    },
-    "windshield": {
-        "node": "Object_71",
-        "box": [
-            -0.8,
-            0.78,
-            -1.35,
-            0.8,
-            1.2,
-            -0.25
-        ],
-        "facing": [
-            0,
-            1,
-            0
-        ],
-        "cos": 0.8
-    },
-    "instrument": {
-        "centre": [
-            -0.346,
-            0.781,
-            -0.888
-        ],
-        "normal": [
-            0,
-            0.22,
-            0.98
-        ],
-        "width": 0.225
-    },
-    "trip": {
-        "centre": [
-            0.0,
-            0.765,
-            -0.912
-        ],
-        "normal": [
-            0,
-            0.64,
-            0.77
-        ],
-        "width": 0.15
-    },
-    "mirror": {
-        "centre": [
-            0,
-            1.03,
-            -0.43
-        ]
-    },
-    "radar": {
-        "centre": [
-            -0.56,
-            1.044,
-            -0.48
-        ]
-    },
-    "lever": {
-        "base": [
-            0.0,
-            0.42,
-            -0.45
-        ],
-        "length": 0.18,
-        "stick": "chrome",
-        "gate": "black"
-    },
-    "console": {
-        "min": [
-            -0.1,
-            0.227,
-            -0.95
-        ],
-        "max": [
-            0.1,
-            0.42,
-            -0.12
-        ],
-        "material": "interior"
-    },
+    "remove": ["Object_4", "Object_5", "Object_6", "Object_7"],
     "materials": {
-        "interior": {
-            "color": [
-                0.5,
-                0.31,
-                0.15
-            ]
-        }
-    }
+        "interior": { "color": [0.5, 0.31, 0.15] }
+    },
+    "normals": { "creaseDeg": 35 },
+    "pruneBelow": 0.012,
+    "eye": [-0.35, 0.99],
+    "steeringWheel": { "parts": ["Object_76"], "material": "black" },
+    "windshield": { "node": "Object_71", "box": [-0.8, 0.78, -1.35, 0.8, 1.2, -0.25], "facing": [0, 1, 0], "cos": 0.8 },
+    "instrument": { "centre": [-0.346, 0.781, -0.888], "normal": [0, 0.22, 0.98], "width": 0.225 },
+    "trip": { "centre": [0, 0.765, -0.912], "normal": [0, 0.64, 0.77], "width": 0.15 },
+    "mirror": { "centre": [0, 1.03, -0.43] },
+    "radar": { "centre": [-0.56, 1.044, -0.48] },
+    "lever": { "base": [0, 0.42, -0.45], "length": 0.18, "stick": "chrome", "gate": "black" },
+    "console": { "min": [-0.1, 0.227, -0.95], "max": [0.1, 0.42, -0.12], "material": "interior" }
 }

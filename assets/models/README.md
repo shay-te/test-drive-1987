@@ -57,7 +57,7 @@ overwritten by the next import.
 
 | Car | Triangles | Mesh primitives | GLB | Decimation error |
 | --- | ---: | ---: | ---: | ---: |
-| Porsche 911 Turbo | 93,453 | 19 | 4.8 MB | 0.7 mm |
+| Porsche 911 Turbo | 93,453 | 20 | 4.8 MB | 0.7 mm |
 | Ferrari Testarossa | 93,366 | 32 | 5.8 MB | 2.8 mm |
 
 The budgets are 100,000 triangles, 50 primitives and 8 MiB per car (`tests/cabinAsset.test.js`).
