@@ -18,7 +18,7 @@ under CC BY-NC-SA 4.0, not the repository's MIT license.
 
 The downloaded files are kept unchanged in each car's folder, next to `cabin.glb`. The game's
 `cabin.glb` is derived from them: turned into game space, decimated, with hidden parts removed,
-materials adjusted, and the runtime parts below added. Only `cabin.glb` is published to GitHub Pages.
+materials adjusted, and the runtime parts below added. The game loads only `cabin.glb`.
 
 ## Import pipeline
 
