@@ -1,9 +1,9 @@
 # Car models and cabin assets
 
-The Porsche, the Ferrari and the Lamborghini are driven from the inside of full 3D models: each
-`cabin.glb` holds the complete car, exterior and interior, plus the parts the game animates and draws
-on. The title screen and the brochure photograph the same file side-on. The Lotus and the Corvette
-have no model yet and are locked.
+The Porsche, the Ferrari, the Lamborghini and the Lotus are driven from the inside of full 3D models:
+each `cabin.glb` holds the complete car, exterior and interior, plus the parts the game animates and
+draws on. The title screen and the brochure photograph the same file side-on. The Corvette has no
+model yet and is locked. The Lotus model is a right-hand-drive car, so its driver sits on the right.
 
 ## Sources and credits
 
@@ -12,6 +12,7 @@ have no model yet and are locked.
 | Porsche 911 Turbo | [Porsche 911 turbo 930 Johnny Silverhand's](https://sketchfab.com/3d-models/porsche-911-turbo-930-johnny-silverhands-25656a7a831442059de7a466f4a17692) | valvetin | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
 | Ferrari Testarossa | [1986 Ferrari Testarossa](https://sketchfab.com/3d-models/1986-ferrari-testarossa-36865e4d4d21482bb268520aafca1196) | Res1n | Sketchfab Standard |
 | Lamborghini Countach | [1985 Lamborghini Countach LP5000 QV](https://sketchfab.com/3d-models/1985-lamborghini-countach-lp5000-qv-1bd6795f12ea4476bf8afe1b3d988ed7) | OUTPISTON | [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/) |
+| Lotus Esprit Turbo | [Lotus Esprit Turbo 1983](https://sketchfab.com/3d-models/lotus-esprit-turbo-1983-886bcf8ce52f46e3b36115e01319ec44) | esprit3d.website | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
 
 The Countach model is non-commercial and share-alike: it and its derived `lamborghini/cabin.glb` stay
 under CC BY-NC-SA 4.0, not the repository's MIT license.
@@ -44,9 +45,10 @@ materials adjusted, and the runtime parts below added. The game loads only `cabi
 - `textures` — base-colour and other texture sizes. Textures whose alpha is used stay PNG.
 
 A mesh node named `Object_N` that is its parent's only child takes the parent's name, so configs can
-use the names the modeller gave (`steering_152`). Decimation is error-driven: the script finds the
-smallest error, in metres, that brings the car under 95,000 triangles, so dense small parts collapse
-before broad panels lose their shape.
+use the names the modeller gave (`steering_152`). Specular-glossiness materials from older exporters
+are converted to metal-roughness first. Decimation is error-driven: the script finds the smallest
+error, in metres, that brings the car under 95,000 triangles, so dense small parts collapse before
+broad panels lose their shape.
 
 To edit a car by hand, open its source GLB in Blender (File → Import → glTF 2.0), make the change,
 export it back over the source as GLB, and run the import again. Edits to `cabin.glb` itself are
@@ -104,6 +106,7 @@ Work files go to `tmp/` (ignored by git). The browser tools need `npm start` run
 | Porsche 911 Turbo | 93,453 | 20 | 4.8 MB | 0.7 mm |
 | Ferrari Testarossa | 93,366 | 32 | 5.8 MB | 2.8 mm |
 | Lamborghini Countach | 93,091 | 45 | 4.7 MB | 1.3 mm |
+| Lotus Esprit Turbo | 93,073 | 34 | 4.9 MB | 1.8 mm |
 
 The budgets are 100,000 triangles, 50 primitives and 8 MiB per car (`tests/cabinAsset.test.js`).
 

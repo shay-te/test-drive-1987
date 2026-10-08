@@ -6,7 +6,7 @@ import { Session } from '../../sim/Session.js';
 import { linearGradient, speckle } from '../../util/canvas.js';
 import { drawCarArt } from '../CarArt.js';
 import { COLORS, font } from '../theme.js';
-import { loadProfilePhotos } from '../profilePhotos.js';
+import { requestProfilePhoto } from '../profilePhotos.js';
 import { drawPrompt, drawStamp, drawText } from '../widgets.js';
 
 const BAND = 352;
@@ -49,10 +49,7 @@ export class SelectScreen {
     enter({ carId } = {}) {
         this.world.clear();
         this.car = carById(carId);
-        loadProfilePhotos(this.world, (car, photo) => {
-            this.artwork.set(car.id, photo);
-            this.resources.evict(`canvas:brochure:${car.id}`);
-        });
+        this._showPhoto();
     }
 
     update(dt) {
@@ -70,7 +67,18 @@ export class SelectScreen {
 
     _move(step) {
         this.car = neighbourCar(this.car, step);
+        this._showPhoto();
         this.audio.play('click', { bus: 'ui' });
+    }
+
+    /** Puts the photo of the car on show onto its brochure page once it is ready. */
+    _showPhoto() {
+        const car = this.car;
+        requestProfilePhoto(this.world, car, (photo) => {
+            if (this.artwork.get(car.id) === photo) return;
+            this.artwork.set(car.id, photo);
+            this.resources.evict(`canvas:brochure:${car.id}`);
+        });
     }
 
     render(ctx) {

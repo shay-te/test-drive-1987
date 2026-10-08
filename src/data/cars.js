@@ -447,7 +447,7 @@ export const CARS = [
         make: 'LOTUS',
         model: 'ESPRIT TURBO',
         fullName: 'Lotus Esprit Turbo',
-        paint: '#24489a',
+        paint: '#d42a1a',
         brochure: {
             specs: {
                 layout: 'mid/rear',
@@ -518,6 +518,7 @@ export const CARS = [
         cockpit: {
             // The cockpit in the reference screenshot of the original game.
             cluster: 'lotus',
+            model: 'assets/models/lotus/cabin.glb',
             dash: { top: '#6e6e70', face: '#9c9c9e', panel: '#8d8d90', accent: '#4a4a4c', grain: 'vinyl' },
             wheel: { spokes: 2, rim: '#141414', spoke: '#1c1c1c' },
             shifter: { type: 'boot', pattern: 'dogleg5', knob: '#141414' },
@@ -526,11 +527,12 @@ export const CARS = [
             length: 4.19,
             width: 1.86,
             // The driver's eye, metres back from the front bumper.
-            eye: 2.45,
+            eye: 2.25,
             height: 1.11,
+            // Axles of the authored model (wheelbase 2.47).
             wheels: [
-                { x: 0.95, r: 0.31 },
-                { x: 3.39, r: 0.33 },
+                { x: 0.93, r: 0.31 },
+                { x: 3.4, r: 0.33 },
             ],
             profile: [
                 [0.02, 0.25],
