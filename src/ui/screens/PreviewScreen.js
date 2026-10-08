@@ -67,7 +67,7 @@ export class PreviewScreen {
         if (this.input.pressed('previewCrack')) this.cracks = this.cracks.length ? [] : [PREVIEW.crack];
         const telemetry = this.vehicle.telemetry();
         const readings = instrumentReadings(telemetry, this.car);
-        this.cockpit.update(dt, readings, telemetry.gear);
+        this.cockpit.update(dt, readings, telemetry.gear, { throttle: this.input.throttle(), brake: this.input.brake() });
         this.view = {
             pose: ORIGIN,
             head: this.head.update(dt, telemetry, this.input.look()),

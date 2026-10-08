@@ -1,12 +1,16 @@
 import * as THREE from 'three';
+import { driverPose } from '../../cockpit/driverPose.js';
+import { DRIVER } from '../../data/driver.js';
+import { DEG, clamp } from '../../util/math.js';
 import { CabinDisplays } from './CabinDisplays.js';
 import { CabinWindshield } from './CabinWindshield.js';
+import { Driver } from './Driver.js';
 import { leverAngles, radarLights, wheelAngle } from './cabinAnimation.js';
 import { CABIN } from './cabinLayout.js';
 import { sideMirrorNodes, validateCabinNodes } from './cabinAsset.js';
 import { onCabinLayer } from './cabinLayer.js';
 
-/** An authored cabin instance sharing cached geometry and owning its live display resources. */
+/** An authored cabin instance sharing cached geometry and owning its live display resources and driver. */
 export class AssetCabin {
     /** `sideTextures` holds the door mirror pictures ({ left, right }) for the mirrors this cabin has. */
     constructor(car, resources, anisotropy, mirrorTexture, template, sideTextures) {
@@ -22,6 +26,37 @@ export class AssetCabin {
         this._displays(car, resources, anisotropy, mirrorTexture);
         this.sideMirrors = sideMirrorNodes(nodes);
         for (const [side, mirror] of Object.entries(this.sideMirrors)) this._mirror(mirror.surface, sideTextures[side]);
+        this._seatDriver();
+    }
+
+    /** The driver, and where the cabin puts their hands: the rim (measured from the wheel's own
+     *  geometry) and the top of the gear knob. */
+    _seatDriver() {
+        const b = this.bindings;
+        this.driver = new Driver();
+        this.root.add(onCabinLayer(this.driver.group));
+        let rim = null;
+        let knob = null;
+        pivotPoints(b.steering_wheel, (point) => {
+            if (!rim || Math.hypot(point.x, point.y) > Math.hypot(rim.x, rim.y)) rim = point.clone();
+        });
+        pivotPoints(b.gear_lever, (point) => { if (!knob || point.y > knob.y) knob = point.clone(); });
+        this.rim = { radius: Math.hypot(rim.x, rim.y) - DRIVER.rimInset, z: rim.z };
+        this.knobTop = knob;
+        this.rig = {
+            eye: this._inCar(b.driver_eye, new THREE.Vector3()),
+            grips: [new THREE.Vector3(), new THREE.Vector3()],
+            knob: new THREE.Vector3(),
+        };
+    }
+
+    /** `point`, given in `node`'s frame, in the cabin's (car) frame. */
+    _inCar(node, point) {
+        for (let n = node; n !== this.root; n = n.parent) {
+            n.updateMatrix();
+            point.applyMatrix4(n.matrix);
+        }
+        return point;
     }
 
     _displays(car, resources, anisotropy, mirrorTexture) {
@@ -72,14 +107,24 @@ export class AssetCabin {
         this.materials.add(surface.material);
     }
 
-    update(cockpit) {
+    /** `outside`: the cabin is seen from outside the car, so the driver's head shows. */
+    update(cockpit, outside) {
+        const b = this.bindings;
         this.displays.update(cockpit.state, cockpit.readings, cockpit.lamps, cockpit.trip);
         this.windshield.update(cockpit.cracks);
         this.rotation.set(0, 0, wheelAngle(cockpit.steer));
-        this.bindings.steering_wheel.quaternion.copy(this.wheelNeutral).multiply(this.delta.setFromEuler(this.rotation));
+        b.steering_wheel.quaternion.copy(this.wheelNeutral).multiply(this.delta.setFromEuler(this.rotation));
         const angles = leverAngles(cockpit.state.knob);
         this.rotation.set(angles.x, 0, angles.z);
-        this.bindings.gear_lever.quaternion.copy(this.leverNeutral).multiply(this.delta.setFromEuler(this.rotation));
+        b.gear_lever.quaternion.copy(this.leverNeutral).multiply(this.delta.setFromEuler(this.rotation));
+        const turn = clamp(wheelAngle(cockpit.steer), -DRIVER.gripTurnDeg * DEG, DRIVER.gripTurnDeg * DEG);
+        this.rig.grips.forEach((grip, i) => {
+            const angle = turn + (i === 0 ? Math.PI : 0);
+            const { radius, z } = this.rim;
+            this._inCar(b.steering_wheel.parent, grip.set(radius * Math.cos(angle), radius * Math.sin(angle), z));
+        });
+        this._inCar(b.gear_lever, this.rig.knob.copy(this.knobTop));
+        this.driver.update(driverPose(this.rig, cockpit.state.driver), outside);
         const lights = radarLights(cockpit.radar, cockpit.time, this.leds.length);
         this.leds.forEach((led, i) => {
             led.material.emissiveIntensity = lights[i] ? CABIN.radarLight.intensity : 0;
@@ -92,6 +137,21 @@ export class AssetCabin {
         for (const geometry of this.mirrorGeometries) geometry.dispose();
         this.displays.dispose();
         this.windshield.dispose();
+        this.driver.dispose();
         this.materials.clear();
     }
+}
+
+/** Visits every vertex of the meshes hung on `pivot`, in the pivot's own frame. */
+function pivotPoints(pivot, visit) {
+    pivot.updateWorldMatrix(true, true);
+    const toPivot = pivot.matrixWorld.clone().invert();
+    const toLocal = new THREE.Matrix4();
+    const point = new THREE.Vector3();
+    pivot.traverse((mesh) => {
+        if (!mesh.isMesh) return;
+        toLocal.multiplyMatrices(toPivot, mesh.matrixWorld);
+        const position = mesh.geometry.attributes.position;
+        for (let i = 0; i < position.count; i++) visit(point.fromBufferAttribute(position, i).applyMatrix4(toLocal));
+    });
 }

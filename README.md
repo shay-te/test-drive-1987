@@ -20,7 +20,8 @@ patrol cars and a gas station at the end of every stage.
   wheel, shifter, pillars, doors, seats, radar detector, a real rear-view mirror, the bonnet and
   wings seen over the dash. Drawn in its own pass with its own sun and shadows.
 - `src/cockpit/`: readings, sprung needles and gear knob (`CockpitState`), the driver's head
-  (`HeadMotion`: leans in bends, nods under braking, road buzz, crash jolt, looking around).
+  (`HeadMotion`: leans in bends, nods under braking, road buzz, crash jolt, looking around), hands
+  and feet (`DriverMotion`) and their limbs (`driverPose`, two-bone reach from the seat).
 - `src/ui/screens/`: title, brochure with the acceleration graph, driving, gas station, results.
 - The outside camera (V, the gamepad's left-stick press, or ◫ on touch): above and behind the car,
   with speed, revs (amber near the redline, red past it, while the engine wears towards blowing up),
@@ -32,21 +33,23 @@ patrol cars and a gas station at the end of every stage.
   drop takes it; every hard hit cracks the windshield again, up to shattered. ENTER skips ahead.
 - Working door mirrors on every car (the Porsche has the driver's only, as the model does): each
   shows the lane behind, just past the car's flank.
+- A visible driver, as in Wing Commander (1990): gloved hands on the wheel at quarter to three,
+  turning with it; on every shift the gear-side hand goes to the knob (the left one in the
+  right-hand-drive Lotus), the lever moves only once it is there, and the left foot works the
+  clutch; the right foot moves between throttle and brake. From outside the whole driver shows.
 
 ### Next (queued, in order)
 
 1. **The cars you drive, as in reality:** each car's real engine sound, its real turbo and rev
    behaviour, and handling that matches the real car; always show which gear you are in.
-2. **A visible driver, as in Wing Commander (1990):** hands on the wheel, feet working the clutch,
-   brake and throttle, a hand moving to the gear lever on every shift.
-3. **A Sea-to-Sky Highway setting:** the coastal road from Horseshoe Bay to Squamish above Howe
+2. **A Sea-to-Sky Highway setting:** the coastal road from Horseshoe Bay to Squamish above Howe
    Sound (one lane each way, cut into the cliffs; see the 1966 TranBC footage). Start with one
    polished 500 m section (bend, rock wall, drop, trees, distant mountains), then extend it; rock
    assets from Poly Haven (CC0), terrain from Natural Resources Canada elevation data.
-4. **Sea-to-Sky lighting:** driving north, a late-afternoon summer sun in the west (to the left),
+3. **Sea-to-Sky lighting:** driving north, a late-afternoon summer sun in the west (to the left),
    and its glint on the water to the left, moving across the view as the road turns.
-5. **Over the edge into the sea:** the car sinks, with fish and rising air bubbles.
-6. Test on phones (touch controls, performance of the cabin pass).
+4. **Over the edge into the sea:** the car sinks, with fish and rising air bubbles.
+5. Test on phones (touch controls, performance of the cabin pass).
 
 ## Play it
 
