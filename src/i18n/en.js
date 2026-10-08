@@ -76,6 +76,7 @@ export const EN = {
         police: 'You rammed a patrol car!',
         engine: 'You blew the engine!',
         chancesLeft: 'Chances left: {{n}}',
+        fallStats: 'Fell {{ft}} ft in {{s}} s and hit the ground at {{mph}} mph',
         continue: 'Press ENTER to continue',
     },
     ticket: {

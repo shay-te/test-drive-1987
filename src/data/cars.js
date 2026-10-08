@@ -110,6 +110,9 @@ export const CARS = [
         },
         body: {
             length: 4.29,
+            width: 1.775,
+            // The driver's eye, metres back from the front bumper.
+            eye: 2.34,
             height: 1.31,
             // Axles and overall size from the 930 3.3 blueprint (4291 x 1775 x 1310 mm, 2272 wheelbase).
             wheels: [
@@ -265,6 +268,9 @@ export const CARS = [
         },
         body: {
             length: 4.485,
+            width: 1.976,
+            // The driver's eye, metres back from the front bumper.
+            eye: 2.55,
             height: 1.13,
             wheels: [
                 { x: 0.98, r: 0.32 },
@@ -383,6 +389,9 @@ export const CARS = [
         },
         body: {
             length: 4.14,
+            width: 2.0,
+            // The driver's eye, metres back from the front bumper.
+            eye: 2.45,
             height: 1.07,
             wheels: [
                 { x: 0.95, r: 0.31 },
@@ -510,6 +519,9 @@ export const CARS = [
         },
         body: {
             length: 4.19,
+            width: 1.86,
+            // The driver's eye, metres back from the front bumper.
+            eye: 2.45,
             height: 1.11,
             wheels: [
                 { x: 0.95, r: 0.31 },
@@ -626,6 +638,9 @@ export const CARS = [
         },
         body: {
             length: 4.48,
+            width: 1.806,
+            // The driver's eye, metres back from the front bumper.
+            eye: 2.65,
             height: 1.18,
             wheels: [
                 { x: 1.06, r: 0.32 },

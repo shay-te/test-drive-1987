@@ -93,14 +93,14 @@ export class WorldView {
         this.scale = scale;
     }
 
-    /** Builds the 3D scene for a stage, with `car`'s cabin around the driver. */
-    load(track, stage, car) {
+    /** Builds the 3D scene for a stage on its `landscape`, with `car`'s cabin around the driver. */
+    load(track, stage, car, landscape) {
         this.dispose();
         this.track = track;
         const scene = new THREE.Scene();
         const materials = new WorldMaterials(this.resources, this.renderer, stage);
-        const builder = new WorldBuilder(materials, stage);
-        const terrain = new Terrain(track, stage, materials);
+        const builder = new WorldBuilder(materials, stage, landscape);
+        const terrain = new Terrain(landscape, stage, materials);
         scene.add(builder.build(track), terrain.mesh, terrain.ring);
         scene.add(buildTrees([...builder.treePlacements(track), ...terrain.treePlacements()], materials));
         scene.fog = new THREE.FogExp2(stage.fog.color, stage.fog.density);
@@ -195,8 +195,8 @@ export class WorldView {
         return texture;
     }
 
-    /** Renders a frame. `view` = {s, u, theta, pitch, roll, lift, head, cockpit, vehicles, time}:
-     *  the car's pose on the road, the driver's head (HeadMotion) and the cabin's moving parts. */
+    /** Renders a frame. `view` = {s, u, theta, pitch, roll, pose, head, cockpit, vehicles, time}: the
+     *  car on the road (or its free `pose` when falling), the driver's head and the cabin's moving parts. */
     render(view) {
         if (!this.scene) return;
         this._placeCar(view);
@@ -236,10 +236,17 @@ export class WorldView {
 
     /** Puts the car (and the cabin with it) on the road, and the driver's head in the seat. */
     _placeCar(view) {
-        const p = this.track.toWorld(view.s, view.u, view.lift ?? 0);
         const root = this.cabin.root;
-        root.position.set(p.x, p.y, p.z);
-        root.rotation.set(view.pitch, -(p.heading + view.theta), view.roll);
+        if (view.pose) {
+            // Off the road the car is a free rigid body: take its pose as it is.
+            const { position, quaternion: q } = view.pose;
+            root.position.set(position.x, position.y, position.z);
+            root.quaternion.set(q.x, q.y, q.z, q.w);
+        } else {
+            const p = this.track.toWorld(view.s, view.u);
+            root.position.set(p.x, p.y, p.z);
+            root.rotation.set(view.pitch, -(p.heading + view.theta), view.roll);
+        }
         const head = view.head;
         this.camera.position.set(head.x, head.y, head.z);
         this.camera.rotation.set(head.pitch, head.yaw, head.roll);

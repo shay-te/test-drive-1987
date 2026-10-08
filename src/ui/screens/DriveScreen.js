@@ -8,6 +8,8 @@ import { gearLabel } from '../../data/cars.js';
 import { STAGES } from '../../data/stages.js';
 import { t } from '../../i18n/i18n.js';
 import { POLICE_EVENT, PoliceManager } from '../../sim/Police.js';
+import { Landscape } from '../../sim/Landscape.js';
+import { OverTheEdge } from '../../sim/OverTheEdge.js';
 import { CRASH_CAUSE } from '../../sim/Session.js';
 import { buildTrack } from '../../sim/TrackBuilder.js';
 import { LANE, ONCOMING, TrafficManager } from '../../sim/Traffic.js';
@@ -26,9 +28,10 @@ import { COLORS } from '../theme.js';
 const STEP = 1 / GAME.physicsHz;
 const INTRO_SECONDS = 4;
 const TOAST_SECONDS = 3;
-/** Going over the edge: how long the fall plays before the crash notice. */
-const FALL_SECONDS = 2.2;
-const FALL_DRIFT = 4;
+/** Seconds into a fall after which ENTER skips to the crash notice. */
+const FALL_SKIP = 3;
+/** A hit at this speed (m/s) or more plays the crash sound at full volume. */
+const LOUD_HIT = 30;
 /** After a crash the car restarts this far back, in the right-hand lane. */
 const RESPAWN_BACK = 25;
 /** Fuel gauge drop over a full stage (cosmetic). */
@@ -38,8 +41,6 @@ const CRACK_IMPACT = 6;
 const TICKET_BRAKE = 1;
 /** Where on the glass an impact can crack it (layout px), the fall's tilt per second, body sway rate. */
 const CRACK_AREA = { x: 380, y: 120, w: 520, h: 220 };
-const FALL_PITCH = 0.35;
-const FALL_ROLL = 0.4;
 const BODY_RATE = 6;
 
 /** One stage of driving: physics, traffic, police and the rules, seen from the driver's seat. */
@@ -71,7 +72,8 @@ export class DriveScreen {
     _load() {
         const { car, session } = this;
         this.track = buildTrack(session.stage);
-        this.world.load(this.track, session.stage, car);
+        this.landscape = new Landscape(this.track, session.stage);
+        this.world.load(this.track, session.stage, car, this.landscape);
         this.vehicle = new VehicleDynamics(car);
         this.vehicle.reset(this.track.startS, LANE);
         this.traffic = new TrafficManager(this.track, session.stage);
@@ -84,7 +86,7 @@ export class DriveScreen {
         this.bodyPitch = 0;
         this.bodyRoll = 0;
         this.crack = null;
-        this.fall = 0;
+        this.wreck = null;
         this.stageTime = 0;
         if (this.audio.ready) {
             this.audio.createEngine(car).then((engine) => {
@@ -198,15 +200,21 @@ export class DriveScreen {
             };
         }
         this.audio.play('crash', { volume: cause === CRASH_CAUSE.engine ? 0.5 : 1 });
-        this.state = cause === CRASH_CAUSE.edge ? 'falling' : 'crashed';
-        this.fall = 0;
+        // Over the edge the car becomes a rigid body tumbling down to the valley floor.
+        this.wreck =
+            cause === CRASH_CAUSE.edge ? new OverTheEdge(this.vehicle, this.track, this.landscape) : null;
+        this.state = this.wreck ? 'falling' : 'crashed';
     }
 
-    /** Over the edge: the car drops away from the road, nose down, rolling towards the valley. */
+    /** Over the edge: the wreck runs until it stops; every hard hit is heard and felt. */
     _falling(dt) {
-        this.fall += dt;
-        this.vehicle.u -= FALL_DRIFT * dt;
-        if (this.fall >= FALL_SECONDS) this.state = 'crashed';
+        const hit = this.wreck.update(dt);
+        if (hit) {
+            this.audio.play('crash', { volume: Math.min(1, hit / LOUD_HIT) });
+            this.head.jolt(hit);
+        }
+        const skip = this.wreck.time > FALL_SKIP && this.input.pressed('confirm');
+        if (this.wreck.done || skip) this.state = 'crashed';
     }
 
     _afterCrash() {
@@ -219,7 +227,7 @@ export class DriveScreen {
         this.traffic.clearAround(s);
         this.police.release();
         this.crack = null;
-        this.fall = 0;
+        this.wreck = null;
         this.state = 'driving';
     }
 
@@ -288,9 +296,6 @@ export class DriveScreen {
         this.cockpit.update(dt, readings, telemetry.gear);
         const look = (this.input.isDown('lookRight') ? 1 : 0) - (this.input.isDown('lookLeft') ? 1 : 0);
         const head = this.head.update(dt, telemetry, look);
-        const fallen =
-            this.state === 'falling' || (this.state === 'crashed' && this.cause === CRASH_CAUSE.edge);
-        const fall = Math.min(this.fall, FALL_SECONDS);
         const g = PHYS.g;
         this.bodyPitch = approach(
             this.bodyPitch,
@@ -308,9 +313,9 @@ export class DriveScreen {
             s: vehicle.s,
             u: vehicle.u,
             theta: vehicle.theta,
-            pitch: Math.atan(track.gradeAt(vehicle.s)) + this.bodyPitch - (fallen ? fall * FALL_PITCH : 0),
-            roll: this.bodyRoll + (fallen ? fall * FALL_ROLL : 0),
-            lift: fallen ? -0.5 * PHYS.g * fall * fall : 0,
+            pitch: Math.atan(track.gradeAt(vehicle.s)) + this.bodyPitch,
+            roll: this.bodyRoll,
+            pose: this.wreck?.pose ?? null,
             head,
             cockpit: {
                 state: this.cockpit,
@@ -360,9 +365,21 @@ export class DriveScreen {
         } else if (this.state === 'driving' && this.shiftHint) {
             drawToast(ctx, t('drive.shiftUp'), 1, COLORS.accent);
         }
-        if (this.state === 'crashed') drawCrash(ctx, this.cause, session.chances, this.over, this.time);
+        if (this.state === 'crashed')
+            drawCrash(ctx, this.cause, this._fallStats(), session.chances, this.over, this.time);
         if (this.state === 'ticket' && this.vehicle.vx <= 0.3)
             drawTicket(ctx, this.car, this.clockedMph, this.time);
         if (this.paused) drawPaused(ctx);
+    }
+
+    /** The numbers of a fall over the edge for the crash notice, or null. */
+    _fallStats() {
+        const w = this.wreck;
+        if (!w) return null;
+        return t('crash.fallStats', {
+            ft: Math.round(w.drop / PHYS.foot),
+            s: w.time.toFixed(1),
+            mph: Math.round(w.hardestHit / PHYS.mph),
+        });
     }
 }

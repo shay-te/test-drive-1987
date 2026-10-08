@@ -104,6 +104,25 @@ export class Track {
         return out;
     }
 
+    /** Road coordinates {s, u, i} of world point (x, z), searching from node `hint` (the last answer). */
+    project(x, z, hint = 0) {
+        let i = clamp(hint, 0, this.count - 2);
+        let along = 0;
+        let last = 0;
+        for (let step = 0; step < this.count; step++) {
+            const psi = this.heading[i];
+            along = (x - this.px[i]) * Math.sin(psi) - (z - this.pz[i]) * Math.cos(psi);
+            const dir = along < 0 && i > 0 ? -1 : along >= this.segment && i < this.count - 2 ? 1 : 0;
+            // Outside a bend two neighbouring sections can both disown a point: stop rather than swing.
+            if (dir === 0 || dir === -last) break;
+            last = dir;
+            i += dir;
+        }
+        const psi = this.heading[i];
+        const u = (x - this.px[i]) * Math.cos(psi) + (z - this.pz[i]) * Math.sin(psi);
+        return { s: i * this.segment + clamp(along, 0, this.segment), u, i };
+    }
+
     /** World position of node `i` offset laterally by `u` (fast path for mesh building). */
     nodeWorld(i, u, h, out) {
         const psi = this.heading[i];

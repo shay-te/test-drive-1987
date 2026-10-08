@@ -34,6 +34,7 @@ export const PHYS = Object.freeze({
     airDensity: 1.2,
     rollingResistance: 0.013,
     mph: 0.44704,
+    foot: 0.3048,
     lbftToNm: 1.35582,
     lbToKg: 0.453592,
 });
@@ -70,4 +71,30 @@ export const MOTION = Object.freeze({
     buzzPerMetre: 0.8,
     /** Head velocity kick (m/s) per m/s of crash impact. */
     impactKick: 0.05,
+});
+
+/** A car over the edge is a rigid body tumbling down to the valley. Contact values are per hull point. */
+export const FALL = Object.freeze({
+    substep: 1 / 480,
+    /** Crushing contact: N per metre of penetration and N per m/s closing speed (little bounce). */
+    stiffness: 2e6,
+    damping: 2.7e4,
+    /** Sliding friction of steel on rock, a sticking term (N per m/s), and rolling wheels' share. */
+    friction: 0.7,
+    grip: 1.5e5,
+    rolling: 0.06,
+    /** A hit this hard (m/s) smashes the wheels: from then on they drag instead of rolling. */
+    wreckSpeed: 12,
+    dragArea: 0.8,
+    /** Below these the wreck counts as stopped once it has stayed so for `restSeconds`. */
+    restSpeed: 0.3,
+    restSpin: 0.3,
+    restSeconds: 1,
+    maxSeconds: 45,
+    /** A contact closing faster than this (m/s) is a hit: a crash sound and a jolt. */
+    hitSpeed: 4,
+    /** Floor pan and sills above the road, wheels inset from the body sides (m). */
+    sill: 0.22,
+    belt: 0.9,
+    wheelInset: 0.11,
 });

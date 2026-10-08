@@ -1,5 +1,5 @@
-# Publishes the game to GitHub Pages on every push to master, once the tests pass.
-name: Deploy to GitHub Pages
+# Publishes the game to GitHub Pages (the gh-pages branch) on every push to master, once the tests pass.
+name: Publish to GitHub Pages
 
 on:
     push:
@@ -7,20 +7,15 @@ on:
     workflow_dispatch:
 
 permissions:
-    contents: read
-    pages: write
-    id-token: write
+    contents: write
 
 concurrency:
     group: pages
     cancel-in-progress: true
 
 jobs:
-    deploy:
+    publish:
         runs-on: ubuntu-latest
-        environment:
-            name: github-pages
-            url: ${{ steps.deployment.outputs.page_url }}
         steps:
             - uses: actions/checkout@v4
             - uses: actions/setup-node@v4
@@ -28,14 +23,14 @@ jobs:
                   node-version: 22
             - name: Test
               run: npm test
-            - name: Collect the site (no build step; three.js comes from the CDN)
+            - name: Copy the site into the gh-pages branch (no build step; three.js comes from the CDN)
               run: |
-                  mkdir _site
-                  cp -r index.html css src assets LICENSE _site/
-                  touch _site/.nojekyll
-            - uses: actions/configure-pages@v5
-            - uses: actions/upload-pages-artifact@v3
-              with:
-                  path: _site
-            - id: deployment
-              uses: actions/deploy-pages@v4
+                  git fetch origin gh-pages
+                  git worktree add site origin/gh-pages
+                  rm -rf site/index.html site/css site/src site/assets site/LICENSE
+                  cp -r index.html css src assets LICENSE site/
+                  touch site/.nojekyll
+                  cd site
+                  git add -A
+                  git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "Publish ${GITHUB_SHA::7}" || exit 0
+                  git push origin HEAD:gh-pages

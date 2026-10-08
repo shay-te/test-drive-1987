@@ -33,7 +33,7 @@ patrol cars and a gas station at the end of every stage.
 ## Play it
 
 **https://shay-te.github.io/test-drive-1987/**: published from `master` by
-`.github/workflows/pages.yml` after the tests pass.
+`.github/workflows/pages.yml` (into the `gh-pages` branch) after the tests pass.
 
 ## Run it
 
