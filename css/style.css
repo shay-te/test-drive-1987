@@ -1,0 +1,67 @@
+:root {
+    --c-backdrop: #05070d;
+    --c-touch: rgba(255, 255, 255, 0.14);
+    --c-touch-border: rgba(255, 255, 255, 0.35);
+    --c-touch-ink: #ffffff;
+    --size-touch: 72px;
+    --space-touch: 14px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--c-backdrop);
+    touch-action: none;
+    user-select: none;
+}
+
+#stage {
+    position: fixed;
+    inset: 0;
+}
+
+#stage canvas {
+    position: absolute;
+    display: block;
+}
+
+#stage canvas.overlay {
+    pointer-events: none;
+}
+
+#touch-controls {
+    display: none;
+}
+
+@media (pointer: coarse) {
+    #touch-controls {
+        display: flex;
+        position: fixed;
+        inset: auto 0 0 0;
+        justify-content: space-between;
+        padding: var(--space-touch);
+        pointer-events: none;
+    }
+
+    #touch-controls .cluster {
+        display: flex;
+        gap: var(--space-touch);
+        pointer-events: auto;
+    }
+
+    #touch-controls button {
+        width: var(--size-touch);
+        height: var(--size-touch);
+        border-radius: 50%;
+        border: 2px solid var(--c-touch-border);
+        background: var(--c-touch);
+        color: var(--c-touch-ink);
+        font-size: 28px;
+    }
+}
