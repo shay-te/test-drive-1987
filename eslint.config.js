@@ -32,6 +32,8 @@ const browserGlobals = [
     'DynamicsCompressorNode',
     'OscillatorNode',
     'KeyboardEvent',
+    'Event',
+    'EventTarget',
     'getComputedStyle',
     'location',
 ];
