@@ -1,9 +1,9 @@
 # Car models and cabin assets
 
-The Porsche, the Ferrari, the Lamborghini and the Lotus are driven from the inside of full 3D models:
-each `cabin.glb` holds the complete car, exterior and interior, plus the parts the game animates and
-draws on. The title screen and the brochure photograph the same file side-on. The Corvette has no
-model yet and is locked. The Lotus model is a right-hand-drive car, so its driver sits on the right.
+All five cars are driven from the inside of full 3D models: each `cabin.glb` holds the complete car,
+exterior and interior, plus the parts the game animates and draws on. The title screen and the
+brochure photograph the same file side-on. A car whose `cockpit.model` is missing is shown locked.
+The Lotus model is a right-hand-drive car, so its driver sits on the right.
 
 ## Sources and credits
 
@@ -13,6 +13,7 @@ model yet and is locked. The Lotus model is a right-hand-drive car, so its drive
 | Ferrari Testarossa | [1986 Ferrari Testarossa](https://sketchfab.com/3d-models/1986-ferrari-testarossa-36865e4d4d21482bb268520aafca1196) | Res1n | Sketchfab Standard |
 | Lamborghini Countach | [1985 Lamborghini Countach LP5000 QV](https://sketchfab.com/3d-models/1985-lamborghini-countach-lp5000-qv-1bd6795f12ea4476bf8afe1b3d988ed7) | OUTPISTON | [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/) |
 | Lotus Esprit Turbo | [Lotus Esprit Turbo 1983](https://sketchfab.com/3d-models/lotus-esprit-turbo-1983-886bcf8ce52f46e3b36115e01319ec44) | esprit3d.website | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
+| Chevrolet Corvette | [Chevrolet Corvette C4](https://sketchfab.com/3d-models/chevrolet-corvette-c4-944ec751e0334d58b249cb983147e7e9) | Randomness | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) |
 
 The Countach model is non-commercial and share-alike: it and its derived `lamborghini/cabin.glb` stay
 under CC BY-NC-SA 4.0, not the repository's MIT license.
@@ -30,7 +31,8 @@ materials adjusted, and the runtime parts below added. The game loads only `cabi
   `body.length` from `src/data/cars.js`, put on the road, and moved so the nose is `body.eye` ahead of
   the seated eye (the origin).
 - `remove`, `materials`, `translucent` — drop parts by node name, fix materials (alpha mode, colour,
-  opacity, roughness; `transmission: false` swaps costly transmission glass for alpha blending), and
+  opacity, roughness; `transmission: false` swaps costly transmission glass for alpha blending;
+  `as` merges a material into a look-alike, since every static material costs a draw call), and
   move a texture atlas's window parts onto a translucent copy.
 - `normals.creaseDeg`, `pruneBelow` — for flat-shaded sources: weld by position and rebuild normals
   with that crease angle; drop loose pieces smaller than that many metres (tread blocks, tiny badges).
@@ -40,8 +42,9 @@ materials adjusted, and the runtime parts below added. The game loads only `cabi
 - `instrument`, `trip`, `mirror`, `radar`, `lever`, `console` — where the live dials, trip display,
   rear-view mirror, radar detector and gear lever sit (centre, facing normal, width).
   `instrument.backing` blanks a model's own painted dials; `mirror.housing: false` keeps a model's own
-  mirror body; `lever.parts` hangs a model's own gear lever on the pivot instead of a generated one;
-  `console` adds a tunnel where a model has none.
+  mirror body; `lever.parts` hangs a model's own gear lever on the pivot instead of a generated one,
+  or `lever.box` lifts it out of larger meshes by region; `console` adds a tunnel where a model has
+  none.
 - `textures` — base-colour and other texture sizes. Textures whose alpha is used stay PNG.
 
 A mesh node named `Object_N` that is its parent's only child takes the parent's name, so configs can
@@ -95,7 +98,10 @@ Work files go to `tmp/` (ignored by git). The browser tools need `npm start` run
    `npm run assets`. If the decimation error is more than a couple of millimetres, the source is
    probably flat-shaded: add `normals.creaseDeg`.
 6. Check every seated view with `model-shots.mjs preview`, including `+89`, and fix what looks wrong:
-   dark materials, see-through windows, a missing crack layer, clipped housings.
+   dark materials, see-through windows, a missing crack layer, clipped housings. A jagged glass edge
+   means the windshield box cuts through a pane: end it in the gap before the next pane (bin the
+   glass triangles' centres along the car to find it). Over 50 primitives: merge look-alike
+   materials with `as`. Over 8 MiB: lower the `textures` sizes.
 7. Add the car to the authored-cabin and unlocked-car lists in `tests/cabinAsset.test.js` and
    `tests/menus.test.js`, add its credit above, and run `npm run check`.
 
@@ -107,6 +113,7 @@ Work files go to `tmp/` (ignored by git). The browser tools need `npm start` run
 | Ferrari Testarossa | 93,366 | 32 | 5.8 MB | 2.8 mm |
 | Lamborghini Countach | 93,091 | 45 | 4.7 MB | 1.3 mm |
 | Lotus Esprit Turbo | 93,073 | 34 | 4.9 MB | 1.8 mm |
+| Chevrolet Corvette | 93,062 | 41 | 5.4 MB | 0.3 mm |
 
 The budgets are 100,000 triangles, 50 primitives and 8 MiB per car (`tests/cabinAsset.test.js`).
 
