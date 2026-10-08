@@ -23,7 +23,7 @@ patrol cars and a gas station at the end of every stage.
   (`HeadMotion`: leans in bends, nods under braking, road buzz, crash jolt, looking around).
 - `src/ui/screens/`: title, brochure with the acceleration graph, driving, gas station, results.
 - The outside camera (V, the gamepad's left-stick press, or ◫ on touch): above and behind the car,
-  with a speed and gear readout.
+  with a speed and gear readout. From the driver's seat the gear is always shown bottom left.
 
 ### Next (queued, in order)
 

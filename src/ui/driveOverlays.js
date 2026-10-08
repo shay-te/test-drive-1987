@@ -7,8 +7,10 @@ import { drawPanel, drawPrompt, drawText } from './widgets.js';
 const CENTER = VIEW.width / 2;
 const TICKET = { x: 400, y: 150, w: 480, h: 470, line: 46 };
 const BANNER = { w: 760, h: 120, y: 120 };
-/** The outside view's readout, bottom centre: speed and gear (the dials are inside the car). */
-const READOUT = { w: 300, h: 92, bottom: 28, size: 44, label: 15 };
+/** Readout panels: one field wide each, along the bottom edge (`left` in px, or centred when null). */
+const READOUT = { field: 150, h: 92, bottom: 28, size: 44, label: 15 };
+/** The driver's-seat gear panel sits in the corner, clear of the wheel and the dials. */
+const GEAR_CORNER = 28;
 
 // Messages drawn over the windshield while driving: stage intro, crash, ticket, pause, notices.
 
@@ -88,17 +90,28 @@ export function drawTicket(ctx, car, mph, time) {
     drawPrompt(ctx, t('crash.continue'), time, k.y + k.h - 40);
 }
 
-/** Speed and gear for the outside view, where the instruments cannot be seen. */
-export function drawReadout(ctx, mph, gear) {
+/** A bottom-edge panel of [value, label] fields; centred, or at `left`. */
+function drawReadout(ctx, fields, left = null) {
     const r = READOUT;
-    const x = CENTER - r.w / 2;
+    const w = r.field * fields.length;
+    const x = left ?? CENTER - w / 2;
     const y = VIEW.height - r.bottom - r.h;
-    drawPanel(ctx, x, y, r.w, r.h);
-    for (const [i, value, label] of [[0, String(Math.round(mph)), t('general.mph')], [1, gear, t('general.gear')]]) {
-        const cx = x + (r.w / 4) * (1 + 2 * i);
+    drawPanel(ctx, x, y, w, r.h);
+    fields.forEach(([value, label], i) => {
+        const cx = x + r.field * (i + 0.5);
         drawText(ctx, value, cx, y + r.h * 0.42, { size: r.size, family: 'display', color: COLORS.white });
         drawText(ctx, label, cx, y + r.h * 0.82, { size: r.label, color: COLORS.chrome });
-    }
+    });
+}
+
+/** Speed and gear for the outside view, where the instruments cannot be seen. */
+export function drawOutsideReadout(ctx, mph, gear) {
+    drawReadout(ctx, [[String(Math.round(mph)), t('general.mph')], [gear, t('general.gear')]]);
+}
+
+/** The gear you are in, always on show from the driver's seat. */
+export function drawGear(ctx, gear) {
+    drawReadout(ctx, [[gear, t('general.gear')]], GEAR_CORNER);
 }
 
 export function drawPaused(ctx) {

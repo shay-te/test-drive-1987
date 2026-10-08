@@ -18,8 +18,9 @@ import { approach } from '../../util/math.js';
 import {
     drawCrash,
     drawLoading,
+    drawGear,
+    drawOutsideReadout,
     drawPaused,
-    drawReadout,
     drawStageIntro,
     drawTicket,
     drawToast,
@@ -395,9 +396,9 @@ export class DriveScreen {
             drawCrash(ctx, this.cause, this._fallStats(), session.chances, this.over, this.time);
         if (this.state === 'ticket' && this.vehicle.vx <= 0.3)
             drawTicket(ctx, this.car, this.clockedMph, this.time);
-        if (this.outside && this.state !== 'loading') {
-            drawReadout(ctx, this.vehicle.speedMph, gearLabel(this.car, this.vehicle.engine.gear));
-        }
+        const gear = gearLabel(this.car, this.vehicle.engine.gear);
+        if (this.outside) drawOutsideReadout(ctx, this.vehicle.speedMph, gear);
+        else drawGear(ctx, gear);
         if (this.paused) drawPaused(ctx);
     }
 
