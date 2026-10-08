@@ -1,35 +1,59 @@
 import { VIEW } from '../../config.js';
-import { CARS } from '../../data/cars.js';
+import { CARS, carById, isLocked, neighbourCar } from '../../data/cars.js';
 import { t } from '../../i18n/i18n.js';
 import { clamp } from '../../util/math.js';
-import { drawCarArt } from '../CarArt.js';
+import { drawCarArt, drawGroundShadow } from '../CarArt.js';
 import { paintScenery } from '../scenery.js';
 import { COLORS } from '../theme.js';
-import { drawLogo, drawPrompt, drawText } from '../widgets.js';
+import { loadProfilePhotos } from '../profilePhotos.js';
+import { drawLogo, drawPrompt, drawStamp, drawText } from '../widgets.js';
 
-const CAR_SECONDS = 3.5;
+const FADE_SECONDS = 0.25;
+const LOCKED_ALPHA = 0.35;
+const STAMP = { y: 515, size: 64 };
 const ART_WIDTH = 560;
+/** The car's canvas: side padding, ground line and height, in logical pixels. */
+const ART = { pad: 20, ground: 230, height: 260 };
 const HORIZON = 470;
 
-/** Title: sunset over the mountains, the chrome logo and the five cars rolling by. */
+/** Title: sunset over the mountains, the chrome logo and the car chosen with the arrows, side-on. */
 export class TitleScreen {
     constructor({ game, display, resources, audio, input, world }) {
         Object.assign(this, { game, display, resources, audio, input, world });
         this.time = 0;
+        this.car = CARS[0];
+        this.chosenAt = 0;
+        this.photos = new Map();
     }
 
-    enter() {
+    /** Shows `carId` when coming back from the brochure, otherwise the first car. */
+    enter({ carId } = {}) {
         this.world.clear();
+        this.car = carById(carId);
+        loadProfilePhotos(this.world, (car, photo) => {
+            this.photos.set(car.id, photo);
+            if (car === this.car) this.chosenAt = this.time;
+        });
     }
 
     update(dt) {
         this.time += dt;
-        if (this.input.pressed('confirm')) {
-            this.audio.unlock().then(() => {
-                this.audio.play('click', { bus: 'ui' });
-            });
-            this.game.go('select');
+        const step = this.input.menuStep();
+        if (step) {
+            this.car = neighbourCar(this.car, step);
+            this.chosenAt = this.time;
+            this._click();
         }
+        if (this.input.pressed('confirm') && !isLocked(this.car)) {
+            this._click();
+            this.game.go('select', { carId: this.car.id });
+        }
+    }
+
+    _click() {
+        this.audio.unlock().then(() => {
+            this.audio.play('click', { bus: 'ui' });
+        });
     }
 
     render(ctx) {
@@ -47,25 +71,38 @@ export class TitleScreen {
         drawLogo(ctx, t('title.logo'), VIEW.width / 2, 150, 132);
         drawText(ctx, t('title.tagline'), VIEW.width / 2, 245, { size: 24, color: COLORS.chrome });
 
-        const index = Math.floor(this.time / CAR_SECONDS) % CARS.length;
-        const phase = (this.time % CAR_SECONDS) / CAR_SECONDS;
-        const car = CARS[index];
+        const car = this.car;
+        const locked = isLocked(car);
+        const photo = this.photos.get(car.id);
         const art = this.resources.scaledCanvas(
-            `art:${car.id}:${ART_WIDTH}`,
-            ART_WIDTH + 40,
-            260,
+            `${photo ? 'photo' : 'art'}:${car.id}:${ART_WIDTH}`,
+            ART_WIDTH + 2 * ART.pad,
+            ART.height,
             scale,
             (c) => {
-                drawCarArt(c, car, 20, 230, ART_WIDTH);
+                if (!photo) {
+                    drawCarArt(c, car, ART.pad, ART.ground, ART_WIDTH);
+                    return;
+                }
+                const height = (ART_WIDTH * photo.height) / photo.width;
+                drawGroundShadow(c, ART.pad, ART.ground, ART_WIDTH);
+                c.drawImage(photo, ART.pad, ART.ground - height, ART_WIDTH, height);
             },
         );
+        const fade = clamp((this.time - this.chosenAt) / FADE_SECONDS, 0, 1);
         ctx.save();
-        ctx.globalAlpha = clamp(Math.min(phase, 1 - phase) * 8, 0, 1);
-        ctx.drawImage(art, (VIEW.width - ART_WIDTH) / 2 - 20, 360, ART_WIDTH + 40, 260);
-        drawText(ctx, car.fullName, VIEW.width / 2, 640, { size: 22, weight: 'bold', color: COLORS.white });
+        ctx.globalAlpha = fade * (locked ? LOCKED_ALPHA : 1);
+        ctx.drawImage(art, (VIEW.width - ART_WIDTH) / 2 - ART.pad, 360, ART_WIDTH + 2 * ART.pad, ART.height);
+        ctx.globalAlpha = fade;
+        if (locked) drawStamp(ctx, t('general.locked'), VIEW.width / 2, STAMP.y, STAMP.size);
+        drawText(ctx, t('title.choice', { car: car.fullName }), VIEW.width / 2, 640, {
+            size: 22,
+            weight: 'bold',
+            color: COLORS.white,
+        });
         ctx.restore();
 
-        drawPrompt(ctx, t('title.start'), this.time, 700);
+        drawPrompt(ctx, t(locked ? 'select.locked' : 'title.start'), this.time, 700);
         drawText(ctx, t('title.controls'), VIEW.width / 2, 748, { size: 15, color: COLORS.chrome });
         drawText(ctx, t('title.credit'), VIEW.width / 2, 776, { size: 13, color: 'rgba(223,231,242,0.6)' });
     }

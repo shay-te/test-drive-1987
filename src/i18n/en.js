@@ -24,11 +24,13 @@ export const EN = {
         score: 'SCORE',
         mile: 'MILE',
         chances: 'CHANCES',
+        locked: 'LOCKED',
     },
     title: {
         logo: 'TEST DRIVE',
         tagline: 'The 1987 classic, rebuilt for the web',
         start: 'Press ENTER to start',
+        choice: '◀   {{car}}   ▶',
         tap: 'Tap to start',
         controls:
             'Arrows: steer / gas / brake    A / Z: shift up / down    Drag or Q/E/R/F: look    C: centre    I: readout    M: mute    P: pause',
@@ -49,6 +51,7 @@ export const EN = {
     },
     select: {
         hint: '◀ ▶  choose a car        ENTER  take it for a test drive',
+        locked: '◀ ▶  this car is locked — choose another',
         price: 'Approximate Price:',
         layout: 'Layout',
         engineType: 'Engine type',

@@ -34,7 +34,7 @@ export const CARS = [
         make: 'PORSCHE',
         model: '911 TURBO',
         fullName: 'Porsche 911 Turbo',
-        paint: '#5fc7b0',
+        paint: '#c4c8cc',
         brochure: {
             specs: {
                 layout: 'rear/rear',
@@ -263,6 +263,7 @@ export const CARS = [
         },
         cockpit: {
             cluster: 'ferrari',
+            model: 'assets/models/ferrari/cabin.glb',
             dash: { top: '#1b1a19', face: '#c9a27a', panel: '#b8916a', accent: '#2a2725', grain: 'leather' },
             wheel: { spokes: 3, rim: '#141414', spoke: '#a8a8ad' },
             shifter: { type: 'gate', pattern: 'dogleg5', knob: '#111111' },
@@ -271,11 +272,12 @@ export const CARS = [
             length: 4.485,
             width: 1.976,
             // The driver's eye, metres back from the front bumper.
-            eye: 2.55,
+            eye: 2.44,
             height: 1.13,
+            // Axles of the authored model (wheelbase 2.56).
             wheels: [
-                { x: 0.98, r: 0.32 },
-                { x: 3.53, r: 0.33 },
+                { x: 1.1, r: 0.32 },
+                { x: 3.66, r: 0.33 },
             ],
             profile: [
                 [0.05, 0.24],
@@ -315,7 +317,7 @@ export const CARS = [
         make: 'LAMBORGHINI',
         model: 'COUNTACH',
         fullName: 'Lamborghini Countach 5000 S QV',
-        paint: '#f1f0ea',
+        paint: '#b0141c',
         brochure: {
             specs: {
                 layout: 'mid/rear',
@@ -384,6 +386,7 @@ export const CARS = [
         },
         cockpit: {
             cluster: 'lamborghini',
+            model: 'assets/models/lamborghini/cabin.glb',
             dash: { top: '#141414', face: '#232323', panel: '#1d1d1d', accent: '#5a1a14', grain: 'leather' },
             wheel: { spokes: 3, rim: '#121212', spoke: '#1e1e1e' },
             shifter: { type: 'gate', pattern: 'dogleg5', knob: '#cfcfd4' },
@@ -392,11 +395,12 @@ export const CARS = [
             length: 4.14,
             width: 2.0,
             // The driver's eye, metres back from the front bumper.
-            eye: 2.45,
+            eye: 2.15,
             height: 1.07,
+            // Axles of the authored model (wheelbase 2.41).
             wheels: [
-                { x: 0.95, r: 0.31 },
-                { x: 3.4, r: 0.315 },
+                { x: 0.91, r: 0.31 },
+                { x: 3.32, r: 0.315 },
             ],
             profile: [
                 [0.03, 0.24],
@@ -688,6 +692,16 @@ export const carById = (id) => {
             return c.id === id;
         }) ?? CARS[0]
     );
+};
+
+/** The car `step` places along the line-up from `car`, wrapping round at either end. */
+export const neighbourCar = (car, step) => {
+    return CARS[(CARS.indexOf(car) + step + CARS.length) % CARS.length];
+};
+
+/** Only cars with an authored model can be driven; the rest are shown locked. */
+export const isLocked = (car) => {
+    return !car.cockpit.model;
 };
 
 /** Display label of a gear index (0 = neutral). */

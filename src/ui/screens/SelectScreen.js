@@ -1,17 +1,19 @@
 import { PHYS, VIEW } from '../../config.js';
-import { CARS, carById } from '../../data/cars.js';
+import { CARS, carById, isLocked, neighbourCar } from '../../data/cars.js';
 import { t } from '../../i18n/i18n.js';
 import { Drivetrain } from '../../sim/Drivetrain.js';
 import { Session } from '../../sim/Session.js';
 import { linearGradient, speckle } from '../../util/canvas.js';
 import { drawCarArt } from '../CarArt.js';
 import { COLORS, font } from '../theme.js';
-import { drawPrompt, drawText } from '../widgets.js';
+import { loadProfilePhotos } from '../profilePhotos.js';
+import { drawPrompt, drawStamp, drawText } from '../widgets.js';
 
 const BAND = 352;
 const ART_WIDTH = 820;
 const ROW = 29;
 const ROWS_TOP = 396;
+const STAMP_SIZE = 72;
 const SPEC_KEYS = [
     'layout',
     'engineType',
@@ -38,35 +40,36 @@ const GRAPH = { x: 960, y: 410, w: 280, h: 270, maxMph: 120, maxSec: 20, mphStep
 export class SelectScreen {
     constructor({ game, display, resources, audio, input, world }) {
         Object.assign(this, { game, display, resources, audio, input, world });
-        this.index = 0;
+        this.car = CARS[0];
         this.time = 0;
+        this.artwork = new Map();
     }
 
-    /** Opens on `carId` when coming back from a drive, otherwise on the first car. */
+    /** Opens on `carId`, chosen on the title or kept from a drive, otherwise on the first car. */
     enter({ carId } = {}) {
         this.world.clear();
-        this.index = CARS.indexOf(carById(carId));
-    }
-
-    get car() {
-        return CARS[this.index];
+        this.car = carById(carId);
+        loadProfilePhotos(this.world, (car, photo) => {
+            this.artwork.set(car.id, photo);
+            this.resources.evict(`canvas:brochure:${car.id}`);
+        });
     }
 
     update(dt) {
         this.time += dt;
         const input = this.input;
-        if (input.pressed('left') || input.pressed('steerLeft')) this._move(-1);
-        if (input.pressed('right') || input.pressed('steerRight')) this._move(1);
-        if (input.pressed('confirm')) {
+        const step = input.menuStep();
+        if (step) this._move(step);
+        if (input.pressed('confirm') && !isLocked(this.car)) {
             this.audio.play('click', { bus: 'ui' });
             this.game.go('drive', { session: new Session(this.car) });
         } else if (input.pressed('back')) {
-            this.game.go('title');
+            this.game.go('title', { carId: this.car.id });
         }
     }
 
     _move(step) {
-        this.index = (this.index + step + CARS.length) % CARS.length;
+        this.car = neighbourCar(this.car, step);
         this.audio.play('click', { bus: 'ui' });
     }
 
@@ -78,21 +81,29 @@ export class SelectScreen {
             VIEW.height,
             this.display.scale,
             (c) => {
-                paintBrochure(c, car);
+                paintBrochure(c, car, this.artwork.get(car.id));
             },
         );
         ctx.drawImage(page, 0, 0, VIEW.width, VIEW.height);
-        drawPrompt(ctx, t('select.hint'), this.time, BAND - 22);
+        drawPrompt(ctx, t(isLocked(car) ? 'select.locked' : 'select.hint'), this.time, BAND - 22);
     }
 }
 
-function paintBrochure(ctx, car) {
+function paintBrochure(ctx, car, image) {
     ctx.fillStyle = linearGradient(ctx, 0, 0, 0, BAND, [
         [0, COLORS.navy],
         [1, COLORS.navyLight],
     ]);
     ctx.fillRect(0, 0, VIEW.width, BAND);
-    drawCarArt(ctx, car, (VIEW.width - ART_WIDTH) / 2, BAND - 46, ART_WIDTH);
+    const x = (VIEW.width - ART_WIDTH) / 2;
+    const ground = BAND - 46;
+    if (image) {
+        const height = ART_WIDTH * image.height / image.width;
+        ctx.drawImage(image, x, ground - height, ART_WIDTH, height);
+    } else {
+        drawCarArt(ctx, car, x, ground, ART_WIDTH);
+    }
+    if (isLocked(car)) drawStamp(ctx, t('general.locked'), VIEW.width / 2, ground - STAMP_SIZE, STAMP_SIZE);
     outlinedTitle(ctx, car.make, 40, 52, 44);
     outlinedTitle(ctx, car.model, 40, 100, 34);
 

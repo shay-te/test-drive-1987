@@ -1,18 +1,19 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { VIEW } from '../config.js';
+import { LIGHTING, VIEW } from '../config.js';
 import { DEG } from '../util/math.js';
 import { WorldMaterials } from './Materials.js';
 import { WorldBuilder } from './WorldBuilder.js';
 import { Terrain } from './Terrain.js';
 import { buildTrees } from './Props.js';
 import { VehicleModels } from './VehicleModels.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 import { AssetCabin } from './cabin/AssetCabin.js';
-import { validateCabinNodes } from './cabin/cabinAsset.js';
+import { SURFACES, validateCabinNodes } from './cabin/cabinAsset.js';
 import { CarCabin } from './cabin/CarCabin.js';
 import { CABIN } from './cabin/cabinLayout.js';
 import { CABIN_LAYER } from './cabin/shapes.js';
+import { photographProfile } from './profilePhoto.js';
 
 const FAR = 24000;
 const SKY_SCALE = 18000;
@@ -26,10 +27,6 @@ const WORLD_NEAR = 0.3;
 /** The cabin pass sees from the eye to the back of the car. */
 const CABIN_NEAR = 0.02;
 const CABIN_FAR = 8;
-/** Half size of the cabin's own shadow map, which only has to cover the car. */
-const CABIN_SHADOW = 1.8;
-/** Sky light reaching the cabin through the glass, relative to the open road. */
-const CABIN_SKY = 0.45;
 /** Virtual image height that puts the optical centre on VIEW.horizonY. */
 const VIRTUAL_HEIGHT = 2 * (VIEW.height - VIEW.horizonY);
 
@@ -104,10 +101,18 @@ export class WorldView {
             const nodes = [];
             asset.scene.traverse((node) => { nodes.push(node); });
             const bindings = validateCabinNodes(nodes);
-            for (const name of ['instrument_surface', 'trip_surface', 'mirror_surface', 'windshield_surface']) {
+            for (const name of SURFACES) {
                 if (!bindings[name].geometry.attributes.uv) throw new Error(`Cabin surface "${name}" has no UVs`);
             }
             return asset.scene;
+        });
+    }
+
+    /** A side-on photo of the car's authored model (null without one), taken once per session. */
+    profile(car) {
+        if (!car.cockpit.model) return null;
+        return this.resources.memo(`profile:${car.id}`, async () => {
+            return photographProfile(await this.prepare(car));
         });
     }
 
@@ -146,6 +151,8 @@ export class WorldView {
         this.cabin.mirrorMount.add(this.mirrorCamera);
         scene.add(this.cabin.root);
         this._addCabinLights(scene);
+        scene.environment = this._environment(scene);
+        scene.environmentIntensity = LIGHTING.environmentIntensity;
         this.scene = scene;
     }
 
@@ -155,18 +162,18 @@ export class WorldView {
         const shadow = this.cabinSun.shadow;
         shadow.mapSize.set(1024, 1024);
         Object.assign(shadow.camera, {
-            left: -CABIN_SHADOW,
-            right: CABIN_SHADOW,
-            top: CABIN_SHADOW,
-            bottom: -CABIN_SHADOW,
+            left: -LIGHTING.cabinShadowExtent,
+            right: LIGHTING.cabinShadowExtent,
+            top: LIGHTING.cabinShadowExtent,
+            bottom: -LIGHTING.cabinShadowExtent,
             near: 0.5,
             far: 20,
         });
         shadow.camera.updateProjectionMatrix();
         shadow.bias = -0.0002;
-        shadow.normalBias = 0.01;
+        shadow.normalBias = LIGHTING.cabinShadowNormalBias;
         const sky = this.skyLight.clone();
-        sky.intensity *= CABIN_SKY;
+        sky.intensity *= LIGHTING.cabinSky;
         for (const light of [this.cabinSun, sky]) light.layers.set(CABIN_LAYER);
         scene.add(this.cabinSun, this.cabinSun.target, sky);
     }
@@ -188,7 +195,6 @@ export class WorldView {
         u.mieDirectionalG.value = 0.8;
         u.sunPosition.value.copy(this.sunDirection);
         scene.add(this.sky);
-        scene.environment = this._skyEnvironment();
 
         const warmth = Math.min(1, stage.sun.elevation / 35);
         this.sun = new THREE.DirectionalLight(
@@ -210,19 +216,40 @@ export class WorldView {
         shadow.bias = -0.0004;
         shadow.normalBias = 0.06;
         scene.add(this.sun, this.sun.target);
-        this.skyLight = new THREE.HemisphereLight('#c4daf5', '#7a6650', 3);
+        this.skyLight = new THREE.HemisphereLight(stage.fog.color, stage.rockDark, LIGHTING.skyIntensity);
         scene.add(this.skyLight);
     }
 
-    /** Image-based lighting baked from the sky, so paint, glass and steel reflect it. */
-    _skyEnvironment() {
+    /** Capture the stage once: road and rock contrast belongs in reflections as well as the sky. */
+    _environment(scene) {
         const pmrem = new THREE.PMREMGenerator(this.renderer);
-        const skyScene = new THREE.Scene();
-        skyScene.add(this.sky.clone());
-        this.environmentTarget = pmrem.fromScene(skyScene);
-        const texture = this.environmentTarget.texture;
-        pmrem.dispose();
-        return texture;
+        const start = this.track?.toWorld(0, 0) ?? { x: 0, y: 0, z: 0 };
+        const position = new THREE.Vector3(start.x, start.y + LIGHTING.environmentHeight, start.z);
+        this.sky.position.copy(position);
+        this.sun.target.position.copy(position);
+        this.sun.position.copy(position).addScaledVector(this.sunDirection, 450);
+        // Include ground colour in the isolated preview's reflections.
+        const ground = this.track ? null : new THREE.Mesh(
+            new THREE.CircleGeometry(LIGHTING.groundRadius),
+            new THREE.MeshBasicMaterial({ color: LIGHTING.groundColor }),
+        );
+        if (ground) {
+            ground.rotation.x = -Math.PI / 2;
+            scene.add(ground);
+        }
+        try {
+            this.environmentTarget = pmrem.fromScene(scene, 0, LIGHTING.environmentNear, FAR, {
+                size: LIGHTING.environmentSize, position,
+            });
+            return this.environmentTarget.texture;
+        } finally {
+            if (ground) {
+                scene.remove(ground);
+                ground.geometry.dispose();
+                ground.material.dispose();
+            }
+            pmrem.dispose();
+        }
     }
 
     /** Renders a frame. `view` = {s, u, theta, pitch, roll, pose, head, cockpit, vehicles, time}: the

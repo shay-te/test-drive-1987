@@ -10,6 +10,20 @@ export const VIEW = Object.freeze({
     hfovDeg: 78,
 });
 
+/** Lighting and reflection quality, shared by driving and asset inspection. */
+export const LIGHTING = Object.freeze({
+    environmentSize: 128,
+    environmentNear: 0.1,
+    environmentHeight: 1.2,
+    environmentIntensity: 0.65,
+    groundRadius: 200,
+    groundColor: '#564b40',
+    cabinShadowExtent: 2.6,
+    cabinShadowNormalBias: 0.002,
+    cabinSky: 0.32,
+    skyIntensity: 1.8,
+});
+
 export const ROAD = Object.freeze({
     /** Length of one track segment. */
     segment: 4,

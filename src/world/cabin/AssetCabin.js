@@ -34,7 +34,7 @@ export class AssetCabin {
         const uv = this.mirrorGeometry.attributes.uv;
         for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
         b.mirror_surface.geometry = this.mirrorGeometry;
-        assign('mirror_surface', new THREE.MeshBasicMaterial({ map: mirrorTexture, toneMapped: false }));
+        assign('mirror_surface', new THREE.MeshBasicMaterial({ map: mirrorTexture }));
         assign('windshield_surface', new THREE.MeshStandardMaterial({
             ...CABIN.glass, transparent: true, depthWrite: false, side: THREE.DoubleSide,
         }));

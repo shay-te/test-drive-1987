@@ -10,6 +10,7 @@ export class AudioManager {
     constructor(resources) {
         this.resources = resources;
         this.context = null;
+        this.starting = null;
         this.buses = {};
         this.muted = false;
     }
@@ -20,10 +21,13 @@ export class AudioManager {
 
     /** Must be called from a user gesture (browsers keep audio locked until then). */
     async unlock() {
-        if (this.context) {
-            await this.context.resume();
-            return;
-        }
+        // Quick presses unlock again before the first graph is ready; they share that one start.
+        this.starting ??= this._start();
+        await this.starting;
+        await this.context.resume();
+    }
+
+    async _start() {
         const context = new AudioContext({ latencyHint: 'interactive' });
         this.master = new GainNode(context, { gain: this.muted ? 0 : 1 });
         const limiter = new DynamicsCompressorNode(context, {
