@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { statSync } from 'node:fs';
 import { readGlb } from '../scripts/glb.mjs';
 import { CABIN_VIEWS } from '../src/data/cabinViews.js';
 import { carById } from '../src/data/cars.js';
@@ -8,6 +9,51 @@ import { validateCabinNodes } from '../src/world/cabin/cabinAsset.js';
 import { leverAngles, radarLights, wheelAngle } from '../src/world/cabin/cabinAnimation.js';
 
 const asset = readGlb(new URL('../assets/models/porsche/cabin.glb', import.meta.url));
+
+test('the complete Porsche stays inside its delivery and geometry budgets', () => {
+    const primitives = asset.meshes.flatMap((mesh) => { return mesh.primitives; });
+    const triangles = primitives.reduce((count, primitive) => {
+        assert.equal(primitive.mode ?? 4, 4);
+        return count + asset.accessors[primitive.indices].count / 3;
+    }, 0);
+    assert.ok(triangles <= 100_000, `${triangles} triangles exceed the model budget`);
+    assert.ok(primitives.length <= 50, 'main-pass mesh draw budget');
+    assert.ok(statSync(new URL('../assets/models/porsche/cabin.glb', import.meta.url)).size <= 8 * 1024 * 1024);
+    assert.ok(asset.images.every((image) => { return image.bufferView !== undefined && !image.uri; }));
+    const staticMeshes = asset.nodes.filter((node) => { return node.name.startsWith('static_'); });
+    const min = [Infinity, Infinity, Infinity];
+    const max = [-Infinity, -Infinity, -Infinity];
+    for (const node of staticMeshes) {
+        assert.equal(node.rotation, undefined, 'static batching bakes rotations');
+        for (const primitive of asset.meshes[node.mesh].primitives) {
+            const bounds = asset.accessors[primitive.attributes.POSITION];
+            for (let axis = 0; axis < 3; axis++) {
+                const offset = node.translation?.[axis] ?? 0;
+                min[axis] = Math.min(min[axis], bounds.min[axis] + offset);
+                max[axis] = Math.max(max[axis], bounds.max[axis] + offset);
+            }
+        }
+    }
+    assert.ok(max[0] - min[0] > 1.75, 'complete Turbo width, including both exterior mirrors');
+    assert.ok(min[1] < 0.02 && max[1] > 1.3, 'tyres reach the road and roof is present');
+    assert.ok(min[2] < -2.35 && max[2] > 1.9, 'front and rear exterior are both present');
+});
+
+test('static batching preserves separate moving control geometry and neutral pivots', () => {
+    const bindings = validateCabinNodes(asset.nodes);
+    for (const name of ['steering_wheel', 'gear_lever']) {
+        const pivot = bindings[name];
+        assert.ok(pivot.children.length > 0);
+        for (const index of pivot.children) {
+            assert.ok(asset.nodes[index].mesh !== undefined);
+            assert.ok(!asset.nodes[index].name.startsWith('static_'));
+        }
+        assert.equal(pivot.rotation, undefined, 'runtime applies delta rotations to neutral local axes');
+    }
+    const rotation = bindings.mirror_camera.rotation;
+    assert.ok(Math.abs(rotation[1]) > 1 - 1e-6, 'mirror faces backwards');
+    assert.ok([0, 2, 3].every((axis) => { return Math.abs(rotation[axis]) < 1e-6; }));
+});
 
 test('the configured Porsche asset has its required mesh bindings and seated eye', () => {
     assert.equal(carById('porsche').cockpit.model, 'assets/models/porsche/cabin.glb');

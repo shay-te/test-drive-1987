@@ -46,6 +46,14 @@ async function measure(page, screen) {
     }, screen);
 }
 
+async function lighting(page, screen, stageIndex) {
+    await page.evaluate(async ({ preview, index }) => {
+        const { STAGES } = await import('/src/data/stages.js');
+        preview.stage = STAGES[index];
+        preview.world.loadPreview(preview.stage, preview.car, await preview.world.prepare(preview.car));
+    }, { preview: screen, index: stageIndex });
+}
+
 async function confirmLoading(browser, label, userAgent) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, userAgent });
     const failures = [];
@@ -121,7 +129,7 @@ try {
         page.on('request', (request) => {
             if (request.url().endsWith('/cabin.glb')) modelRequests++;
         });
-        await page.goto(`${baseUrl}/preview.html`, { waitUntil: 'networkidle0' });
+        await page.goto(`${baseUrl}/preview.html`, { waitUntil: 'networkidle' });
         const screen = await instance(page, '/src/ui/screens/PreviewScreen.js', 'PreviewScreen');
         await page.waitForFunction((preview) => { return preview.ready; }, screen);
         await page.keyboard.down('ArrowLeft');
@@ -140,13 +148,18 @@ try {
         await page.keyboard.press('8');
         await page.keyboard.press('9');
         const { CABIN_VIEWS } = await import('../src/data/cabinViews.js');
-        for (const [i, view] of CABIN_VIEWS.entries()) {
-            await page.keyboard.press(`Digit${i + 1}`);
-            await page.waitForFunction(({ preview, yaw }) => {
-                return Math.abs(preview.head.yaw.value + yaw) < 0.01;
-            }, { preview: screen, yaw: view.yaw });
-            await page.screenshot({ path: `${output}/${view.id}.png` });
+        for (const stageIndex of [0, 4]) {
+            await lighting(page, screen, stageIndex);
+            const prefix = stageIndex === 0 ? '' : 'sunset-';
+            for (const [i, view] of CABIN_VIEWS.entries()) {
+                await page.keyboard.press(`Digit${i + 1}`);
+                await page.waitForFunction(({ preview, yaw }) => {
+                    return Math.abs(preview.head.yaw.value + yaw) < 0.01;
+                }, { preview: screen, yaw: view.yaw });
+                await page.screenshot({ path: `${output}/${prefix}${view.id}.png` });
+            }
         }
+        await lighting(page, screen, 0);
         await page.keyboard.press('C');
         await page.mouse.move(600, 400);
         await page.mouse.down();
@@ -181,9 +194,9 @@ try {
         assert.equal(modelRequests, 1, 'the asset must only be fetched once across reloads');
         results.preview.modelRequests = modelRequests;
         results.preview.performance = await measure(page, screen);
-        await page.goto(`${baseUrl}/preview.html?car=ferrari`, { waitUntil: 'networkidle0' });
+        await page.goto(`${baseUrl}/preview.html?car=ferrari`, { waitUntil: 'networkidle' });
         await page.screenshot({ path: `${output}/procedural-ferrari.png` });
-        await page.goto(baseUrl, { waitUntil: 'networkidle0' });
+        await page.goto(baseUrl, { waitUntil: 'networkidle' });
         const game = await instance(page, '/src/core/Game.js', 'Game');
         await page.keyboard.press('Enter');
         await page.waitForFunction((value) => { return value.screen.constructor.name === 'SelectScreen'; }, game);
@@ -194,6 +207,7 @@ try {
         await page.waitForFunction((value) => { return value.vehicle.speedMph > 10; }, drive);
         await page.keyboard.up('ArrowUp');
         await page.keyboard.press('P');
+        await page.screenshot({ path: `${output}/driving-forward.png` });
         const pausedS = await page.evaluate((value) => { return value.vehicle.s; }, drive);
         await page.keyboard.press('Digit7');
         await page.waitForFunction((value) => { return value.head.yaw.value < -2; }, drive);

@@ -1,0 +1,44 @@
+{
+    "vehicle": "1987 Porsche 911 Turbo (930), left-hand-drive coupe",
+    "reviewed": "2026-10-08",
+    "sources": [
+        {
+            "url": "https://www.pcarmarket.com/auction/1987-porsche-911-turbo-1/",
+            "role": "1987 US coupe specification; original four-speed transmission, Fuchs wheels, period radio and sports seats. Listing text reviewed."
+        },
+        {
+            "url": "https://www.carmagazine.co.uk/car-reviews/porsche/930-turbo/",
+            "image": "https://car-images.bauersecure.com/wp-images/12722/930_turbo_066.jpg",
+            "role": "Photo inspected: LHD dashboard, five instruments, four-spoke wheel, vents, pedals, console, passenger door and seat piping."
+        },
+        {
+            "url": "https://rennlist.com/forums/market/1468382",
+            "image": "https://cimg4.ibsrv.net/gimg/rennlist.com-vbulletin/2000x1333/paragon_classics_01_87_porsche_930_60_bf48fb3b318a31fe161cf7c473039c59f1f3d81c.jpg",
+            "role": "Photo inspected: 1987 LHD cockpit; control spacing, heater sliders, door pleats, shift gaiter and wheel construction."
+        },
+        {
+            "url": "https://www.vmcautoinventory.com/details-1987-porsche-930-turbo-used-wp0jb093xhs050271.html",
+            "image": "https://cdn.ebizautos.media/used-1987-porsche-930-turbo-1282-17463906-25-800.jpg",
+            "role": "Photo inspected: front seats with integrated headrests, seat release, rails, door card, console and carpet."
+        },
+        {
+            "url": "https://www.canepa.com/photo-gallery/1987-porsche-930-turbo5011/",
+            "image": "https://dealeraccelerate-all.s3.amazonaws.com/canepa/images/3/1/0/310/15465_87_porsche_911_turbo_03.jpg",
+            "role": "Photo inspected using the public signed image URL: side profile, coupe roof, rear quarter window, wide arches, Fuchs wheels, tea-tray spoiler, impact bumpers and stone guards."
+        }
+    ],
+    "dimensions": {
+        "wheelbaseMetres": 2.272,
+        "frontTyre": "205/55 R16",
+        "rearTyre": "245/45 R16",
+        "basis": "Existing per-car chassis and brochure data; camera and control mounting coordinates retained from cabin.json."
+    },
+    "modelingDecisions": [
+        "Original authored geometry; reference photographs are not redistributed or embedded as textures.",
+        "Existing seafoam paint and grey upholstery palette retained; this is not a claim about a verified factory colour code.",
+        "Closed, fixed body panels; no engine bay or operable doors are included.",
+        "Runtime-owned instruments, trip display, windshield damage, radar, mirror, wheel and lever bindings retained.",
+        "Roof lining and rear upholstery details are interpretive; the model has not been checked against measured factory drawings.",
+        "Rear and side glazing, lighting lenses and leather grain are economical real-time approximations."
+    ]
+}

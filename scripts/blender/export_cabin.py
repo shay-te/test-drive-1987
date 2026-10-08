@@ -157,11 +157,69 @@ def generate(c):
     bpy.context.scene.unit_settings.system = 'METRIC'
 
 
-args = arguments()
-output = Path(args.output)
-output.parent.mkdir(parents=True, exist_ok=True)
-if not args.export_only:
-    generate(json.loads(Path(args.layout).read_text()))
-bpy.ops.wm.save_as_mainfile(filepath=str(output.with_suffix('.blend')))
-bpy.ops.export_scene.gltf(filepath=str(output), export_format='GLB', export_yup=True)
-print('CABIN_EXPORT_OK', output)
+def export_asset(output):
+    # Batch only static meshes in a temporary export selection; keep the editable source intact.
+    protected = {'instrument_surface', 'trip_surface', 'mirror_surface', 'windshield_surface'}
+    protected.update('radar_led_' + str(i) for i in range(6))
+    moving = {'steering_wheel', 'gear_lever'}
+    originals = list(bpy.context.scene.objects)
+    copies = []
+    batches = {}
+    retained = []
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    try:
+        for obj in originals:
+            parent = obj.parent
+            animated = False
+            while parent:
+                animated = animated or parent.name in moving
+                parent = parent.parent
+            if obj.type != 'MESH' or obj.name in protected or animated:
+                retained.append(obj)
+                continue
+            clone = obj.copy()
+            clone.data = bpy.data.meshes.new_from_object(obj.evaluated_get(depsgraph),
+                                                       preserve_all_data_layers=True, depsgraph=depsgraph)
+            clone.modifiers.clear()
+            bpy.context.collection.objects.link(clone)
+            world = obj.matrix_world.copy()
+            clone.parent = None
+            clone.matrix_world = world
+            copies.append(clone)
+            key = tuple(mat.name for mat in clone.data.materials)
+            batches.setdefault(key, []).append(clone)
+        merged = []
+        for materials, parts in batches.items():
+            bpy.ops.object.select_all(action='DESELECT')
+            for part in parts:
+                part.select_set(True)
+            bpy.context.view_layer.objects.active = parts[0]
+            if len(parts) > 1:
+                bpy.ops.object.join()
+            obj = parts[0]
+            obj.name = 'static_' + materials[0]
+            merged.append(obj)
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in retained + merged:
+            obj.select_set(True)
+        bpy.ops.export_scene.gltf(filepath=str(output), export_format='GLB', export_yup=True,
+                                  use_selection=True, export_cameras=False, export_lights=False)
+    finally:
+        for obj in copies:
+            try:
+                bpy.data.objects.remove(obj, do_unlink=True)
+            except ReferenceError:
+                pass  # Joining has already removed this temporary object.
+
+
+if __name__ == '__main__':
+    args = arguments()
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if not args.export_only:
+        if output.with_suffix('.blend').exists():
+            raise RuntimeError('Refusing to replace an existing blend. Open it and pass --export-only.')
+        generate(json.loads(Path(args.layout).read_text()))
+    bpy.ops.wm.save_as_mainfile(filepath=str(output.with_suffix('.blend')))
+    export_asset(output)
+    print('CABIN_EXPORT_OK', output)

@@ -1,0 +1,85 @@
+{
+    "blender": "4.1.1",
+    "sourceObjects": 82,
+    "sourceTriangles": 99508,
+    "staticNormalMaps": 4,
+    "staticNormalMapDecodedBytes": 1048576,
+    "byteIdenticalReexport": true,
+    "sha256": "3a82142499cb70c1c5860a4d110dbf59f9bb5eb9163961c3fb2fb619bb9b9d87",
+    "date": "2026-10-08",
+    "glbBytes": 3623876,
+    "nodes": 38,
+    "meshPrimitives": 29,
+    "checks": {
+        "repository": "79 tests, lint, zero duplication clones, no orphaned exports",
+        "assets": "passed"
+    },
+    "limitations": [
+        "Photographic interpretation; historical dimensional accuracy is not independently certified.",
+        "Physical phone performance and connected gamepad hardware have not been measured.",
+        "No opening panels or engine internals."
+    ],
+    "browser": {
+        "preview": {
+            "geometrySurvivedReload": true,
+            "textures": 10,
+            "geometries": 30,
+            "modelRequests": 1,
+            "performance": {
+                "frameIntervalMedianMs": 368.69999999925494,
+                "callsAllPasses": 56,
+                "trianglesAllPasses": 198252,
+                "textures": 10,
+                "geometries": 30,
+                "width": 1280,
+                "height": 800
+            }
+        },
+        "driving": {
+            "speedMph": 10.107406083001566,
+            "paused": true,
+            "yaw": -2.3944809399713893,
+            "performance": {
+                "frameIntervalMedianMs": 909,
+                "callsAllPasses": 88,
+                "trianglesAllPasses": 1197366,
+                "textures": 34,
+                "geometries": 296,
+                "width": 1280,
+                "height": 800
+            }
+        },
+        "failedAssetRetry": true,
+        "totalModelRequests": 4,
+        "userAgents": {
+            "Firefox": {
+                "userAgent": "Firefox",
+                "rendered": true,
+                "errors": []
+            },
+            "Mozilla-5-0-Firefox-140": {
+                "userAgent": "Mozilla/5.0 Firefox/140",
+                "rendered": true,
+                "errors": []
+            },
+            "Mozilla-5-0-Firefox-140-0": {
+                "userAgent": "Mozilla/5.0 Firefox/140.0",
+                "rendered": true,
+                "errors": []
+            }
+        },
+        "firefox": {
+            "userAgent": "Mozilla/5.0 (X11; Linux x86_64; rv:157.0) Gecko/20100101 Firefox/157.0",
+            "rendered": true,
+            "errors": []
+        },
+        "lightingViews": {
+            "stages": [
+                0,
+                4
+            ],
+            "viewsPerStage": 7
+        },
+        "environment": "Headless Chromium 148, WSL SwiftShader at 1280x800; Firefox 157 loading also passed. Software renderer timings are not target-device performance."
+    }
+}
