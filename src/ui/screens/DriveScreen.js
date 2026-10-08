@@ -18,6 +18,8 @@ import { approach } from '../../util/math.js';
 import {
     drawCrash,
     drawLoading,
+    drawGear,
+    drawOutsideReadout,
     drawPaused,
     drawStageIntro,
     drawTicket,
@@ -60,8 +62,10 @@ export class DriveScreen {
         this.soundscape = null;
     }
 
-    enter({ session }) {
+    /** `outside` keeps the camera chosen on the last stage. */
+    enter({ session, outside = false }) {
         this.input.setLookEnabled(true);
+        this.outside = outside;
         this.session = session;
         this.car = session.car;
         session.beginStage();
@@ -141,6 +145,7 @@ export class DriveScreen {
             return;
         }
         if (input.pressed('toggleDigital')) this.digital = !this.digital;
+        if (input.pressed('toggleView')) this.outside = !this.outside;
         if (!this.paused) this._advance(dt);
         if (this.state === 'results') return;
         this.view = this._view(dt);
@@ -281,7 +286,7 @@ export class DriveScreen {
 
     _finish() {
         const result = this.session.finishStage(this.track.finishS - this.track.startS);
-        this._leave(this.session.over ? 'results' : 'station', { session: this.session, result });
+        this._leave(this.session.over ? 'results' : 'station', { session: this.session, result, outside: this.outside });
     }
 
     /** Hands over to the next screen; nothing else of this stage runs afterwards. */
@@ -363,6 +368,7 @@ export class DriveScreen {
             },
             vehicles: this.traffic.vehicles,
             time: this.time,
+            outside: this.outside,
         };
     }
 
@@ -390,6 +396,9 @@ export class DriveScreen {
             drawCrash(ctx, this.cause, this._fallStats(), session.chances, this.over, this.time);
         if (this.state === 'ticket' && this.vehicle.vx <= 0.3)
             drawTicket(ctx, this.car, this.clockedMph, this.time);
+        const gear = gearLabel(this.car, this.vehicle.engine.gear);
+        if (this.outside) drawOutsideReadout(ctx, this.vehicle.speedMph, gear);
+        else drawGear(ctx, gear);
         if (this.paused) drawPaused(ctx);
     }
 

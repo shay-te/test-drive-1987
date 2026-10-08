@@ -43,9 +43,10 @@ export class StationScreen {
     }
 
     /** Fills up in the authored station once its photo with this car is ready; drawn until then. */
-    enter({ session, result }) {
+    enter({ session, result, outside = false }) {
         this.session = session;
         this.result = result;
+        this.outside = outside;
         this.audio.play('pump', { volume: 0.7 });
         const car = session.car;
         const look = { width: VIEW.width, height: VIEW.height, horizonY: HORIZON, ground: DAY.ground };
@@ -62,7 +63,7 @@ export class StationScreen {
         }
         if (this.full && this.input.pressed('confirm')) {
             this.session.advance();
-            this.game.go('drive', { session: this.session });
+            this.game.go('drive', { session: this.session, outside: this.outside });
         }
     }
 

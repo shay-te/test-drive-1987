@@ -95,6 +95,19 @@ export const LOOK = Object.freeze({
     dragThreshold: 5,
 });
 
+/** The outside camera (V): behind and above the car, its yaw easing after the car's. */
+export const CHASE = Object.freeze({
+    /** Metres behind and above the car's origin. */
+    distance: 7,
+    height: 2.4,
+    /** The point it looks at: ahead of the car, above the road. */
+    aimAhead: 4,
+    aimHeight: 0.9,
+    /** How fast its yaw catches up with the car's (1/s). */
+    followRate: 4,
+    verticalFovDeg: 50,
+});
+
 /** Layout and demonstration settings for the isolated cabin inspection screen. */
 export const PREVIEW = Object.freeze({
     titleY: 30,

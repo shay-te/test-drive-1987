@@ -33,7 +33,7 @@ export const EN = {
         choice: '◀   {{car}}   ▶',
         tap: 'Tap to start',
         controls:
-            'Arrows: steer / gas / brake    A / Z: shift up / down    Drag or Q/E/R/F: look    C: centre    I: readout    M: mute    P: pause',
+            'Arrows: steer / gas / brake    A / Z: shift up / down    Q/E/R/F: look    V: outside view    I: readout    M: mute    P: pause',
         badge: 'TD',
         credit: 'A fan tribute to Test Drive by Distinctive Software and Accolade (1987).',
     },
