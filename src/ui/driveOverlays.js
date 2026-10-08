@@ -17,7 +17,7 @@ export function drawLoading(ctx, time) {
     drawPrompt(ctx, t('general.loading'), time, VIEW.height / 2 + 50);
 }
 
-/** "STAGE 2 OF 5 — name" and the neutral-gear hint, fading out after `time` seconds. */
+/** "STAGE 2 OF 5 — name" and how to pull away, fading out after `time` seconds. */
 export function drawStageIntro(ctx, stage, n, total, time, duration) {
     ctx.save();
     ctx.globalAlpha = clamp((duration - time) * 2, 0, 1);
@@ -27,7 +27,7 @@ export function drawStageIntro(ctx, stage, n, total, time, duration) {
         family: 'display',
         color: COLORS.accent,
     });
-    drawText(ctx, t('drive.neutralHint'), CENTER, BANNER.y + 88, { size: 18, color: COLORS.chrome });
+    drawText(ctx, t('drive.startHint'), CENTER, BANNER.y + 88, { size: 18, color: COLORS.chrome });
     ctx.restore();
 }
 

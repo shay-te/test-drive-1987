@@ -47,6 +47,10 @@ export const GAME = Object.freeze({
     ticketPenaltySec: 30,
     /** Fixed physics step. */
     physicsHz: 120,
+    /** Throttle below this speed (m/s) in neutral selects first gear, as a driver pulling away would. */
+    pullAwaySpeed: 1,
+    /** Within this many rpm of the redline, below top gear, the driver is told to shift up. */
+    shiftHintRpm: 350,
 });
 
 /** How the car body and the driver's head move with the car (the camera rides on both). */

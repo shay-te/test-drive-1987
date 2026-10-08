@@ -52,6 +52,7 @@ export class DriveScreen {
         this.paused = false;
         this.digital = false;
         this.toast = null;
+        this.shiftHint = false;
         this.soundscape = null;
     }
 
@@ -128,6 +129,8 @@ export class DriveScreen {
         if (input.pressed('shiftUp')) this._shift(1);
         if (input.pressed('shiftDown')) this._shift(-1);
         const controls = { steer: input.steering(), throttle: input.throttle(), brake: input.brake() };
+        if (controls.throttle > 0 && vehicle.engine.gear === 0 && vehicle.vx < GAME.pullAwaySpeed)
+            this._shift(1);
         this.accumulator += dt;
         while (this.accumulator >= STEP && this.state === 'driving') {
             this.accumulator -= STEP;
@@ -275,6 +278,11 @@ export class DriveScreen {
     _view(dt) {
         const { vehicle, track, session, car } = this;
         const telemetry = vehicle.telemetry();
+        const gears = car.drivetrain.gears.length;
+        this.shiftHint =
+            telemetry.gear > 0 &&
+            telemetry.gear < gears &&
+            telemetry.rpm > car.engine.redline - GAME.shiftHintRpm;
         const progress = (vehicle.s - track.startS) / (track.finishS - track.startS);
         const readings = instrumentReadings(telemetry, car, { fuel: 1 - progress * FUEL_USED });
         this.cockpit.update(dt, readings, telemetry.gear);
@@ -347,8 +355,10 @@ export class DriveScreen {
         if (this.toast && this.toast.time < TOAST_SECONDS) {
             drawToast(ctx, this.toast.text, (TOAST_SECONDS - this.toast.time) * 2, this.toast.color);
         }
-        if (this.vehicle.engine.overRevTime > 0 && this.state === 'driving') {
+        if (this.state === 'driving' && this.vehicle.engine.overRevTime > 0) {
             drawToast(ctx, t('drive.engineWarning'), 1, COLORS.danger);
+        } else if (this.state === 'driving' && this.shiftHint) {
+            drawToast(ctx, t('drive.shiftUp'), 1, COLORS.accent);
         }
         if (this.state === 'crashed') drawCrash(ctx, this.cause, session.chances, this.over, this.time);
         if (this.state === 'ticket' && this.vehicle.vx <= 0.3)

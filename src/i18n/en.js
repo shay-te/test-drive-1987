@@ -59,7 +59,8 @@ export const EN = {
     },
     drive: {
         stageIntro: 'STAGE {{n}} OF {{total}} — {{name}}',
-        neutralHint: 'You start in neutral: press A to select first gear',
+        startHint: 'Hold ↑ to pull away in first gear, then press A to shift up',
+        shiftUp: 'Press A to shift up',
         pausedHint: 'Press P to resume    ESC to choose another car',
         loading: 'Building the road up the mountain...',
         pursuit: 'You have been clocked by a radar trap!',
