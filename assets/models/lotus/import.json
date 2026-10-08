@@ -1,4 +1,18 @@
 {
     "source": "lotus_esprit_turbo_1983.glb",
-    "yawDeg": -90
+    "credit": {
+        "title": "Lotus Esprit Turbo 1983",
+        "author": "esprit3d.website",
+        "url": "https://sketchfab.com/3d-models/lotus-esprit-turbo-1983-886bcf8ce52f46e3b36115e01319ec44",
+        "license": "CC-BY-4.0"
+    },
+    "yawDeg": -90,
+    "eye": [0.37, 0.95],
+    "steeringWheel": { "parts": ["steering_leather_0"] },
+    "windshield": { "node": "front_wind_glass_0" },
+    "instrument": { "centre": [0.37, 0.751, -0.804], "normal": [0, 0.147, 0.989], "width": 0.22 },
+    "trip": { "centre": [0, 0.635, -0.731], "normal": [0, 0.174, 0.985], "width": 0.14 },
+    "mirror": { "centre": [0.015, 0.952, -0.325], "normal": [0.072, -0.119, 0.99], "width": 0.13, "housing": false },
+    "radar": { "centre": [0.45, 0.972, -0.42] },
+    "lever": { "base": [0, 0.525, -0.6], "parts": ["shift_lever_muffler_0", "grip__17___Default_0"] }
 }

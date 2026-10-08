@@ -6,9 +6,9 @@ a mountain road with a rock face on one side and a sheer drop on the other, truc
 patrol cars and a gas station at the end of every stage.
 
 > **Status: playable, being polished.** Title, car brochure, all five stages, gas station,
-> results and high scores work end to end. The Porsche, the Ferrari and the Lamborghini are full 3D
-> models, driven from inside their own cabins; the Lotus and the Corvette are shown locked until their
-> models exist.
+> results and high scores work end to end. The Porsche, the Ferrari, the Lamborghini and the Lotus
+> are full 3D models, driven from inside their own cabins; the Corvette is shown locked until its
+> model exists.
 
 ### Done
 
@@ -61,7 +61,7 @@ Gamepads (standard mapping) and touch controls work too. The right stick looks a
 
 ## Cabin assets
 
-The Porsche (Johnny Silverhand's 930 by valvetin, CC BY 4.0), the Ferrari (1986 Testarossa by Res1n) and the Lamborghini (1985 Countach LP5000 QV by OUTPISTON, CC BY-NC-SA 4.0) are Sketchfab models, converted by `scripts/import-car.mjs` into cabins with live instruments, animated controls and a seated camera. Inspect them at [preview.html](preview.html); use keys 1–7 for repeatable interior viewpoints. See [the import pipeline, credits and asset contract](assets/models/README.md) before changing a model.
+The Porsche (Johnny Silverhand's 930 by valvetin, CC BY 4.0), the Ferrari (1986 Testarossa by Res1n) the Lamborghini (1985 Countach LP5000 QV by OUTPISTON, CC BY-NC-SA 4.0) and the Lotus (1983 Esprit Turbo by esprit3d.website, CC BY 4.0) are Sketchfab models, converted by `scripts/import-car.mjs` into cabins with live instruments, animated controls and a seated camera. Inspect them at [preview.html](preview.html); use keys 1–7 for repeatable interior viewpoints. See [the import pipeline, credits and asset contract](assets/models/README.md) before changing a model.
 
 ## The cars
 

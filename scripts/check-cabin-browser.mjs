@@ -214,8 +214,8 @@ try {
         assert.equal(modelRequests, 1, 'the asset must only be fetched once across reloads');
         results.preview.modelRequests = modelRequests;
         results.preview.performance = await measure(page, screen);
-        await page.goto(`${baseUrl}/preview.html?car=lotus`, { waitUntil: 'networkidle' });
-        await page.screenshot({ path: `${output}/procedural-lotus.png` });
+        await page.goto(`${baseUrl}/preview.html?car=corvette`, { waitUntil: 'networkidle' });
+        await page.screenshot({ path: `${output}/procedural-corvette.png` });
         await page.goto(baseUrl, { waitUntil: 'networkidle' });
         const game = await instance(page, '/src/core/Game.js', 'Game');
         await page.keyboard.press('Enter');

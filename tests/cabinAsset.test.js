@@ -32,13 +32,14 @@ function staticBounds(model) {
     return { min, max };
 }
 
-test('the Porsche, the Ferrari and the Lamborghini drive authored cabins; the rest stay procedural', () => {
+test('every car but the Corvette drives an authored cabin', () => {
     assert.deepEqual(
         AUTHORED.map((car) => { return [car.id, car.cockpit.model]; }),
         [
             ['porsche', 'assets/models/porsche/cabin.glb'],
             ['ferrari', 'assets/models/ferrari/cabin.glb'],
             ['lamborghini', 'assets/models/lamborghini/cabin.glb'],
+            ['lotus', 'assets/models/lotus/cabin.glb'],
         ],
     );
 });
