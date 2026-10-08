@@ -15,8 +15,8 @@ export const STAGES = [
         rockDark: '#5e3c26',
         vegetation: '#56702f',
         sun: { elevation: 24, azimuth: -38 },
-        sky: { turbidity: 2.4, rayleigh: 1.6, mie: 0.004, exposure: 0.52 },
-        fog: { color: '#b9cde0', density: 0.00042 },
+        sky: { turbidity: 1.6, rayleigh: 2.6, mie: 0.003, exposure: 0.6 },
+        fog: { color: '#b9cde0', density: 0.00011 },
     },
     {
         name: 'CANYON RUN',
@@ -32,8 +32,8 @@ export const STAGES = [
         rockDark: '#66422a',
         vegetation: '#5d7232',
         sun: { elevation: 42, azimuth: 20 },
-        sky: { turbidity: 2.0, rayleigh: 1.3, mie: 0.003, exposure: 0.5 },
-        fog: { color: '#bfd3e6', density: 0.0004 },
+        sky: { turbidity: 1.4, rayleigh: 2.4, mie: 0.003, exposure: 0.58 },
+        fog: { color: '#bfd3e6', density: 0.0001 },
     },
     {
         name: "EAGLE'S LEDGE",
@@ -49,8 +49,8 @@ export const STAGES = [
         rockDark: '#4f4842',
         vegetation: '#4d6a34',
         sun: { elevation: 55, azimuth: 60 },
-        sky: { turbidity: 2.2, rayleigh: 1.2, mie: 0.003, exposure: 0.5 },
-        fog: { color: '#c3d4e4', density: 0.00038 },
+        sky: { turbidity: 1.5, rayleigh: 2.2, mie: 0.003, exposure: 0.56 },
+        fog: { color: '#c3d4e4', density: 0.0001 },
     },
     {
         name: 'THUNDER GORGE',
@@ -66,8 +66,8 @@ export const STAGES = [
         rockDark: '#43301f',
         vegetation: '#4a6630',
         sun: { elevation: 30, azimuth: 110 },
-        sky: { turbidity: 3.0, rayleigh: 1.6, mie: 0.005, exposure: 0.5 },
-        fog: { color: '#c9cfd8', density: 0.00045 },
+        sky: { turbidity: 2.2, rayleigh: 2.4, mie: 0.004, exposure: 0.58 },
+        fog: { color: '#c9cfd8', density: 0.00012 },
     },
     {
         name: 'TOP OF THE ROCK',
@@ -84,7 +84,7 @@ export const STAGES = [
         vegetation: '#5b6a2c',
         sun: { elevation: 7, azimuth: -70 },
         sky: { turbidity: 4.5, rayleigh: 2.6, mie: 0.006, exposure: 0.42 },
-        fog: { color: '#e2c7a6', density: 0.0005 },
+        fog: { color: '#e2c7a6', density: 0.00013 },
         summit: true,
     },
 ];

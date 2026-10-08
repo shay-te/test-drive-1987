@@ -1,8 +1,8 @@
 # Agent Rules — Test Drive 1987 (web remake)
 
-A browser remake of Accolade's 1987 *Test Drive*: vanilla ES modules, three.js (vendored in
-`vendor/three/`) for the 3D world, Canvas 2D for the cockpit and menus, Web Audio for sound.
-No build step: `npm start` serves the folder.
+A browser remake of Accolade's 1987 *Test Drive*: vanilla ES modules, three.js 0.180.0 (pinned in
+the `index.html` import map) for the 3D world, Canvas 2D for the cockpit and menus, Web Audio for
+sound. No build step: `npm start` serves the folder.
 
 ## Git
 
@@ -59,7 +59,8 @@ No build step: `npm start` serves the folder.
 
 - Read the full task context before changing code.
 - Prefer small, direct changes over broad refactors; keep the existing structure and naming.
-- Do not add dependencies unless clearly required. three.js is vendored; dev tools run via `npx`.
+- Do not add dependencies unless clearly required. three.js is the only runtime dependency; dev
+  tools run via `npx`.
 - Configuration-driven behaviour lives in `src/config.js`, not hard-coded at call sites.
 
 ## Testing

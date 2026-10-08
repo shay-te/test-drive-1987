@@ -177,7 +177,7 @@ export class Terrain {
             const x = cx + Math.cos(a) * r;
             const z = cz + Math.sin(a) * r;
             const ridge = this.noise.ridged2(Math.cos(a) * 3 + f * 2, Math.sin(a) * 3 + f * 2);
-            const y = this.valleyFloor + 200 + ridge * 2600 * Math.sin(f * Math.PI) + f * 400;
+            const y = this.valleyFloor + 150 + ridge * 1500 * Math.sin(f * Math.PI) + f * 300;
             pos.setXYZ(k, x, y, z);
         }
         geometry.computeVertexNormals();

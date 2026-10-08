@@ -4,11 +4,11 @@ import { t } from '../i18n/i18n.js';
 import { font } from '../ui/theme.js';
 import { linearGradient, multilineText, normalMapFromHeights, speckle } from '../util/canvas.js';
 import { hexToRgb, mixRgb } from '../util/color.js';
-import { Noise, clamp } from '../util/math.js';
+import { Noise, clamp, smoothstep } from '../util/math.js';
 
 /** Road texture covers both lanes and one 12 m dash period of the centre line. */
 export const ROAD_TEXTURE_LENGTH = 12;
-export const ROCK_TEXTURE_SIZE = 9;
+export const ROCK_TEXTURE_SIZE = 13;
 const ROCK_PIXELS = 512;
 
 /** Procedural textures and the shared three.js materials of a stage. */
@@ -24,8 +24,6 @@ export class WorldMaterials {
             roughness: 0.93,
             metalness: 0,
         });
-        this.road.bumpMap = this.road.map;
-        this.road.bumpScale = 0.6;
         this.gravel = new THREE.MeshStandardMaterial({
             map: this._texture('gravel', 256, 256, (ctx, w, h) => {
                 drawGravel(ctx, w, h);
@@ -84,7 +82,7 @@ export class WorldMaterials {
             ROCK_PIXELS,
             ROCK_PIXELS,
             (ctx, w, h) => {
-                normalMapFromHeights(ctx, heights, w, h, 7);
+                normalMapFromHeights(ctx, heights, w, h, 5);
             },
             { color: false },
         );
@@ -179,11 +177,11 @@ function drawDelineator(ctx, w, h) {
     ctx.fillRect(w * 0.25, h * 0.06, w * 0.5, h * 0.1);
 }
 
-/** Layered sedimentary rock: fbm relief, horizontal strata and ridged cracks. */
+/** Layered sedimentary rock: fbm relief, stepped strata ledges and long vertical fractures. */
 function rockHeights(size) {
     const noise = new Noise(424242);
     const heights = new Float32Array(size * size);
-    const period = 4;
+    const period = 3;
     for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
             // Sample on a torus so the texture tiles seamlessly.
@@ -191,34 +189,43 @@ function rockHeights(size) {
             const b = (y / size) * Math.PI * 2;
             const nx = Math.cos(a) * period;
             const nz = Math.sin(a) * period;
-            const ny = b * 2.2;
-            const relief = noise.fbm3(nx, ny, nz, 5);
-            const strata = Math.sin(y * 0.11 + relief * 4) * 0.18;
-            const crack = Math.pow(1 - Math.abs(noise.noise3(nx * 1.7 + 9, ny * 0.6, nz * 1.7)), 12);
-            heights[y * size + x] = clamp(0.5 + relief * 0.55 + strata - crack * 0.55, 0, 1);
+            const ny = Math.cos(b) * period;
+            const nw = Math.sin(b) * period;
+            const relief = noise.fbm3(nx + nw * 0.5, ny, nz - nw * 0.5, 5);
+            const band = (y / size) * 7 + relief * 0.8;
+            const ledge = smoothstep(0.65, 0.95, band - Math.floor(band)) * 0.22;
+            const fracture = Math.pow(1 - Math.abs(noise.noise3(nx * 2.2 + 7, ny * 0.35, nz * 2.2)), 26);
+            heights[y * size + x] = clamp(0.52 + relief * 0.5 - ledge - fracture * 0.3, 0, 1);
         }
     }
     return heights;
 }
 
 function drawRock(ctx, w, h, heights, baseHex, vegetationHex) {
-    const base = hexToRgb(baseHex);
-    const dark = mixRgb(base, [20, 16, 12], 0.6);
-    const light = mixRgb(base, [235, 225, 205], 0.35);
+    const base = mixRgb(hexToRgb(baseHex), [128, 120, 110], 0.18);
+    const dark = mixRgb(base, [24, 20, 16], 0.62);
+    const light = mixRgb(base, [228, 216, 196], 0.32);
     const moss = hexToRgb(vegetationHex);
+    const noise = new Noise(77);
     const image = ctx.createImageData(w, h);
-    for (let i = 0; i < w * h; i++) {
-        const v = heights[i];
-        let c = v < 0.5 ? mixRgb(dark, base, v * 2) : mixRgb(base, light, (v - 0.5) * 2);
-        if (v > 0.62 && (i * 2654435761) % 97 < 9) c = mixRgb(c, moss, 0.45);
-        image.data.set([c[0], c[1], c[2], 255], i * 4);
+    for (let y = 0; y < h; y++) {
+        // Each stratum has its own tint.
+        const tint = 0.9 + 0.2 * noise.noise1((y / h) * 9);
+        for (let x = 0; x < w; x++) {
+            const i = y * w + x;
+            const v = heights[i];
+            let c = v < 0.5 ? mixRgb(dark, base, v * 2) : mixRgb(base, light, (v - 0.5) * 2);
+            c = [c[0] * tint, c[1] * tint, c[2] * tint];
+            if (v > 0.66 && noise.noise2(x * 0.05, y * 0.05) > 0.35) c = mixRgb(c, moss, 0.35);
+            image.data.set([c[0], c[1], c[2], 255], i * 4);
+        }
     }
     ctx.putImageData(image, 0, 0);
     // Water stains running down the face.
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 10; i++) {
         const x = ((i * 137) % w) + 5;
         ctx.fillStyle = linearGradient(ctx, 0, 0, 0, h, [
-            [0, 'rgba(25,18,12,0.28)'],
+            [0, 'rgba(25,18,12,0.2)'],
             [1, 'rgba(25,18,12,0)'],
         ]);
         ctx.fillRect(x, 0, 3 + (i % 4) * 2, h * (0.4 + (i % 5) * 0.12));
