@@ -46,6 +46,7 @@ export class AssetCabin {
         this.rig = {
             eye: this._inCar(b.driver_eye, new THREE.Vector3()),
             grips: [new THREE.Vector3(), new THREE.Vector3()],
+            wheel: { hub: new THREE.Vector3(), axis: new THREE.Vector3(), up: new THREE.Vector3() },
             knob: new THREE.Vector3(),
         };
     }
@@ -118,11 +119,18 @@ export class AssetCabin {
         this.rotation.set(angles.x, 0, angles.z);
         b.gear_lever.quaternion.copy(this.leverNeutral).multiply(this.delta.setFromEuler(this.rotation));
         const turn = clamp(wheelAngle(cockpit.steer), -DRIVER.gripTurnDeg * DEG, DRIVER.gripTurnDeg * DEG);
+        const mount = b.steering_wheel.parent;
+        const { radius, z } = this.rim;
         this.rig.grips.forEach((grip, i) => {
             const angle = turn + (i === 0 ? Math.PI : 0);
-            const { radius, z } = this.rim;
-            this._inCar(b.steering_wheel.parent, grip.set(radius * Math.cos(angle), radius * Math.sin(angle), z));
+            this._inCar(mount, grip.set(radius * Math.cos(angle), radius * Math.sin(angle), z));
         });
+        // The rim the hands hold: its hub, the column towards the driver, and twelve o'clock as far as the
+        // hands have turned it.
+        const { hub, axis, up } = this.rig.wheel;
+        this._inCar(mount, hub.set(0, 0, z));
+        this._inCar(mount, axis.set(0, 0, z + 1)).sub(hub);
+        this._inCar(mount, up.set(-Math.sin(turn), Math.cos(turn), z)).sub(hub).normalize();
         this._inCar(b.gear_lever, this.rig.knob.copy(this.knobTop));
         this.driver.update(driverPose(this.rig, cockpit.state.driver), outside);
         const lights = radarLights(cockpit.radar, cockpit.time, this.leds.length);

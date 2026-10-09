@@ -18,19 +18,21 @@ const HORIZON = 470;
 
 /** Title: sunset over the mountains, the chrome logo and the car chosen with the arrows, side-on. */
 export class TitleScreen {
-    constructor({ game, display, resources, audio, input, world }) {
-        Object.assign(this, { game, display, resources, audio, input, world });
+    constructor({ game, display, resources, audio, input, world, stages }) {
+        Object.assign(this, { game, display, resources, audio, input, world, stages });
         this.time = 0;
         this.car = CARS[0];
         this.chosenAt = 0;
         this.photos = new Map();
     }
 
-    /** Shows `carId` when coming back from the brochure, otherwise the first car. */
+    /** Shows `carId` when coming back from the brochure, otherwise the first car; meanwhile the first
+     *  stage gets ready in the background. */
     enter({ carId } = {}) {
         this.world.clear();
         this.car = carById(carId);
         this._showPhoto();
+        this.stages.prepare(0);
     }
 
     update(dt) {

@@ -5,8 +5,8 @@ export const DRIVER = {
     // The seat's hip (H-)point.
     hip: { across: 0.1, down: 0.72, back: 0.16 },
     upperArm: 0.32,
-    // Elbow to the middle of the gripping hand.
-    forearm: 0.34,
+    // Elbow to wrist.
+    forearm: 0.27,
     // An arm reaches this share of its length before the shoulder leans in after the target.
     straightArm: 0.97,
     thigh: 0.47,
@@ -24,7 +24,24 @@ export const DRIVER = {
     rimInset: 0.015,
     gripTurnDeg: 45,
     radius: { upperArm: 0.048, forearm: 0.042, thigh: 0.075, shin: 0.055, neck: 0.055 },
-    hand: [0.085, 0.05, 0.11],
+    // The gloved hand: the palm's width across the knuckles, length from wrist to knuckles and thickness;
+    // each finger's place across the palm (+ towards the index side), bone lengths and radius, index
+    // first; the thumb's, its root this share of the palm back from the knuckles; the palm on the rim
+    // tilted towards the driver (driver-ward share of its outward lean); the bars it holds (m).
+    hand: {
+        palm: [0.084, 0.095, 0.03],
+        fingers: [
+            { across: 0.031, bones: [0.044, 0.026, 0.021], radius: 0.0095 },
+            { across: 0.0105, bones: [0.048, 0.029, 0.022], radius: 0.0098 },
+            { across: -0.0105, bones: [0.045, 0.027, 0.021], radius: 0.0093 },
+            { across: -0.031, bones: [0.035, 0.021, 0.019], radius: 0.0085 },
+        ],
+        thumb: { across: 0.045, root: 0.6, bones: [0.04, 0.032, 0.027], radius: 0.0105, start: 0.6 },
+        rimTilt: 0.8,
+        knobTilt: 0.35,
+        rim: 0.016,
+        knob: 0.021,
+    },
     foot: [0.1, 0.08, 0.27],
     // The shoe's centre sits this share of its length behind the ball of the foot.
     footShift: -0.25,

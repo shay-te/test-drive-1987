@@ -8,7 +8,7 @@ import { Terrain } from './Terrain.js';
 import { buildTrees } from './Props.js';
 import { VehicleModels } from './VehicleModels.js';
 import { AuthoredModels } from './AuthoredModels.js';
-import { SCENERY_MODELS, SCENERY_TEXTURES } from '../data/scenery.js';
+import { LAND_DETAIL, SCENERY_MODELS, SCENERY_TEXTURES } from '../data/scenery.js';
 import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 import { AssetCabin } from './cabin/AssetCabin.js';
 import { SIDE_MIRRORS, SURFACES, validateCabinNodes } from './cabin/cabinAsset.js';
@@ -123,16 +123,15 @@ export class WorldView {
         this.scale = scale;
     }
 
-    /** Loads everything a stage with `car` needs before scene construction: its cabin (resolved, null
-     *  without one), the road users' and the scenery models, the rock photographs, and the land around
-     *  the `stage`'s route (its heights and its Landsat picture). */
-    prepare(car, stage) {
+    /** Loads everything the world shows of `stage`, whatever the car: the road users' and the scenery
+     *  models, the rock photographs, and the land around its route (heights and Landsat picture). */
+    prepareStage(stage) {
         const { heights, image } = stage.route.surroundings;
         const photos = Object.values(SCENERY_TEXTURES).flatMap(({ map, normal }) => {
             return [this.resources.image(map), this.resources.image(normal)];
         });
-        const land = [this.resources.binary(heights), this.resources.image(image)];
-        return Promise.all([this.prepareCabin(car), this.authored.prepare(), ...photos, ...land]).then(([cabin]) => { return cabin; });
+        const land = [this.resources.binary(heights), this.resources.image(image), this.resources.image(LAND_DETAIL.map)];
+        return Promise.all([this.authored.prepare(), ...photos, ...land]);
     }
 
     /** Loads and validates the car's cached cabin asset (null for a car without one). */
@@ -293,6 +292,14 @@ export class WorldView {
         this.skyLight = new THREE.HemisphereLight(stage.fog.color, stage.rockDark, LIGHTING.skyIntensity);
         scene.add(this.skyLight);
         this.daylight = { sun: this.sun.intensity, sky: this.skyLight.intensity };
+    }
+
+    /** Compiles the loaded stage's shaders before it is shown (in parallel where the browser can), for
+     *  every layer, so the first frame of driving does not stall on them. */
+    warmUp() {
+        const camera = this.chaseCamera.clone();
+        camera.layers.enableAll();
+        return this.renderer.compileAsync(this.scene, camera);
     }
 
     /** Capture the stage once: road and rock contrast belongs in reflections as well as the sky. */
