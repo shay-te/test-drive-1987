@@ -6,6 +6,10 @@ export const SCENERY_TEXTURES = {
     cliff: { map: 'assets/textures/lichen_rock/diffuse.jpg', normal: 'assets/textures/lichen_rock/normal.jpg', metres: 2 },
 };
 
+/** A real aerial photograph of mossy, rocky mountainside (Poly Haven aerial_rocks_04, CC0, greyed to a
+ *  detail texture), multiplied over the land's satellite colours at a broad and a close scale (m). */
+export const LAND_DETAIL = { map: 'assets/textures/aerial_rocks_04/diffuse.jpg', metres: [80, 12] };
+
 /** Authored scenery models: the gas station at the end of each stage and on the refuelling screen. */
 export const SCENERY_MODELS = {
     station: {

@@ -30,7 +30,10 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
 - All the land around, as it was in 1987: the real terrain out to about 35 km (Howe Sound's
   islands, the ranges either side, the peaks and glaciers to the north) in the colours the Landsat 5
   satellite saw on 5 September 1987 (`scripts/import-landsat.mjs`), with the same picture on the
-  ground beside the road. The view reaches 45 km through a thin coastal haze.
+  ground beside the road, sharpened close up by a real aerial photograph of mossy, rocky ground
+  (Poly Haven, CC0). The view reaches 45 km through a thin coastal haze.
+- The cut is blasted granite: blocks a couple of metres across, each set back by its own amount,
+  dark joints between them, at about a metre's detail.
 - Sea-to-Sky light: the late-afternoon sun stands at its real compass position in the west, on
   the left as you drive north, sinking stage by stage and glinting off the water as the road turns.
 - Over the edge into Howe Sound: the car splashes in, floats while the water pours in, then sinks
@@ -74,7 +77,10 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
    with usable rights are found. Drop them in `assets/audio/engines/` (see its README).
 2. **Sea-to-Sky detail:** concrete barriers where the real road has them, the railway between
    road and shore, Lions Bay's houses, the islands across the sound. (The provincial road atlas and orthophotos are "access only", so they are not used.)
-3. Frame rates on real phones (the cabin pass, the mirrors, shadows).
+3. **Load the road in the background from the moment the page opens** (a worker builds the stage,
+   assets stream in idle time, the title screen keeps its frame rate); starting a stage only waits
+   for that job.
+4. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
 
@@ -144,5 +150,5 @@ under the Open Government Licence – British Columbia (LidarBC); and the Canadi
 Elevation Model, Natural Resources Canada (Open Government Licence – Canada), via the Mapzen/AWS
 Terrain Tiles. The land's colour: Landsat 5 imagery of 5 September and 10 July 1987, courtesy of
 the U.S. Geological Survey / NASA (public domain), read from Microsoft's Planetary Computer.
-Rock textures: Poly Haven (CC0) — Rock Face 03 by Dario Barresi and Rico Cilliers,
-Lichen Rock by Rico Cilliers.
+Rock and ground textures: Poly Haven (CC0) — Rock Face 03 by Dario Barresi and Rico Cilliers,
+Lichen Rock and Aerial Rocks 04 by Rico Cilliers.

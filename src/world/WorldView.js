@@ -8,7 +8,7 @@ import { Terrain } from './Terrain.js';
 import { buildTrees } from './Props.js';
 import { VehicleModels } from './VehicleModels.js';
 import { AuthoredModels } from './AuthoredModels.js';
-import { SCENERY_MODELS, SCENERY_TEXTURES } from '../data/scenery.js';
+import { LAND_DETAIL, SCENERY_MODELS, SCENERY_TEXTURES } from '../data/scenery.js';
 import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 import { AssetCabin } from './cabin/AssetCabin.js';
 import { SIDE_MIRRORS, SURFACES, validateCabinNodes } from './cabin/cabinAsset.js';
@@ -131,7 +131,7 @@ export class WorldView {
         const photos = Object.values(SCENERY_TEXTURES).flatMap(({ map, normal }) => {
             return [this.resources.image(map), this.resources.image(normal)];
         });
-        const land = [this.resources.binary(heights), this.resources.image(image)];
+        const land = [this.resources.binary(heights), this.resources.image(image), this.resources.image(LAND_DETAIL.map)];
         return Promise.all([this.prepareCabin(car), this.authored.prepare(), ...photos, ...land]).then(([cabin]) => { return cabin; });
     }
 

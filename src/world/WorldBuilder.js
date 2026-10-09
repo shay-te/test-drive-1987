@@ -2,15 +2,24 @@ import * as THREE from 'three';
 import { ROAD } from '../config.js';
 import { SEA_LEVEL, SHOULDER_DROP } from '../sim/Landscape.js';
 import { roadsideAt } from '../sim/routeTerrain.js';
+import { latLonOf } from './routeFrame.js';
 import { Noise, clamp, createRng, lerp, smoothstep } from '../util/math.js';
-import { mixRgb } from '../util/color.js';
 import { buildRibbon } from './Ribbon.js';
 import { SCENERY_TEXTURES } from '../data/scenery.js';
 import { ROAD_TEXTURE_LENGTH, shadeVertex } from './Materials.js';
 import { buildProps } from './Props.js';
 import { TREE_LINE_LOW } from './Terrain.js';
 
-const FACE_ROWS = 12;
+/** The cut's mesh: rows up its height, and rows along the road for each track node. */
+const FACE_ROWS = 32;
+const ROWS_PER_NODE = 3;
+/** Blasted granite: blocks `block` m across and up, each set back by up to `step` m; joints between them
+ *  `crack` m deep, `width` of a block wide; broad bulges and fine grain ([depth m, frequency per m]); and
+ *  how much darker the cracks and the deepest blocks are. */
+const GRANITE = {
+    block: [2.6, 1.8], step: 1.4, crack: 0.5, width: 0.12,
+    bulge: [1.8, 0.035], grain: [0.25, 0.6], shade: { crack: 0.45, recess: 0.2 },
+};
 /** The mountainside above the face, in rows reaching SLOPE_REACH m out from its top. */
 const SLOPE_ROWS = 12;
 const SLOPE_REACH = 48;
@@ -84,19 +93,42 @@ export class WorldBuilder {
             {
                 alongTile: SCENERY_TEXTURES.rock.metres,
                 acrossTile: SCENERY_TEXTURES.rock.metres,
+                steps: ROWS_PER_NODE,
                 displace: (world, _p, c, i) => {
                     if (c === 0) return;
                     // Relief only recedes into the mountain so the rock never pokes past the collision line.
-                    const depth =
-                        (0.5 + 0.5 * this.noise.fbm3(world.x * 0.09, world.y * 0.07, world.z * 0.09, 4)) *
-                        2.6;
+                    const depth = this._granite(world);
                     world.x += Math.cos(track.heading[i]) * depth;
                     world.z += Math.sin(track.heading[i]) * depth;
                 },
-                color: (p) => {
-                    return shadeVertex('#ffffff', clamp(0.55 + p.h / 18, 0.55, 1));
+                color: (p, _c, _i, world) => {
+                    const { joint, recess } = this._blocks(world);
+                    const shade = GRANITE.shade;
+                    return shadeVertex('#ffffff', clamp(0.55 + p.h / 18, 0.55, 1) * (1 - shade.crack * joint) * (1 - shade.recess * recess));
                 },
             },
+        );
+    }
+
+    /** The blocks of granite at world point `p`: how deep in a joint it lies (0..1) and how far its
+     *  block is set back (0..1). */
+    _blocks({ x, y, z }) {
+        const [across, up] = GRANITE.block;
+        const cell = this.noise.cells3(x / across, y / up, z / across);
+        return { joint: 1 - smoothstep(0, GRANITE.width, cell.next - cell.near), recess: cell.id };
+    }
+
+    /** How far blasted granite recedes from a flat face at world point `p` (m, never negative): its
+     *  blocks stepped back, the joints between them, broad bulges and fine grain. */
+    _granite(p) {
+        const n = this.noise;
+        const { joint, recess } = this._blocks(p);
+        const [bulge, broad] = GRANITE.bulge;
+        const [grain, fine] = GRANITE.grain;
+        return (
+            GRANITE.step * recess + GRANITE.crack * joint +
+            bulge * (0.5 + 0.5 * n.fbm3(p.x * broad, p.y * broad * 1.2, p.z * broad, 3)) +
+            grain * (0.5 + 0.5 * n.fbm3(p.x * fine, p.y * fine, p.z * fine, 2))
         );
     }
 
@@ -114,24 +146,23 @@ export class WorldBuilder {
         return points;
     }
 
-    /** Scrubby mountainside climbing away above the rock face. */
+    /** The mountainside climbing away above the rock face, in the land's colours. */
     _upperSlope(track) {
-        const vegetation = this.stage.vegetation;
+        const { south, north, west, east } = this.stage.route.surroundings;
         return buildRibbon(
             track,
-            this.materials.terrain,
+            this.materials.land,
             (i) => {
                 return this._slopeSection(track, i);
             },
             {
-                alongTile: 14,
-                acrossTile: 14,
+                steps: ROWS_PER_NODE,
                 displace: (world) => {
                     world.y += this.noise.fbm3(world.x * 0.02, 3.3, world.z * 0.02, 3) * SLOPE_ROUGHNESS;
                 },
-                color: (p, c) => {
-                    const rockiness = clamp(1 - c / SLOPE_ROWS, 0, 1) * 0.6;
-                    return mixRgb(shadeVertex(this.stage.rock, 1), shadeVertex(vegetation, 1), 1 - rockiness);
+                uvAt: (world) => {
+                    const [lat, lon] = latLonOf(track, world.x, world.z);
+                    return [(lon - west) / (east - west), (lat - south) / (north - south)];
                 },
             },
         );

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ROAD } from '../config.js';
-import { SCENERY_TEXTURES } from '../data/scenery.js';
+import { LAND_DETAIL, SCENERY_TEXTURES } from '../data/scenery.js';
 import { t } from '../i18n/i18n.js';
 import { font } from '../ui/theme.js';
 import { linearGradient, multilineText, speckle } from '../util/canvas.js';
@@ -30,15 +30,10 @@ export class WorldMaterials {
         });
         this.rock = this._rockMaterial(SCENERY_TEXTURES.rock);
         this.cliff = this._rockMaterial(SCENERY_TEXTURES.cliff);
-        // The land as Landsat 5 saw it in September 1987, over the route's surroundings.
+        // The land as Landsat 5 saw it in September 1987, over the route's surroundings, with real ground
+        // photographed close up worked into it.
         this.land = new THREE.MeshStandardMaterial({ map: this._photo(stage.route.surroundings.image, true, false), roughness: 1 });
-        this.terrain = new THREE.MeshStandardMaterial({
-            vertexColors: true,
-            map: this._texture('scrub', 256, 256, (ctx, w, h) => {
-                drawScrub(ctx, w, h);
-            }),
-            roughness: 1,
-        });
+        this._addDetail(this.land, this._photo(LAND_DETAIL.map, false), LAND_DETAIL.metres);
         this.steel = new THREE.MeshStandardMaterial({ color: '#c3c8ce', roughness: 0.42, metalness: 0.7 });
         // Smooth enough to throw the low sun back as a glint.
         // Two-sided, so from under the water its surface closes the view above.
@@ -81,6 +76,26 @@ export class WorldMaterials {
         if (color) map.colorSpace = THREE.SRGBColorSpace;
         map.needsUpdate = true;
         return map;
+    }
+
+    /** Multiplies the grey `detail` photograph, laid flat over the world at a broad and a close scale
+     *  (m), into `material`'s colour: crisp ground under colours that come only in 30 m pixels. Each
+     *  sample averages mid-grey, so twice each keeps the colour's brightness. */
+    _addDetail(material, detail, [broad, close]) {
+        material.onBeforeCompile = (shader) => {
+            shader.uniforms.detailMap = { value: detail };
+            shader.vertexShader = `varying vec2 vDetail;\n${shader.vertexShader}`.replace(
+                '#include <begin_vertex>',
+                '#include <begin_vertex>\n    vDetail = (modelMatrix * vec4(transformed, 1.0)).xz;',
+            );
+            shader.fragmentShader = `uniform sampler2D detailMap;\nvarying vec2 vDetail;\n${shader.fragmentShader}`.replace(
+                '#include <map_fragment>',
+                `#include <map_fragment>\n    diffuseColor.rgb *= 4.0 * texture2D(detailMap, vDetail / ${broad.toFixed(1)}).r * texture2D(detailMap, vDetail / ${close.toFixed(1)}).r;`,
+            );
+        };
+        material.customProgramCacheKey = () => {
+            return `land-detail-${broad}-${close}`;
+        };
     }
 
     /** Rock from a photograph (`photo` from SCENERY_TEXTURES). */
@@ -158,12 +173,6 @@ function drawGravel(ctx, w, h) {
     ctx.fillStyle = '#77716a';
     ctx.fillRect(0, 0, w, h);
     speckle(ctx, w, h, { count: 9000, alpha: 0.5, size: 2.2, seed: 5 });
-}
-
-function drawScrub(ctx, w, h) {
-    ctx.fillStyle = '#d9d9d9';
-    ctx.fillRect(0, 0, w, h);
-    speckle(ctx, w, h, { count: 6000, alpha: 0.45, size: 3, seed: 11, dark: 0.8 });
 }
 
 function drawDelineator(ctx, w, h) {

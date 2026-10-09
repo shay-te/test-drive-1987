@@ -127,6 +127,32 @@ export class Noise {
         return this.fbm3(x, y, 0.37, octaves, lacunarity, gain);
     }
 
+    /** Cellular (Worley) noise, one random point in each unit cell: the distances from (x, y, z) to the
+     *  nearest and the second nearest point, and the nearest point's own value (0..1). Blocks of rock
+     *  are the cells; their joints run where the two distances meet. */
+    cells3(x, y, z) {
+        const p = this.perm;
+        const [ix, iy, iz] = [Math.floor(x), Math.floor(y), Math.floor(z)];
+        let near = Infinity;
+        let next = Infinity;
+        let id = 0;
+        for (let dz = -1; dz <= 1; dz++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    const [cx, cy, cz] = [ix + dx, iy + dy, iz + dz];
+                    const h = p[(p[(p[cx & 255] + cy) & 255] + cz) & 255];
+                    const d = (cx + h / 255 - x) ** 2 + (cy + p[(h + 101) & 255] / 255 - y) ** 2 + (cz + p[(h + 211) & 255] / 255 - z) ** 2;
+                    if (d < near) {
+                        next = near;
+                        near = d;
+                        id = p[(h + 37) & 255] / 255;
+                    } else if (d < next) next = d;
+                }
+            }
+        }
+        return { near: Math.sqrt(near), next: Math.sqrt(next), id };
+    }
+
     /** Ridged multifractal, useful for mountain ranges. Output in [0, 1]. */
     ridged2(x, y, octaves = 5) {
         let amp = 0.5;
