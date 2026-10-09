@@ -198,6 +198,8 @@ export class WorldView {
         });
     }
 
+    /** Builds the stage's world around `track` and `landscape` with the car's cabin; returns the trees it
+     *  planted ([{ x, y, z, height, species }]), which a crashing car meets. */
     load(track, stage, car, landscape, cabinAsset = null) {
         this.dispose();
         this.track = track;
@@ -216,6 +218,7 @@ export class WorldView {
         this.underwater = new Underwater(scene, landscape.waterLevel);
         this.smoke = new Smoke(scene);
         this._installCabin(scene, stage, car, cabinAsset, track.bearing);
+        return trees;
     }
 
     loadPreview(stage, car, cabinAsset) {

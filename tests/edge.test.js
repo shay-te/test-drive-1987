@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PHYS, ROAD } from '../src/config.js';
+import { FALL, PHYS, ROAD } from '../src/config.js';
 import { carById } from '../src/data/cars.js';
 import { STAGES } from '../src/data/stages.js';
 import { Landscape, SEA_DEPTH, SEA_LEVEL } from '../src/sim/Landscape.js';
@@ -124,4 +124,25 @@ test('a guard rail holds a car that brushes or glances off it and gives way to a
     assert.equal(glancing.event?.cause, 'rail', 'a glancing hit wrecks the car against it');
     assert.ok(glancing.u > ROAD.edgeOffset, 'on the road side');
     assert.equal(into(40, 0.3).event?.cause, 'edge', 'a hard one goes through it and over the edge');
+});
+
+test('on a steep wooded slope a wreck rides the wet undergrowth on down, where rock would have held it', () => {
+    let spot = null;
+    for (let i = Math.floor(track.startS / track.segment); i < track.count && !spot; i += 5) {
+        for (let u = -12; u > -60 && !spot; u -= 3) {
+            const p = track.nodeWorld(i, u, 0, {});
+            const n = landscape.normalAt(p.x, p.z);
+            const tan = Math.hypot(n.x, n.z) / n.y;
+            const below = landscape.heightAt(p.x, p.z) < track.elevation[i] - 5;
+            if (below && tan > FALL.undergrowth + 0.1 && tan < FALL.friction - 0.05 && landscape.frictionAt(p.x, p.z, n) === FALL.undergrowth) spot = { s: i * track.segment, u, p };
+        }
+    }
+    assert.ok(spot, 'no such slope below the road');
+    const vehicle = new VehicleDynamics(carById('porsche'));
+    vehicle.reset(spot.s, spot.u);
+    const fall = new OverTheEdge(vehicle, track, landscape);
+    for (let t = 0; t < 8 && !fall.done; t += 1 / 60) fall.update(1 / 60);
+    const end = fall.body.position;
+    const travelled = Math.hypot(end.x - spot.p.x, end.z - spot.p.z);
+    assert.ok(travelled > 8, `slid only ${travelled.toFixed(1)} m`);
 });

@@ -213,8 +213,9 @@ export const CRASH = Object.freeze({
     /** The rock face as a crashing car meets it: a slope it is pushed back off, not a sheer step. */
     wallSlope: 20,
     wallGap: 0.4,
-    /** The wreck stops playing after this long even if the cars are still moving (s). */
-    maxSeconds: 8,
+    /** The wreck stops playing after this long even if the cars are still moving (s): long enough for
+     *  the traffic behind to run into it. */
+    maxSeconds: 12,
     /** From then on ENTER skips to the crash notice (s). */
     skipAfter: 1.5,
     /** Where the crash is watched from: behind the impact, out over the drop, above the road (m); a
@@ -321,9 +322,10 @@ export const FALL = Object.freeze({
     damping: 2.7e4,
     /** Sliding friction of steel on rock, a sticking term (N per m/s), and rolling wheels' share. */
     friction: 0.7,
-    /** Off the road, on ground that holds soil, the undergrowth and the trees hold a car back as if
-     *  this rough: it stops on the slope instead of sliding down to the sea. */
-    brush: 1.5,
+    /** Off the road, on ground that holds soil, a sliding car rides on wet moss and undergrowth,
+     *  slicker than rock: it goes on down a steep slope (to the sea, where the slope runs down to it)
+     *  unless a tree stops it. */
+    undergrowth: 0.45,
     grip: 1.5e5,
     rolling: 0.06,
     /** A hit this hard (m/s) smashes the wheels: from then on they drag instead of rolling. */
@@ -333,7 +335,7 @@ export const FALL = Object.freeze({
     restSpeed: 0.3,
     restSpin: 0.3,
     restSeconds: 1,
-    maxSeconds: 45,
+    maxSeconds: 120,
     /** A contact closing faster than this (m/s) is a hit: a crash sound and a jolt. */
     hitSpeed: 4,
     /** Floor pan and sills above the road, wheels inset from the body sides (m). */

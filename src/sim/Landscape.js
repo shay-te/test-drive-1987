@@ -94,12 +94,12 @@ export class Landscape {
     }
 
     /** Sliding friction for a wreck on the ground at (x, z) with normal `n`: steel on the road, its
-     *  shoulders and bare rock (FALL.friction), the brush of the forest off the road wherever the
-     *  ground holds soil (FALL.brush). */
+     *  shoulders and bare rock (FALL.friction), the undergrowth off the road wherever the ground holds
+     *  soil (FALL.undergrowth). */
     frictionAt(x, z, n) {
         const p = this.track.project(x, z, this.hint);
         const offRoad = p.u < ROAD.edgeOffset || p.u > this.track.wallOffsetAt(p.s) + WALL_FOOT;
-        return offRoad && n.y >= LAND_DETAIL.bareRock[0] ? FALL.brush : FALL.friction;
+        return offRoad && n.y >= LAND_DETAIL.bareRock[0] ? FALL.undergrowth : FALL.friction;
     }
 
     /** Upward unit normal of the ground at (x, z). */

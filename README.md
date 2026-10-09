@@ -63,9 +63,11 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   shaders ahead (in parallel where the browser can) so the first frame does not stall.
 - Sea-to-Sky light: the late-afternoon sun stands at its real compass position in the west, on
   the left as you drive north, sinking stage by stage and glinting off the water as the road turns.
-- Over the edge into Howe Sound: the car splashes in, floats while the water pours in, then sinks
-  to the bottom (the heavy end first) as its air bubbles out; the camera follows it under, where
-  fish circle the wreck. The notice says how far it fell and how deep it sank.
+- Over the edge into Howe Sound: the car tumbles down the real slope, sliding on over the wet
+  undergrowth wherever it is steep (it stops on a bench, or against a tree, as a real car would),
+  and where the slope runs down to the water it splashes in, floats while the water pours in, then
+  sinks to the bottom (the heavy end first) as its air bubbles out; the camera follows it under,
+  where fish circle the wreck. The notice says how far it fell and how deep it sank.
 - Phones: touch buttons in landscape and (in two rows) portrait, every prompt in touch words
   ("Tap to start", "tap + to shift up"), the high-score name typed in the phone's own text box,
   and the 3D view drawn at no more than twice the screen's size in pixels. Checked on an emulated
@@ -88,7 +90,9 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
 - Crashes play out instead of freezing, watched from beside the road: hitting a car throws both
   apart as rigid bodies sharing the momentum by mass (the lighter one rides up and flies, the 12 t
   refuse truck barely moves), off-centre hits spin them, the rock face pushes the car back and the
-  drop takes it; every hard hit cracks the windshield again, up to shattered. ENTER skips ahead.
+  drop takes it; every hard hit cracks the windshield again, up to shattered. Nothing is a ghost:
+  the trees' trunks stop a car, the wrecks hit each other again, and a car flung into another car
+  (or one driving on into the wreck) joins it, so one crash sets off the next. ENTER skips ahead.
 - Working door mirrors on every car (the Porsche has the driver's only, as the model does): each
   shows the lane behind, just past the car's flank.
 - A visible driver, as in Wing Commander (1990): rigged gloved hands (a skinned hand model posed

@@ -10,6 +10,7 @@ import { inputKey, t } from '../../i18n/i18n.js';
 import { POLICE_EVENT, PoliceManager } from '../../sim/Police.js';
 import { OverTheEdge } from '../../sim/OverTheEdge.js';
 import { RoadCrash } from '../../sim/RoadCrash.js';
+import { TreeTrunks } from '../../sim/TreeTrunks.js';
 import { CRASH_CAUSE } from '../../sim/Session.js';
 import { LANE, TrafficManager } from '../../sim/Traffic.js';
 import { VehicleDynamics } from '../../sim/VehicleDynamics.js';
@@ -102,7 +103,8 @@ export class DriveScreen {
         this.water = new WaterParticles(this.landscape.waterLevel, session.stage.seed);
         this.smoke = new EngineSmoke(session.stage.seed);
         this.sunk = false;
-        this.world.load(this.track, session.stage, car, this.landscape, cabinAsset);
+        // The trees the world planted are solid to a crashing car.
+        this.trunks = new TreeTrunks(this.world.load(this.track, session.stage, car, this.landscape, cabinAsset) ?? []);
         this.vehicle = new VehicleDynamics(car);
         this.vehicle.reset(this.track.startS, LANE);
         this.traffic = new TrafficManager(this.track, session.stage);
@@ -116,7 +118,6 @@ export class DriveScreen {
         this.bodyRoll = 0;
         this.cracks = [];
         this.wreck = null;
-        this.wrecked = null;
         this.stageTime = 0;
         if (this.audio.ready) {
             this.audio.createEngine(car).then((engine) => {
@@ -277,16 +278,11 @@ export class DriveScreen {
             this._crack(impact);
         }
         this.impactAt = { s: this.vehicle.s, u: this.vehicle.u };
-        const { vehicle, track, landscape } = this;
+        const { vehicle, track, landscape, trunks, traffic } = this;
+        // Every car hit leaves the traffic and follows its own wreck.
         this.wreck = cause === CRASH_CAUSE.edge
-            ? new OverTheEdge(vehicle, track, landscape)
-            : new RoadCrash(vehicle, track, landscape, other);
-        if (other) {
-            // The car hit leaves the traffic and follows its own wreck.
-            other.scripted = true;
-            other.wrecked = true;
-            this.wrecked = other;
-        }
+            ? new OverTheEdge(vehicle, track, landscape, trunks)
+            : new RoadCrash(vehicle, track, landscape, other, { trunks, traffic });
         this.state = 'wrecking';
     }
 
@@ -313,7 +309,9 @@ export class DriveScreen {
         const other = this.otherImpacts.hear(this.wreck.time, hits.other);
         if (other) this.audio.play('impact', { volume: other * OTHER_CAR_VOLUME });
         this._sea(hits, dt);
-        if (this.wrecked) this.wrecked.pose = this.wreck.otherPose;
+        for (const { vehicle, pose } of this.wreck.wrecked) vehicle.pose = pose;
+        // The traffic drives on, into the wreck if it does not stop in time.
+        this.traffic.update(dt, this.vehicle.s, this.vehicle.dir);
         const skip = this.wreck.time > CRASH.skipAfter && this.input.pressed('confirm');
         if (this.wreck.done || skip) this.state = 'crashed';
     }
@@ -340,8 +338,7 @@ export class DriveScreen {
         }
         const s = Math.max(this.track.startS, this.vehicle.s - RESPAWN_BACK);
         this.vehicle.reset(s, LANE);
-        if (this.wrecked) this.traffic.remove(this.wrecked);
-        this.wrecked = null;
+        for (const { vehicle } of this.wreck?.wrecked ?? []) this.traffic.remove(vehicle);
         this.traffic.clearAround(s);
         this.police.release();
         this.cracks = [];

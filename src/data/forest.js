@@ -67,4 +67,6 @@ export const FOREST = {
     cell: 100,
     /** Each tree's colour is brightened or darkened by up to this share. */
     variation: 0.16,
+    /** A trunk's radius at its foot, per metre of the tree's height: as drawn, and as a car meets it. */
+    trunkRadius: 0.016,
 };

@@ -1,8 +1,8 @@
 import * as THREE from 'three';
+import { FOREST } from '../data/forest.js';
 import { TAU, createRng, smoothstep } from '../util/math.js';
 
-/** A trunk's radius at its foot, per metre of the tree's height, and how far up it thins to its tip. */
-const TRUNK_RADIUS = 0.016;
+/** How far up a trunk thins to its tip (its foot is FOREST.trunkRadius per metre of height). */
 const TRUNK_TOP = 0.2;
 const TRUNK_SIDES = 7;
 const TRUNK_ROWS = 6;
@@ -73,7 +73,7 @@ function addTrunk(parts, species, lean) {
     for (let k = 0; k < pos.count; k++) {
         const up = pos.getY(k) * top;
         const flare = 1 + species.flare * (1 - smoothstep(0, FLARE_RISE, up));
-        const radius = TRUNK_RADIUS * (1 - (1 - TRUNK_TOP) * (up / top)) * flare;
+        const radius = FOREST.trunkRadius * (1 - (1 - TRUNK_TOP) * (up / top)) * flare;
         pos.setXYZ(k, pos.getX(k) * radius + lean(up), up, pos.getZ(k) * radius);
     }
     trunk.computeVertexNormals();

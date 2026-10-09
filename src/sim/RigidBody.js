@@ -21,6 +21,25 @@ export class RigidBody {
         this.wet = 0;
         this.flooded = 0;
         this.splash = 0;
+        // The box round its hull points (body frame), what another body or a trunk can hit.
+        this.box = {
+            min: vec(...['x', 'y', 'z'].map((k) => { return Math.min(...spec.points.map((p) => { return p[k]; })); })),
+            max: vec(...['x', 'y', 'z'].map((k) => { return Math.max(...spec.points.map((p) => { return p[k]; })); })),
+        };
+    }
+
+    /** Gives the body `impulse` (N s, world) at `r` (world, from its centre of mass). */
+    push(r, impulse) {
+        this.velocity = add(this.velocity, scale(impulse, 1 / this.mass));
+        const q = this.orientation;
+        const t = rotate(conjugate(q), cross(r, impulse));
+        const I = this.inertia;
+        this.angularVelocity = add(this.angularVelocity, rotate(q, vec(t.x / I.x, t.y / I.y, t.z / I.z)));
+    }
+
+    /** World point `p` in the body's frame (from its centre of mass). */
+    local(p) {
+        return rotate(conjugate(this.orientation), sub(p, this.position));
     }
 
     get speed() {
