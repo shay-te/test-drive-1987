@@ -4,11 +4,16 @@ import { clamp } from '../../src/util/math.js';
 const LOOKAHEAD = 260;
 const LOOKAHEAD_STEP = 8;
 const CORNER_MARGIN = 0.72;
-const BRAKE_PLAN = 5.5;
+const BRAKE_PLAN = 4;
 const LANE_GAIN = 3;
+/** Brake pressure per m/s over the planned speed. */
+const BRAKE_GAIN = 0.35;
+/** Running this far wide of the lane (m), the driver lifts off. */
+const LANE_SLACK = 0.6;
 const HEADING_GAIN = 2.2;
 
-/** A competent test driver: plans corner speeds, holds the right lane and shifts at the redline. */
+/** A careful test driver: plans corner speeds, brakes before bends rather than in them, lifts when the
+ *  car runs wide, holds the right lane and shifts at the redline. */
 export class Autopilot {
     constructor(vehicle, track, lane = 1.8) {
         this.vehicle = vehicle;
@@ -40,10 +45,13 @@ export class Autopilot {
         const steerAngle = (wheelbase * lateral) / (v * v) + (0.011 * lateral) / PHYS.g;
         const vmax = this.targetSpeed();
         this._shift();
+        // Squeezed on in proportion to the overspeed, and only with the grip cornering leaves free.
+        const grip = veh.car.chassis.grip * PHYS.g;
+        const free = Math.sqrt(Math.max(0, 1 - (v * v * kappa / grip) ** 2));
         return {
             steer: clamp(steerAngle / veh.maxSteer(), -1, 1),
-            throttle: veh.vx < vmax - 1 ? 1 : 0,
-            brake: veh.vx > vmax + 0.5 ? 1 : 0,
+            throttle: veh.vx < vmax - 1 && Math.abs(this.lane - veh.u) < LANE_SLACK ? 1 : 0,
+            brake: clamp((veh.vx - vmax) * BRAKE_GAIN, 0, 1) * free,
         };
     }
 

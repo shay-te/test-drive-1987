@@ -2,8 +2,9 @@
 
 A fan remake of Accolade's 1987 *Test Drive* for the browser, rebuilt with a real 3D world,
 real-car physics and synthesised engine sound, while keeping the original's soul: five exotic cars,
-a mountain road with a rock face on one side and a sheer drop on the other, trucks, radar traps,
-patrol cars and a gas station at the end of every stage.
+a mountain road with a rock face on one side and a drop on the other, trucks, radar traps, patrol
+cars and a gas station at the end of every stage. The road is the one the Vancouver developers
+drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to Squamish.
 
 > **Status: playable, being polished.** Title, car brochure, all five stages, gas station,
 > results and high scores work end to end. All five cars are full 3D models, driven from inside
@@ -12,7 +13,15 @@ patrol cars and a gas station at the end of every stage.
 ### Done
 
 - `src/sim/`: drivetrain (calibrated to each car's 0-60 and top speed), tyre/vehicle dynamics,
-  procedural stages (rock face right, drop left), traffic, radar traps and pursuit, scoring. Tested.
+  stages laid on the real road (rock face right, drop left), traffic, radar traps and pursuit,
+  scoring. Tested.
+- The Sea-to-Sky Highway (BC 99): the five stages are consecutive 8.6 km legs of the real road
+  northbound, Horseshoe Bay, Lions Bay, Porteau Cove, Britannia Beach and Squamish, with its real
+  bends, gradients and terrain (Howe Sound on the left, the Coast Mountains on the right). The drop
+  falls to the real shore or sea floor under the water. `scripts/import-route.mjs` builds
+  `src/data/seaToSky.js` from OpenStreetMap and Natural Resources Canada elevation data.
+- Sea-to-Sky light: the late-afternoon sun stands at its real compass position in the west, on
+  the left as you drive north, sinking stage by stage and glinting off the water as the road turns.
 - `src/audio/`: `AudioManager`, per-car engine synthesiser (AudioWorklet), sound bank, soundscape.
 - `src/world/`: three.js world: road, cliff, drop, terrain, trees, props, vehicles, sky lighting.
 - `src/world/cabin/`: the 3D cabin carried along at the car's pose: padded dash and hood, the
@@ -40,16 +49,16 @@ patrol cars and a gas station at the end of every stage.
 
 ### Next (queued, in order)
 
-1. **The cars you drive, as in reality:** each car's real engine sound, its real turbo and rev
-   behaviour, and handling that matches the real car; always show which gear you are in.
-2. **A Sea-to-Sky Highway setting:** the coastal road from Horseshoe Bay to Squamish above Howe
-   Sound (one lane each way, cut into the cliffs; see the 1966 TranBC footage). Start with one
-   polished 500 m section (bend, rock wall, drop, trees, distant mountains), then extend it; rock
-   assets from Poly Haven (CC0), terrain from Natural Resources Canada elevation data.
-3. **Sea-to-Sky lighting:** driving north, a late-afternoon summer sun in the west (to the left),
-   and its glint on the water to the left, moving across the view as the road turns.
-4. **Over the edge into the sea:** the car sinks, with fish and rising air bubbles.
-5. Test on phones (touch controls, performance of the cabin pass).
+1. **The cars you drive, as in reality:** each car's real engine sound. The gearing, weights,
+   grip, turbo lag and boost are already the real cars'; no freely licensed recordings of these
+   five exact cars exist (only stand-ins: a 911 of unknown year, a Murcielago V12, a Saab turbo
+   four, a Corvette of unknown generation), so the engines stay synthesised until recordings
+   with usable rights are found. Drop them in `assets/audio/engines/` (see its README).
+2. **Sea-to-Sky polish:** one polished 500 m section first (the blasted granite cuts, concrete
+   barriers, the railway between road and shore, Lions Bay, the islands across the sound), with
+   rock assets from Poly Haven (CC0); one lane each way as in the 1966 TranBC footage.
+3. **Over the edge into the sea:** the car sinks, with fish and rising air bubbles.
+4. Test on phones (touch controls, performance of the cabin pass).
 
 ## Play it
 
@@ -112,3 +121,8 @@ Rules for contributors (and coding agents) are in [AGENTS.md](AGENTS.md).
 
 A non-commercial tribute to *Test Drive* by Distinctive Software, published by Accolade (1987).
 Car names are trademarks of their respective owners; this project is not affiliated with them.
+
+The road: © OpenStreetMap contributors. `src/data/seaToSky.js` is derived from OpenStreetMap
+and is available under the Open Database License (ODbL). Heights: the Canadian Digital Elevation
+Model, Natural Resources Canada (Open Government Licence – Canada), via the Mapzen/AWS Terrain
+Tiles.

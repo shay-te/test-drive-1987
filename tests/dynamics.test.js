@@ -26,14 +26,14 @@ for (const car of CARS) {
 }
 
 test('full lock at the limit runs wide instead of spinning', () => {
-    const straight = buildTrack({ ...STAGES[0], curviness: 0, sharpness: 0 });
+    const road = buildTrack(STAGES[0]);
     for (const car of CARS) {
         const vehicle = new VehicleDynamics(car);
-        vehicle.reset(straight.startS, 0);
+        vehicle.reset(road.startS, 0);
         vehicle.vx = 45;
         let maxSlip = 0;
         for (let i = 0; i < 240; i++) {
-            vehicle.step(1 / 120, { steer: 1, throttle: 0, brake: 0 }, straight);
+            vehicle.step(1 / 120, { steer: 1, throttle: 0, brake: 0 }, road);
             vehicle.u = 0;
             vehicle.theta = 0;
             maxSlip = Math.max(maxSlip, Math.abs(Math.atan2(vehicle.vy, vehicle.vx)));

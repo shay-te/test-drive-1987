@@ -8,14 +8,16 @@ import { RoadCrash } from '../src/sim/RoadCrash.js';
 import { LANE, ONCOMING, SAME_WAY, TrafficManager } from '../src/sim/Traffic.js';
 import { buildTrack } from '../src/sim/TrackBuilder.js';
 import { VehicleDynamics } from '../src/sim/VehicleDynamics.js';
+import { conjugate, rotate } from '../src/util/quaternion.js';
 
 const stage = STAGES[0];
 const track = buildTrack(stage);
 const landscape = new Landscape(track, stage);
-/** A straight, rail-free stretch well clear of the start. */
+/** A straight, level, rail-free stretch well clear of the start. */
 const s0 = (() => {
     let i = Math.floor(track.startS / track.segment) + 80;
-    while (track.rail[i] || track.rail[i + 10] || Math.abs(track.curvature[i]) > 0.002) i++;
+    const level = (j) => { return Math.abs(track.elevation[j + 10] - track.elevation[j - 10]) < 0.02 * 20 * track.segment; };
+    while (track.rail[i] || track.rail[i + 10] || Math.abs(track.curvature[i]) > 0.002 || !level(i)) i++;
     return i * track.segment;
 })();
 
@@ -33,7 +35,16 @@ function traffic(type, dir, mph) {
     return manager.add(type, { s: s0 + 4, u: dir === SAME_WAY ? LANE : LANE - 0.4, dir, speed: mph * PHYS.mph, scripted: true });
 }
 
-/** Plays a crash to the end; how high each car got above the road, and the longest it took. */
+/** A body's kinetic energy, moving and spinning, plus its height energy (J). */
+function energy(body) {
+    const w = rotate(conjugate(body.orientation), body.angularVelocity);
+    const { x, y, z } = body.inertia;
+    const spinning = 0.5 * (x * w.x * w.x + y * w.y * w.y + z * w.z * w.z);
+    return 0.5 * body.mass * body.speed * body.speed + spinning + body.mass * PHYS.g * body.position.y;
+}
+
+/** Plays a crash to the end; how high each car got above the road, how far into the rock, and the
+ *  most the crash's energy ever exceeded what the impact left it with (J). */
 function playOut(crash) {
     const above = ({ position }) => {
         return position.y - track.elevationAt(track.project(position.x, position.z, 0).s);
@@ -41,15 +52,19 @@ function playOut(crash) {
     let playerTop = 0;
     let otherTop = 0;
     let intoRock = -Infinity;
+    const total = () => { return crash.bodies.reduce((sum, body) => { return sum + energy(body); }, 0); };
+    const start = total();
+    let gained = 0;
     while (!crash.done) {
         crash.update(1 / 60);
+        gained = Math.max(gained, total() - start);
         playerTop = Math.max(playerTop, above(crash.pose));
         if (crash.otherPose) otherTop = Math.max(otherTop, above(crash.otherPose));
         const { x, z } = crash.pose.position;
         const at = track.project(x, z, 0);
         intoRock = Math.max(intoRock, at.u - track.wallOffsetAt(at.s) - CRASH.wallGap);
     }
-    return { playerTop, otherTop, intoRock };
+    return { playerTop, otherTop, intoRock, gained };
 }
 
 test('head-on with the refuse truck, the light car is thrown up and back; the truck barely lifts', () => {
@@ -60,8 +75,10 @@ test('head-on with the refuse truck, the light car is thrown up and back; the tr
     const along = crash.body.velocity;
     const forward = { x: track.toWorld(s0 + 1, 0).x - track.toWorld(s0, 0).x, z: track.toWorld(s0 + 1, 0).z - track.toWorld(s0, 0).z };
     assert.ok(along.x * forward.x + along.z * forward.z < 0, 'thrown back the way it came');
-    const { playerTop, otherTop, intoRock } = playOut(crash);
-    assert.ok(playerTop > 1 && playerTop < 4, `the car is thrown into the air, not into orbit (${playerTop.toFixed(1)} m)`);
+    const { playerTop, otherTop, intoRock, gained } = playOut(crash);
+    // Tumbling end over end, a landing corner can turn spin into another, higher bounce.
+    assert.ok(playerTop > 1 && playerTop < 6, `the car is thrown into the air, not into orbit (${playerTop.toFixed(1)} m)`);
+    assert.ok(gained < 1000, `the tumbling cars gained ${(gained / 1000).toFixed(1)} kJ from nowhere`);
     assert.ok(intoRock < 0.5, `bounces off the rock face instead of climbing it (${intoRock.toFixed(2)} m in)`);
     assert.ok(otherTop < 1, `the truck stays on the ground (${otherTop.toFixed(2)} m)`);
     assert.ok(crash.time <= CRASH.maxSeconds + FALL.substep, 'stops playing at the time limit');

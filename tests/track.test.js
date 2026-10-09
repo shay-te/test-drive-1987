@@ -4,20 +4,24 @@ import { STAGES } from '../src/data/stages.js';
 import { ROAD } from '../src/config.js';
 import { buildTrack } from '../src/sim/TrackBuilder.js';
 
-const MAX_HEADING = 1.0;
+/** Road this far apart along the stage must stay this far apart on the ground (m), so the scenery of one
+ *  stretch never lands on another. */
+const ALONG = 1000;
+const APART = 400;
 
 for (const [index, stage] of STAGES.entries()) {
-    test(`stage ${index + 1}: geometry is finite and never folds back`, () => {
+    test(`stage ${index + 1}: geometry is finite and the road never comes back near itself`, () => {
         const track = buildTrack(stage);
         for (const array of [track.px, track.pz, track.elevation, track.heading, track.wallOffset]) {
             assert.ok(array.every(Number.isFinite));
         }
-        assert.ok(
-            track.heading.every((h) => {
-                return Math.abs(h) <= MAX_HEADING;
-            }),
-        );
-        for (let i = 1; i < track.count; i++) assert.ok(track.pz[i] < track.pz[i - 1], 'road must progress');
+        const skip = ALONG / track.segment;
+        for (let i = 0; i < track.count; i += 5) {
+            for (let j = i + skip; j < track.count; j += 5) {
+                const apart = Math.hypot(track.px[i] - track.px[j], track.pz[i] - track.pz[j]);
+                assert.ok(apart > APART, `nodes ${i} and ${j} are ${apart.toFixed(0)} m apart`);
+            }
+        }
         assert.ok(
             track.wallOffset.every((w) => {
                 return w >= ROAD.halfWidth + 1;
