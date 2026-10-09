@@ -80,6 +80,7 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   and feet (`DriverMotion`) and their limbs (`driverPose`, two-bone reach from the seat).
 - `src/ui/screens/`: title, brochure with the acceleration graph, driving, gas station, results.
 - The outside camera (V, the gamepad's left-stick press, or ◫ on touch): above and behind the car,
+  with the rear-view mirror shown at the top of the screen,
   with speed, revs (amber near the redline, red past it, while the engine wears towards blowing up),
   gear, and boost in psi on the turbo cars. From the driver's seat the gear is always shown bottom
   left.
@@ -110,14 +111,13 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
 ### Next (queued, in order)
 
 1. **Escape the other way:** reverse gear and a U-turn, the patrol car turning to follow.
-2. **The mirror in the outside view:** a rear-view inset while the camera is outside the car.
-3. **A blown engine smokes:** smoke pouring from the engine when it blows.
-4. **A 1980s RCMP patrol car** in place of the 2001 Crown Victoria model.
-5. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, the railway on its bench
+2. **A blown engine smokes:** smoke pouring from the engine when it blows.
+3. **A 1980s RCMP patrol car** in place of the 2001 Crown Victoria model.
+4. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, the railway on its bench
    between road and shore. (The provincial road atlas and orthophotos are "access only", so they
    are not used.)
-6. **Every stage inspected section by section** for anything that does not look real.
-7. Frame rates on real phones (the cabin pass, the mirrors, shadows).
+5. **Every stage inspected section by section** for anything that does not look real.
+6. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
 

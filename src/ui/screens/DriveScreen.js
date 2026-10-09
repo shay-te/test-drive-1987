@@ -23,6 +23,7 @@ import {
     drawPaused,
     drawStageIntro,
     drawArrest,
+    drawMirrorFrame,
     drawTicket,
     drawToast,
 } from '../driveOverlays.js';
@@ -467,6 +468,7 @@ export class DriveScreen {
         if (this.state === 'arrested') drawArrest(ctx, this.time, this.input.touch);
         const telemetry = this.vehicle.telemetry();
         const gear = gearLabel(this.car, telemetry.gear);
+        if (this.outside && !this.view?.spectator) drawMirrorFrame(ctx);
         if (this.outside) {
             drawOutsideReadout(ctx, {
                 mph: telemetry.mph, rpm: telemetry.rpm, rev: revState(telemetry, this.car), gear, psi: boostPsi(telemetry, this.car),

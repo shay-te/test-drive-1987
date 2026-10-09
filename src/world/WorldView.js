@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { CHASE, CRASH, LIGHTING, VIEW, WATER } from '../config.js';
+import { CHASE, CRASH, GRAPHICS, LIGHTING, VIEW, WATER } from '../config.js';
 import { DRIVER } from '../data/driver.js';
 import { DEG } from '../util/math.js';
 import { WorldMaterials } from './Materials.js';
 import { WorldBuilder } from './WorldBuilder.js';
 import { Terrain } from './Terrain.js';
 import { Forest } from './Forest.js';
-import { landTrees } from './forestLayout.js';
+import { landTrees, thinned } from './forestLayout.js';
+import { graphicsTier, rendererName } from './graphicsTier.js';
 import { VehicleModels } from './VehicleModels.js';
 import { AuthoredModels } from './AuthoredModels.js';
 import { buildBuildings } from './buildingMesh.js';
@@ -37,6 +38,17 @@ const MIRROR_TEXELS = 512;
 const DOOR_MIRROR = { texels: 256, vfovDeg: 12 };
 
 /** A render target for a mirror picture, flipped left to right as a mirror shows it. */
+/** The rear-view mirror's picture as a panel at the top of the screen (CHASE.mirror, layout px). */
+function mirrorInset(texture) {
+    const m = CHASE.mirror;
+    const camera = new THREE.OrthographicCamera(0, VIEW.width, VIEW.height, 0, -1, 1);
+    const panel = new THREE.Mesh(new THREE.PlaneGeometry(m.width, m.height), new THREE.MeshBasicMaterial({ map: texture, depthTest: false }));
+    panel.position.set(VIEW.width / 2, VIEW.height - m.top - m.height / 2, 0);
+    const scene = new THREE.Scene();
+    scene.add(panel);
+    return { scene, camera };
+}
+
 function mirrorTarget() {
     const target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
     target.texture.wrapS = THREE.RepeatWrapping;
@@ -64,7 +76,9 @@ export class WorldView {
         });
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.shadowMap.enabled = true;
+        this.graphics = graphicsTier(rendererName(this.renderer.getContext()));
+        if (this.graphics !== GRAPHICS.full) console.info(`[world] ${rendererName(this.renderer.getContext())} draws on the CPU: a lighter world`);
+        this.renderer.shadowMap.enabled = this.graphics.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.camera = new THREE.PerspectiveCamera(
             this._verticalFov(),
@@ -97,6 +111,7 @@ export class WorldView {
         this.chaseCamera.layers.enable(CABIN_LAYER);
         this.chaseYaw = null;
         this.chaseTime = null;
+        this.mirrorInset = mirrorInset(this.mirrorTarget.texture);
         this.models = new Map();
         this.scene = null;
         this.cabin = null;
@@ -194,7 +209,7 @@ export class WorldView {
         const surroundings = new Surroundings(track, landscape, heights, materials.land);
         const buildings = layOutBuildings(this.resources.get(`json:${ROUTE_BUILDINGS}`), track, landscape);
         scene.add(builder.build(track), terrain.mesh, surroundings.mesh, terrain.sea, buildBuildings(buildings, materials.building));
-        const trees = clearOfBuildings([...builder.treePlacements(track), ...landTrees(landscape, stage.seed + 71)], buildings);
+        const trees = thinned(clearOfBuildings([...builder.treePlacements(track), ...landTrees(landscape, stage.seed + 71)], buildings), this.graphics.forest);
         this.forest = new Forest(trees, materials, stage.seed);
         scene.add(this.forest.group);
         scene.fog = new THREE.FogExp2(stage.fog.color, stage.fog.density);
@@ -382,11 +397,18 @@ export class WorldView {
             else this._placeChase(view.time);
             this.chaseCamera.getWorldPosition(this.sky.position);
             r.render(this.scene, this.chaseCamera);
+            // Driving, the rear-view mirror shows at the top of the screen as it would in the car.
+            if (!view.spectator) {
+                this._renderMirror(this.mirrorCamera, this.mirrorTarget);
+                r.autoClear = false;
+                r.render(this.mirrorInset.scene, this.mirrorInset.camera);
+                r.autoClear = true;
+            }
             return;
         }
         this.chaseYaw = null;
         this._renderMirror(this.mirrorCamera, this.mirrorTarget);
-        const doors = this.activeDoorMirrors;
+        const doors = this.graphics.doorMirrors ? this.activeDoorMirrors : [];
         if (doors.length) {
             const door = doors[this.frame++ % doors.length];
             this._renderMirror(door.camera, door.target);

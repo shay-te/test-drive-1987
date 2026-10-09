@@ -120,3 +120,9 @@ export function landTrees(landscape, seed) {
     }
     return placements;
 }
+
+/** `share` of the `trees`, every so many kept so the forest thins evenly. */
+export function thinned(trees, share) {
+    const every = Math.max(1, Math.round(1 / share));
+    return trees.filter((_, i) => { return i % every === 0; });
+}

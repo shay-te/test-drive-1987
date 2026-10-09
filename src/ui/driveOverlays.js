@@ -1,4 +1,4 @@
-import { GAME, POLICE, VIEW } from '../config.js';
+import { CHASE, GAME, POLICE, VIEW } from '../config.js';
 import { inputKey, t } from '../i18n/i18n.js';
 import { clamp } from '../util/math.js';
 import { COLORS, font } from './theme.js';
@@ -90,6 +90,18 @@ export function drawTicket(ctx, car, mph, time, touch) {
         ctx.fillRect(k.x + 28, y + 16, k.w - 56, 1);
     });
     drawPrompt(ctx, t(inputKey('crash.continue', touch)), time, k.y + k.h - 40);
+}
+
+/** The frame round the rear-view mirror the outside view shows (WorldView draws its picture). */
+export function drawMirrorFrame(ctx) {
+    const m = CHASE.mirror;
+    ctx.save();
+    ctx.strokeStyle = COLORS.ink;
+    ctx.lineWidth = m.frame * 2;
+    ctx.beginPath();
+    ctx.roundRect(CENTER - m.width / 2 - m.frame, m.top - m.frame, m.width + m.frame * 2, m.height + m.frame * 2, m.frame * 2);
+    ctx.stroke();
+    ctx.restore();
 }
 
 /** Arrested for failing to stop: the charge, what the law says it costs, jail, and the end of the run. */

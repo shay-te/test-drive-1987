@@ -119,6 +119,14 @@ export const GAME = Object.freeze({
     shiftHintRpm: 350,
 });
 
+/** How much of the world is drawn: all of it on a graphics card, less on a software renderer that
+ *  draws on the CPU (a browser without a graphics driver, such as the CI's headless ones). `forest`
+ *  is the share of the trees kept. */
+export const GRAPHICS = Object.freeze({
+    full: { forest: 1, shadows: true, doorMirrors: true },
+    software: { forest: 0.15, shadows: false, doorMirrors: false },
+});
+
 /** A pursuit as the B.C. Police Commission's 1982 guidelines had it (in force through 1989; reproduced in
  *  its 1990 report "Police Pursuit in British Columbia"). A driver stopped (under `stoppedMph` for
  *  `stopSeconds`) within `signalRange` m of the patrol car has stopped for it; one who has not stopped
@@ -255,6 +263,8 @@ export const CHASE = Object.freeze({
     /** How fast its yaw catches up with the car's (1/s). */
     followRate: 4,
     verticalFovDeg: 50,
+    /** The rear-view mirror shown at the top of the outside view (layout px): its size, how far down. */
+    mirror: { width: 340, height: 96, top: 14, frame: 5 },
 });
 
 /** Layout and demonstration settings for the isolated cabin inspection screen. */
