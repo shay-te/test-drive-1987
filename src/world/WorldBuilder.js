@@ -5,7 +5,8 @@ import { roadsideAt } from '../sim/routeTerrain.js';
 import { Noise, clamp, createRng, lerp, smoothstep } from '../util/math.js';
 import { mixRgb } from '../util/color.js';
 import { buildRibbon } from './Ribbon.js';
-import { ROAD_TEXTURE_LENGTH, ROCK_TEXTURE_SIZE, shadeVertex } from './Materials.js';
+import { SCENERY_TEXTURES } from '../data/scenery.js';
+import { ROAD_TEXTURE_LENGTH, shadeVertex } from './Materials.js';
 import { buildProps } from './Props.js';
 import { TREE_LINE_LOW } from './Terrain.js';
 
@@ -81,8 +82,8 @@ export class WorldBuilder {
                 return this._faceSection(track, i);
             },
             {
-                alongTile: ROCK_TEXTURE_SIZE,
-                acrossTile: ROCK_TEXTURE_SIZE,
+                alongTile: SCENERY_TEXTURES.rock.metres,
+                acrossTile: SCENERY_TEXTURES.rock.metres,
                 displace: (world, _p, c, i) => {
                     if (c === 0) return;
                     // Relief only recedes into the mountain so the rock never pokes past the collision line.
@@ -177,8 +178,8 @@ export class WorldBuilder {
                 return this.landscape.dropSections[i];
             },
             {
-                alongTile: ROCK_TEXTURE_SIZE,
-                acrossTile: ROCK_TEXTURE_SIZE,
+                alongTile: SCENERY_TEXTURES.cliff.metres,
+                acrossTile: SCENERY_TEXTURES.cliff.metres,
                 displace: (world, p) => {
                     world.y += this.landscape.relief(world.x, world.z, -p.h);
                 },

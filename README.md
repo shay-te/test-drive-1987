@@ -24,7 +24,9 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   mapped bridges; the rock face is the real blasted cut (tall where the mountain was cut away, a low
   bank where the side is flat) with the real mountainside above it, and the drop is the real slope
   down to the shore. Today's highway is a divided four-lane road; the game keeps the old two-lane
-  road and hangs the real slopes off its edges. The sea floor shelves away from the shore.
+  road and hangs the real slopes off its edges. The sea floor shelves away from the shore. The
+  rock is photographed (Poly Haven, CC0): cracked rock greyed to granite for the cuts, lichen-grown
+  rock for the drop (`scripts/import-texture.mjs`).
 - Sea-to-Sky light: the late-afternoon sun stands at its real compass position in the west, on
   the left as you drive north, sinking stage by stage and glinting off the water as the road turns.
 - Over the edge into Howe Sound: the car splashes in, floats while the water pours in, then sinks
@@ -66,9 +68,8 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
    five exact cars exist (only stand-ins: a 911 of unknown year, a Murcielago V12, a Saab turbo
    four, a Corvette of unknown generation), so the engines stay synthesised until recordings
    with usable rights are found. Drop them in `assets/audio/engines/` (see its README).
-2. **Sea-to-Sky detail:** granite rock textures (Poly Haven, CC0), concrete barriers where the
-   real road has them, the railway between road and shore, Lions Bay's houses, the islands across
-   the sound. (The provincial road atlas and orthophotos are "access only", so they are not used.)
+2. **Sea-to-Sky detail:** concrete barriers where the real road has them, the railway between
+   road and shore, Lions Bay's houses, the islands across the sound. (The provincial road atlas and orthophotos are "access only", so they are not used.)
 3. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
@@ -137,4 +138,5 @@ The road: © OpenStreetMap contributors. `src/data/seaToSky.js` is derived from 
 and is available under the Open Database License (ODbL). Heights: contains information licensed
 under the Open Government Licence – British Columbia (LidarBC); and the Canadian Digital
 Elevation Model, Natural Resources Canada (Open Government Licence – Canada), via the Mapzen/AWS
-Terrain Tiles.
+Terrain Tiles. Rock textures: Poly Haven (CC0) — Rock Face 03 by Dario Barresi and Rico Cilliers,
+Lichen Rock by Rico Cilliers.
