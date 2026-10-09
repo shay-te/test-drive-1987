@@ -1,6 +1,18 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 
+/** Longest annotation message kept (characters). */
+const ANNOTATION_LENGTH = 1500;
+// On GitHub Actions a failure is also written as an error annotation, which the check run shows.
+process.on('uncaughtException', (error) => {
+    console.error(error);
+    if (process.env.GITHUB_ACTIONS) {
+        const message = String(error?.message ?? error).replaceAll('\n', ' ').slice(0, ANNOTATION_LENGTH);
+        console.log(`::error title=Browser regression::${message}`);
+    }
+    process.exit(1);
+});
+
 async function instance(page, path, name) {
     const session = await page.context().newCDPSession(page);
     const { result } = await session.send('Runtime.evaluate', {

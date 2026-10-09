@@ -248,6 +248,9 @@ export const FALL = Object.freeze({
     damping: 2.7e4,
     /** Sliding friction of steel on rock, a sticking term (N per m/s), and rolling wheels' share. */
     friction: 0.7,
+    /** Off the road, on ground that holds soil, the undergrowth and the trees hold a car back as if
+     *  this rough: it stops on the slope instead of sliding down to the sea. */
+    brush: 1.5,
     grip: 1.5e5,
     rolling: 0.06,
     /** A hit this hard (m/s) smashes the wheels: from then on they drag instead of rolling. */

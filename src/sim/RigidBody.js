@@ -31,7 +31,8 @@ export class RigidBody {
         return length(this.angularVelocity);
     }
 
-    /** Advances by `dt` over `ground` = {heightAt(x, z), normalAt(x, z), waterLevel?}. Afterwards `impact`
+    /** Advances by `dt` over `ground` = {heightAt(x, z), normalAt(x, z), waterLevel?, frictionAt(x, z, n)?
+     *  (the sliding friction there, else the contact's own)}. Afterwards `impact`
      *  holds the hardest closing speed of any contact (m/s), `penetration` the deepest crush (m), `wet`
      *  the share of the hull under water, and `splash` the speed it went in at on the step it did. */
     step(dt, ground) {
@@ -62,7 +63,8 @@ export class RigidBody {
                 const fn = Math.max(0, this.contact.stiffness * crush - this.contact.damping * vn);
                 this.impact = Math.max(this.impact, -vn);
                 this.penetration = Math.max(this.penetration, crush);
-                f = add(f, add(scale(n, fn), this._friction(sub(v, scale(n, vn)), n, fn, point.rolling, forward, dt)));
+                const mu = ground.frictionAt?.(p.x, p.z, n) ?? this.contact.friction;
+                f = add(f, add(scale(n, fn), this._friction(sub(v, scale(n, vn)), n, fn, mu, point.rolling, forward, dt)));
             }
             force = add(force, f);
             torque = add(torque, cross(r, f));
@@ -102,7 +104,7 @@ export class RigidBody {
     /** Coulomb friction against sliding velocity `vt`; a rolling point resists only `rollingShare` of
      *  it along the body's length. `grip` makes small slips stick instead of chattering, but no contact
      *  may push back harder in a step `dt` than stopping its share of the body would take. */
-    _friction(vt, n, fn, rolling, forward, dt) {
+    _friction(vt, n, fn, mu, rolling, forward, dt) {
         const c = this.contact;
         const stop = (this.mass * c.stickShare) / dt;
         const oppose = (slip, mu) => {
@@ -110,9 +112,9 @@ export class RigidBody {
             if (speed < 1e-6) return vec();
             return scale(slip, -Math.min(mu * fn, c.grip * speed, stop * speed) / speed);
         };
-        if (!rolling) return oppose(vt, c.friction);
+        if (!rolling) return oppose(vt, mu);
         const along = normalize(sub(forward, scale(n, dot(forward, n))));
         const roll = scale(along, dot(vt, along));
-        return add(oppose(roll, c.friction * this.rollingShare), oppose(sub(vt, roll), c.friction));
+        return add(oppose(roll, mu * this.rollingShare), oppose(sub(vt, roll), mu));
     }
 }

@@ -116,6 +116,17 @@ export class Track {
         return out;
     }
 
+    /** The node nearest world point (x, z), among every `step`-th. */
+    nearestNode(x, z, step = 4) {
+        let best = 0;
+        let bestD = Infinity;
+        for (let i = 0; i < this.count; i += step) {
+            const d = (x - this.px[i]) ** 2 + (z - this.pz[i]) ** 2;
+            if (d < bestD) [best, bestD] = [i, d];
+        }
+        return best;
+    }
+
     /** Road coordinates {s, u, i} of world point (x, z), searching from node `hint` (the last answer). */
     project(x, z, hint = 0) {
         let i = clamp(hint, 0, this.count - 2);

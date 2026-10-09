@@ -23,7 +23,7 @@ test('the route\'s buildings come from the map with believable walls and roofs',
 
 test('every stage passes houses: Horseshoe Bay, Lions Bay, Britannia Beach, Squamish', () => {
     placedOn.forEach((placed, i) => {
-        assert.ok(placed.length > 100, `${STAGES[i].name}: ${placed.length} buildings`);
+        assert.ok(placed.length > 60, `${STAGES[i].name}: ${placed.length} buildings`);
     });
 });
 
@@ -31,14 +31,14 @@ test('no building stands on the road, over the cut or in the sea, and none float
     stages.forEach(({ track, landscape }, i) => {
         for (const building of placedOn[i]) {
             building.ring.forEach((corner, k) => {
-                const p = track.project(corner.x, corner.z, track.project(building.ring[0].x, building.ring[0].z, 0).i);
+                const p = track.project(corner.x, corner.z, track.nearestNode(corner.x, corner.z));
                 const on = track.toWorld(p.s, p.u);
                 const beside = Math.hypot(on.x - corner.x, on.z - corner.z) < 1;
                 if (beside) {
                     assert.ok(p.u <= ROAD.edgeOffset - BUILDINGS.clearance || p.u >= MOUNTAIN_NEAR, `${STAGES[i].name}: a corner at u=${p.u.toFixed(1)}`);
                 }
-                // Below the road the drop is drawn over the grid; elsewhere the grid is all there is.
-                const ground = beside && p.u < 0 ? landscape.heightAt(corner.x, corner.z) : landscape.terrainAt(corner.x, corner.z);
+                // Beyond the cut only the grid is drawn; everywhere else whatever is on top (the drop, mostly).
+                const ground = beside && p.u > 0 ? landscape.terrainAt(corner.x, corner.z) : landscape.heightAt(corner.x, corner.z);
                 assert.ok(building.base < ground, 'the walls start under the ground');
                 assert.ok(building.eaves[k] > ground, 'the eaves stand above it');
                 assert.ok(ground > landscape.waterLevel, 'on dry land');

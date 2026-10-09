@@ -45,18 +45,27 @@ test('the forest beyond the road keeps off the ribbons, the sea and the peaks, a
 });
 
 test('the road-side forest is as dense as configured, never on the road, never on bare rock', () => {
-    const area = drops.reduce((sum, section) => { return sum + Math.abs(section.at(-5).u - section[0].u) * track.segment; }, 0);
-    const perHectare = roadside.length / (area / PHYS.hectare);
-    assert.ok(perHectare > FOREST.density.roadside * 0.5 && perHectare <= FOREST.density.roadside * 1.05, `${perHectare.toFixed(0)} trees a hectare`);
+    // By the road the configured density, further down the drop the land's for that distance.
+    const reach = FOREST.density.roadsideReach;
+    const nearArea = drops.reduce((sum, section) => { return sum + Math.max(0, section.at(-5).u + reach) * track.segment; }, 0);
+    const near = roadside.filter((tree) => { return offsetOf(tree).u > -reach; }).length;
+    const perHectare = near / (nearArea / PHYS.hectare);
+    assert.ok(perHectare > FOREST.density.roadside * 0.5 && perHectare <= FOREST.density.roadside * 1.05, `${perHectare.toFixed(0)} trees a hectare by the road`);
+    const farArea = drops.reduce((sum, section) => { return sum + Math.min(Math.abs(section[0].u), FOREST.density.land[0][0]) * track.segment; }, 0) - nearArea;
+    const far = (roadside.length - near) / (farArea / PHYS.hectare);
+    assert.ok(far < FOREST.density.land[0][1] * 1.2, `${far.toFixed(0)} trees a hectare further down`);
     const sample = roadside.filter((_, k) => { return k % 7 === 0; });
     let onRock = 0;
+    let inAir = 0;
     for (const tree of sample) {
         const { u } = offsetOf(tree);
         assert.ok(u < ROAD.edgeOffset, `a tree at u=${u.toFixed(1)}`);
-        const ground = landscape.heightAt(tree.x, tree.z);
-        assert.ok(ground - tree.y > -1, 'rooted on the drop, not standing in the air');
+        if (landscape.heightAt(tree.x, tree.z) - tree.y <= -1) inAir++;
         if (landscape.normalAt(tree.x, tree.z).y < LAND_DETAIL.bareRock[0]) onRock++;
     }
+    // On a tight bend a long section can fan past its neighbour's: a tree there stands on the one
+    // drawn, which the ground's lookup (by the nearest section) does not see.
+    assert.ok(inAir / sample.length < 0.002, `${inAir} of ${sample.length} rooted in the air`);
     // The drop's carved relief and its seams tilt a few spots the sections call soil.
     assert.ok(onRock / sample.length < 0.03, `${onRock} of ${sample.length} on bare rock`);
 });

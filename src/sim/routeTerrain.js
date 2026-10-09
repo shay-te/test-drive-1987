@@ -20,17 +20,19 @@ function rowAt(track, i, step, rows) {
 }
 
 /** The real roadside at track node `i` of `track` (a Track, or its builder): `out` m beyond the edge
- *  of the road on `side` (-1 left, 1 right), in m above the road, between the route's sections. */
+ *  of the road on `side` (-1 left, 1 right; each reaches its own `nearReach`), in m above the road,
+ *  between the route's sections. */
 export function roadsideAt(track, i, side, out) {
     const route = track.stage.route;
     const data = roadsideSections(route);
-    const across = route.nearReach / route.nearSpacing + 1;
-    const [row, f] = rowAt(track, i, route.nearStep, data.length / (2 * across));
+    const [left, right] = route.nearReach.map((reach) => { return reach / route.nearSpacing + 1; });
+    const across = side < 0 ? left : right;
+    const [row, f] = rowAt(track, i, route.nearStep, data.length / (left + right));
     const k = clamp(out / route.nearSpacing, 0, across - 1.0001);
     const c = Math.floor(k);
-    const start = side < 0 ? 0 : across;
+    const start = side < 0 ? 0 : left;
     const height = (r) => {
-        const at = r * 2 * across + start + c;
+        const at = r * (left + right) + start + c;
         return lerp(data[at], data[at + 1], k - c) / 10;
     };
     return lerp(height(row), height(row + 1), f);

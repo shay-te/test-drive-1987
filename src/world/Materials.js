@@ -72,8 +72,9 @@ export class WorldMaterials {
             }),
             roughness: 0.6,
         });
-        this.wood = new THREE.MeshStandardMaterial({ color: '#6b5236', roughness: 0.9 });
         this.building = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 });
+        // Rock fallen from the cut: the same granite, without the face's shading.
+        this.boulder = triplanarRock(new THREE.MeshStandardMaterial({ roughness: 0.96 }), 'boulder', this._rockTextures(SCENERY_TEXTURES.rock), SCENERY_TEXTURES.rock.metres);
         // Each species' bark, and its foliage cut out of its picture (sprays of needles or clusters of
         // leaves), smoothed at the edges by the multisampling; far off, one silhouette per kind of tree.
         const foliage = (key, width, height, draw) => {

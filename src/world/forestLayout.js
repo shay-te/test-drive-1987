@@ -48,12 +48,19 @@ function forester(stage, rng) {
     };
 }
 
+/** Canopy trees drawn a hectare `distance` m from the road (FOREST.density), 0 past the last band. */
+function density(distance) {
+    const d = FOREST.density;
+    if (distance <= d.roadsideReach) return d.roadside;
+    return d.land.find(([reach]) => { return distance <= reach; })?.[1] ?? 0;
+}
+
 /** Whether ground rising `rise` over `run` holds soil (LAND_DETAIL.bareRock). */
 function holdsSoil(run, rise) {
     return Math.abs(run) / Math.hypot(run, rise) >= LAND_DETAIL.bareRock[0];
 }
 
-/** Trees on the road-side ribbons, FOREST.density.roadside a hectare: `sections(i)` lists, for track
+/** Trees on the road-side ribbons, as dense as their distance from the road has them: `sections(i)` lists, for track
  *  node `i`, each ribbon's cross-section ({ u, h } by rising u, h above the road) and the span of it
  *  (first, last point) the trees may take. [{ x, y, z, species, height }] */
 export function roadsideTrees(track, sections, seed) {
@@ -63,6 +70,8 @@ export function roadsideTrees(track, sections, seed) {
     const perSquareMetre = FOREST.density.roadside / PHYS.hectare;
     const place = (i, section, from, to) => {
         const u = lerp(section[from].u, section[to].u, rng());
+        // Sampled at the roadside density, kept at the density for its distance from the road.
+        if (rng() * FOREST.density.roadside > density(Math.abs(u))) return;
         let k = from;
         while (k < to - 1 && section[k + 1].u < u) k++;
         const [a, b] = [section[k], section[k + 1]];
@@ -95,12 +104,12 @@ export function landTrees(landscape, seed) {
             const side = l.sides[k];
             const distance = Math.abs(side);
             if (distance < (side < 0 ? VALLEY_NEAR + GRID_CLEAR.valley : MOUNTAIN_NEAR + GRID_CLEAR.mountain)) continue;
-            const band = FOREST.density.land.find(([reach]) => { return distance <= reach; });
-            if (!band || l.noise.noise2(ix * CLEARING_SCALE, iz * CLEARING_SCALE) < CLEARING) continue;
+            const perHectare = density(distance);
+            if (!perHectare || l.noise.noise2(ix * CLEARING_SCALE, iz * CLEARING_SCALE) < CLEARING) continue;
             const riseX = (l.heights[k + 1] - l.heights[k - 1]) / 2;
             const riseZ = (l.heights[k + l.nx] - l.heights[k - l.nx]) / 2;
             if (!holdsSoil(l.cell, Math.hypot(riseX, riseZ))) continue;
-            for (let n = Math.floor(band[1] * cellArea + rng()); n > 0; n--) {
+            for (let n = Math.floor(perHectare * cellArea + rng()); n > 0; n--) {
                 const [gx, gz] = [ix + rng() - 0.5, iz + rng() - 0.5];
                 const y = l.gridHeight(gx, gz);
                 if (y < SEA_LEVEL + TREE_LINE_LOW || y > FOREST.treeLine) continue;

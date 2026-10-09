@@ -1,4 +1,5 @@
-import { ROAD } from '../config.js';
+import { FALL, ROAD } from '../config.js';
+import { LAND_DETAIL } from '../data/scenery.js';
 import { Noise, clamp, lerp } from '../util/math.js';
 import { roadsideAt, routeGround } from './routeTerrain.js';
 import { normalize } from '../util/vector.js';
@@ -7,9 +8,13 @@ import { normalize } from '../util/vector.js';
 const CELL = 40;
 const MARGIN = 600;
 const SAMPLE_STEP = 4;
+/** A road position this far (m) from the point it was found for is not square to the road there. */
+const SQUARE_TO_ROAD = 1;
+/** The rock face's foot reaches this far (m) past the face's line. */
+const WALL_FOOT = 0.4;
 /** Lateral zone covered by the detailed road-side ribbons; the heightfield ducks underneath. */
 export const MOUNTAIN_NEAR = 62;
-export const VALLEY_NEAR = 52;
+export const VALLEY_NEAR = 190;
 /** Ground at or below the sea's surface is sea floor, this deep. */
 export const SEA_LEVEL = 0;
 export const SEA_DEPTH = 20;
@@ -19,9 +24,13 @@ const SEA_SHELF = 0.5;
 const SHORE_DEPTH = 0.5;
 /** The gravel shoulders fall away from the asphalt by this much at their outer edge. */
 export const SHOULDER_DROP = 0.06;
-/** Where the drop beyond the edge is sampled (m out), and how far its lip dips at the edge itself. */
-const DROP_OUT = [0, 1.5, 3, 4.5, 6, 7.5, 9, 12, 15, 18, 21, 24, 28, 32, 36, 40, 44];
+/** Where the drop beyond the edge is sampled (m out, down to the shore and past it, as far as the
+ *  route's LiDAR roadside reaches), and how far its lip dips at the edge itself. Inside a left bend
+ *  it stops short of the bend's centre: BEND_SHARE of the tightest radius within BEND_WINDOW nodes. */
+const DROP_OUT = [0, 1.5, 3, 4.5, 6, 7.5, 9, 12, 15, 18, 21, 24, 28, 32, 36, 40, 44, 50, 57, 65, 74, 84, 95, 107, 120, 134, 149, 164, 180];
 const LIP = 0.05;
+const BEND_SHARE = 0.9;
+const BEND_WINDOW = 12;
 /** The drop as a road cross-section, outermost point first (its heights come from the route). */
 const DROP_SECTION = [...DROP_OUT].reverse().map((out) => {
     return { u: ROAD.edgeOffset - out, h: -LIP };
@@ -56,26 +65,41 @@ export class Landscape {
         this.nx = Math.ceil((b.maxX - b.minX + 2 * MARGIN) / CELL) + 1;
         this.nz = Math.ceil((b.maxZ - b.minZ + 2 * MARGIN) / CELL) + 1;
         this.hint = 0;
+        this.square = {};
         if (prepared) {
             Object.assign(this, prepared);
             return;
         }
         this.heights = new Float32Array(this.nx * this.nz);
         this.sides = new Float32Array(this.nx * this.nz);
+        this.dropReach = this._dropReach();
         this.dropSections = Array.from({ length: track.count }, (_, i) => { return this._dropSection(i); });
         this._computeHeights();
     }
 
     /** What building this landscape worked out, to build it again elsewhere (on another thread). */
     get prepared() {
-        return { heights: this.heights, sides: this.sides, dropSections: this.dropSections };
+        return { heights: this.heights, sides: this.sides, dropReach: this.dropReach, dropSections: this.dropSections };
     }
 
     /** Ground height under world point (x, z): whichever surface is on top, as it is drawn. */
     heightAt(x, z) {
-        const p = this.track.project(x, z, this.hint);
+        let p = this.track.project(x, z, this.hint);
+        // Far out on a bend a projection from the last answer can settle on the wrong stretch: then
+        // start again from the nearest node.
+        const on = this.track.toWorld(p.s, p.u, 0, this.square);
+        if (Math.hypot(on.x - x, on.z - z) > SQUARE_TO_ROAD) p = this.track.project(x, z, this.track.nearestNode(x, z));
         this.hint = p.i;
         return Math.max(this._roadside(p), this.terrainAt(x, z));
+    }
+
+    /** Sliding friction for a wreck on the ground at (x, z) with normal `n`: steel on the road, its
+     *  shoulders and bare rock (FALL.friction), the brush of the forest off the road wherever the
+     *  ground holds soil (FALL.brush). */
+    frictionAt(x, z, n) {
+        const p = this.track.project(x, z, this.hint);
+        const offRoad = p.u < ROAD.edgeOffset || p.u > this.track.wallOffsetAt(p.s) + WALL_FOOT;
+        return offRoad && n.y >= LAND_DETAIL.bareRock[0] ? FALL.brush : FALL.friction;
     }
 
     /** Upward unit normal of the ground at (x, z). */
@@ -91,11 +115,25 @@ export class Landscape {
 
     /** The drop at node `i`: the real ground beyond the edge down to the shore, then the sea floor
      *  shelving away under the water; at the edge itself, the profile's lip. */
+    /** How far left of the centre line (m) each node's drop may reach: VALLEY_NEAR, or short of the
+     *  centre of a tighter left bend nearby, so neighbouring sections never cross and fold the ground. */
+    _dropReach() {
+        const t = this.track;
+        return Float32Array.from({ length: t.count }, (_, i) => {
+            let reach = VALLEY_NEAR;
+            for (let j = Math.max(0, i - BEND_WINDOW); j <= Math.min(t.count - 1, i + BEND_WINDOW); j++) {
+                if (t.curvature[j] < 0) reach = Math.min(reach, BEND_SHARE / -t.curvature[j]);
+            }
+            return reach;
+        });
+    }
+
     _dropSection(i) {
         const t = this.track;
         const road = t.elevation[i];
         let shore = Infinity;
-        return [...DROP_SECTION].reverse().map(({ u, h }) => {
+        return [...DROP_SECTION].reverse().map(({ u: full, h }) => {
+            const u = Math.max(full, -this.dropReach[i]);
             const out = ROAD.edgeOffset - u;
             if (out === 0) return { u, h };
             const ground = road + roadsideAt(t, i, -1, out);
@@ -140,7 +178,7 @@ export class Landscape {
         if (u >= -ROAD.halfWidth && u <= ROAD.halfWidth) return road;
         if (u > ROAD.halfWidth) {
             // Between nodes the face runs straight from one to the next, as its ribbon is drawn.
-            const wall = lerp(t.wallOffset[i], t.wallOffset[i + 1], fs) + 0.4;
+            const wall = lerp(t.wallOffset[i], t.wallOffset[i + 1], fs) + WALL_FOOT;
             if (u > wall) return road + lerp(t.wallHeight[i], t.wallHeight[i + 1], fs);
             return road - lerp(0.01, SHOULDER_DROP, (u - ROAD.halfWidth) / (wall - ROAD.halfWidth));
         }
@@ -154,14 +192,16 @@ export class Landscape {
 
     /** The drop ribbon: the same vertices (with relief) and the same triangle split as its mesh. */
     _drop(i, fs, u) {
-        const section = DROP_SECTION;
+        const section = this.dropSections[i];
         if (u < section[0].u) return -Infinity;
         let j = 0;
         while (j < section.length - 2 && u > section[j + 1].u) j++;
-        const fu = clamp((u - section[j].u) / (section[j + 1].u - section[j].u), 0, 1);
+        // Where a bend cut the section short its outer points coincide.
+        const width = section[j + 1].u - section[j].u;
+        const fu = width > 0 ? clamp((u - section[j].u) / width, 0, 1) : 0;
         const vertex = (row, col) => {
-            const { h } = this.dropSections[i + row][col];
-            const p = this.track.nodeWorld(i + row, section[col].u, h, {});
+            const { u: at, h } = this.dropSections[i + row][col];
+            const p = this.track.nodeWorld(i + row, at, h, {});
             return p.y + this.relief(p.x, p.z, -h);
         };
         const h00 = vertex(0, j);
@@ -235,8 +275,9 @@ export class Landscape {
             if (u < MOUNTAIN_NEAR) return roadY - 25;
             return routeGround(t, i, u);
         }
-        // Just under the drop's lowest point, so the ground beyond runs on from its foot.
-        if (-u < VALLEY_NEAR) return roadY + Math.min(...this.dropSections[i].map((p) => { return p.h; })) - 1;
+        // Just under the drop's lowest point, so the ground beyond runs on from its foot (no deeper
+        // than the sea floor, where the drop runs out under the sound).
+        if (-u < this.dropReach[i]) return Math.max(SEA_LEVEL - SEA_DEPTH, roadY + Math.min(...this.dropSections[i].map((p) => { return p.h; })) - 1);
         return routeGround(t, i, u);
     }
 }
