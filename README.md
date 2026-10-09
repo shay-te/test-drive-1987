@@ -89,11 +89,8 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
 
 ### Next (queued, in order)
 
-1. **The cars you drive, as in reality:** each car's real engine sound. The gearing, weights,
-   grip, turbo lag and boost are already the real cars'; no freely licensed recordings of these
-   five exact cars exist (only stand-ins: a 911 of unknown year, a Murcielago V12, a Saab turbo
-   four, a Corvette of unknown generation), so the engines stay synthesised until recordings
-   with usable rights are found. Drop them in `assets/audio/engines/` (see its README).
+1. **Guard rails as the real road has them:** a W-beam on posts with blockouts and turned-down
+   ends, wherever the real ground falls away steeply beyond the edge.
 2. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, concrete barriers where
    the real road has them, the railway between road and shore. (The provincial road atlas
    and orthophotos are "access only", so they are not used.)
@@ -147,9 +144,13 @@ model as a side-on photo of that model; cars without one are marked LOCKED and c
 
 ## Engine sound
 
-Every engine is synthesised from its layout: firing order, cylinder banks, exhaust resonances and,
-for the Porsche and Lotus, the turbo. If you own recordings of the real cars you can drop them in
-`assets/audio/engines/` (see the README there) and the game cross-fades them by rpm instead.
+Every car plays real recordings of its engine: seamless loops cut by `scripts/import-engine.mjs`
+from openly licensed videos and sounds (YouTube's Creative Commons Attribution, Freesound's CC0),
+cross-faded by rpm and load. The 930 Turbo, Testarossa, Countach and C4 Corvette are their own
+cars; the Esprit is its later S4s (same engine family), and a few rpm bands are filled from
+related engines (see [assets/audio/engines/README.md](assets/audio/engines/README.md)). Above the
+highest recording, which would otherwise only be pitched up, the engine synthesiser (firing order,
+cylinder banks, exhaust resonances, turbo) takes over. A crash stalls the engine.
 
 ## Development
 
@@ -174,5 +175,8 @@ the U.S. Geological Survey / NASA (public domain), read from Microsoft's Planeta
 Rock and ground textures: Poly Haven (CC0) — Rock Face 03 by Dario Barresi and Rico Cilliers,
 Lichen Rock and Aerial Rocks 04 by Rico Cilliers, Forest Ground 04 by Rob Tuytel. The buildings: © OpenStreetMap contributors;
 `assets/terrain/sea-to-sky/buildings.json` is derived from OpenStreetMap and available under the
-ODbL. The driver's hands: the generic hand of the W3C Immersive Web WebXR Input Profiles
+ODbL. Engine recordings (CC BY 3.0 unless marked): Seppe Vanrolleghem (Porsche 930 Turbo),
+NelloRacing (RUF CTR), Jason #jcr_cars (Ferrari Testarossa), automobilemusicengines (Lamborghini
+Countach LP500S), cheesepuff on Freesound (CC0), Thomas Fletcher (Lotus Esprit S4s), LUNI Classic
+Cars (Chevrolet Corvette C4); titles and links in `assets/audio/engines/README.md`. The driver's hands: the generic hand of the W3C Immersive Web WebXR Input Profiles
 (`@webxr-input-profiles/assets`, MIT licence).

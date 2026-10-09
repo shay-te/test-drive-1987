@@ -53,6 +53,15 @@ export const BUILDINGS = Object.freeze({
     dryAbove: 0.3,
 });
 
+/** Engine voices (src/audio/EngineSound.js). */
+export const ENGINE_SOUND = Object.freeze({
+    /** The engine's level into the engine bus. */
+    level: 0.9,
+    /** Recordings play up to the first multiple of the highest one's rpm, handing over to the
+     *  synthesiser by the second: past that they would only be pitched up, not heard as they are. */
+    recordedReach: [1.25, 1.6],
+});
+
 export const PHYS = Object.freeze({
     g: 9.81,
     airDensity: 1.2,

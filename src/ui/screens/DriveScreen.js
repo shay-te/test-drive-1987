@@ -351,6 +351,8 @@ export class DriveScreen {
             radar: this.police.radarSignal(this.vehicle),
             sirenDistance: pursuer ? this.vehicle.s - pursuer.s : null,
             paused: this.paused || this.state === 'crashed',
+            // A crash stalls the engine; it starts again when the car is back on the road.
+            engineOff: this.state === 'wrecking' || this.state === 'crashed',
         });
     }
 

@@ -197,3 +197,20 @@ test('while a stage is driven, the next one is prepared in the background', asyn
     const next = await screen.stages.prepare(1);
     assert.equal(next.stage.name, 'LIONS BAY');
 });
+
+test('a crash stalls the engine until the car is back on the road', async () => {
+    const { screen, run, tap } = await startStage();
+    // Web Audio cannot run in Node: the soundscape only records what it is told.
+    const heard = [];
+    screen.soundscape = { update(_dt, state) { heard.push({ off: state.engineOff, at: screen.state }); }, stop() {} };
+    run(0.2);
+    assert.equal(heard.at(-1).off, false, 'running while driving');
+    Object.assign(screen.vehicle, { vx: 30, theta: 0.6 });
+    for (let t = 0; t < 30 && screen.state !== 'crashed'; t += 0.5) run(0.5);
+    assert.equal(screen.state, 'crashed');
+    assert.ok(heard.some(({ at }) => { return at === 'wrecking'; }), 'the wreck played out');
+    assert.ok(heard.filter(({ at }) => { return at !== 'driving'; }).every(({ off }) => { return off; }), 'silent through the wreck and the notice');
+    tap('Enter');
+    run(0.1);
+    assert.equal(heard.at(-1).off, false, 'started again');
+});

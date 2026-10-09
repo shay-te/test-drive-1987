@@ -1,5 +1,5 @@
 import { renderSound } from './SoundBank.js';
-import { SampleEngineSound, SynthEngineSound } from './EngineSound.js';
+import { RecordedEngineSound, SynthEngineSound } from './EngineSound.js';
 
 const WORKLET_URL = new URL('./worklets/engine-processor.js', import.meta.url);
 const ENGINE_MANIFEST = 'assets/audio/engines/manifest.json';
@@ -78,7 +78,8 @@ export class AudioManager {
         return { source, gain, filter: shaper };
     }
 
-    /** Engine voice for `car`: real recordings when installed, otherwise the synthesiser. */
+    /** Engine voice for `car`: real recordings when installed (with the synthesiser past the highest),
+     *  otherwise the synthesiser. */
     async createEngine(car) {
         const manifest = await this.resources.json(ENGINE_MANIFEST);
         const entries = manifest[car.id];
@@ -88,8 +89,8 @@ export class AudioManager {
                     return { ...entry, buffer: await this.resources.audioBuffer(this.context, entry.file) };
                 }),
             );
-            console.info(`[audio] ${car.fullName}: using ${loops.length} recorded engine loops`);
-            return new SampleEngineSound(this.context, car, this.buses.engine, loops);
+            console.info(`[audio] ${car.fullName}: using ${loops.length} recorded engine loops, the synthesiser above them`);
+            return new RecordedEngineSound(this.context, car, this.buses.engine, loops);
         }
         console.info(`[audio] ${car.fullName}: no recordings installed, using the engine synthesiser`);
         return new SynthEngineSound(this.context, car, this.buses.engine);

@@ -27,7 +27,8 @@ export class DriveSoundscape {
 
     /**
      * @param {number} dt
-     * @param {object} state telemetry plus `radar` (0..1), `sirenDistance` (m or null), `paused`
+     * @param {object} state telemetry plus `radar` (0..1), `sirenDistance` (m or null), `paused`, and
+     *     `engineOff` once a crash has stopped the engine
      */
     update(dt, state) {
         const now = this.audio.context.currentTime;
@@ -35,7 +36,7 @@ export class DriveSoundscape {
             param.setTargetAtTime(value, now, tau);
         };
         const silent = state.paused ? 0 : 1;
-        this.engine.update(state);
+        this.engine.update({ ...state, running: !state.blown && !state.engineOff });
 
         const speed = clamp(state.speed / 70, 0, 1);
         set(this.wind.gain.gain, silent * speed * speed * 0.32);
