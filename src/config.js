@@ -119,8 +119,13 @@ export const GAME = Object.freeze({
     speedLimitMph: 55,
     /** Passing a radar trap above this speed starts a pursuit. */
     radarTriggerMph: 65,
-    /** Fixed physics step. */
+    /** Fixed physics step: however long a rendered frame takes, the sim advances in these chunks, so
+     *  it never runs fast or slow relative to real time. */
     physicsHz: 120,
+    /** Longest step (s) the frame loop ever hands a screen: it bounds how many physics steps a single
+     *  rendered frame can owe after a stall (a backgrounded tab), not ordinary frame-rate dips: those
+     *  still get every millisecond of real time, just as more, cheap fixed steps in one frame. */
+    maxFrame: 1 / 8,
     /** Throttle below this speed (m/s) in neutral selects first gear, as a driver pulling away would;
      *  reverse goes in only below it, and the car is moving one way along the road only above it. */
     pullAwaySpeed: 1,
