@@ -2,18 +2,23 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CARS, carById } from '../src/data/cars.js';
 import { GATES, gatePosition, stepKnob } from '../src/cockpit/shiftGate.js';
+import { REVERSE } from '../src/sim/Drivetrain.js';
 import { boostPsi, dialAngle, formatReading, instrumentReadings, lampStates, revState } from '../src/cockpit/instruments.js';
 import { CLUSTERS } from '../src/cockpit/clusters.js';
 import { formatClock, formatMiles } from '../src/util/format.js';
 import { Spring } from '../src/util/math.js';
 
-test('every car has a cluster and a shift gate covering all its gears', () => {
+test('every car has a cluster and a shift gate covering all its gears and reverse', () => {
     for (const car of CARS) {
         assert.ok(CLUSTERS[car.cockpit.cluster], `${car.id} cluster`);
         const gate = GATES[car.cockpit.shifter.pattern];
         for (let gear = 1; gear <= car.drivetrain.gears.length; gear++) {
             assert.ok(gate.gears[gear], `${car.id} gear ${gear} has a gate position`);
         }
+        const [x, y] = gatePosition(gate, REVERSE);
+        assert.ok(gate.columns.includes(x) && Math.abs(y) === 1, `${car.id} reverse sits at the end of a column`);
+        const taken = Object.values(gate.gears).some(([gx, gy]) => { return gx === x && gy === y; });
+        assert.equal(taken, false, `${car.id} reverse has a slot of its own`);
     }
 });
 

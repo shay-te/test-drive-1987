@@ -1,5 +1,5 @@
-import { PHYS, RAIL, ROAD } from '../config.js';
-import { approach, clamp, moveTowards } from '../util/math.js';
+import { GAME, PHYS, RAIL, ROAD } from '../config.js';
+import { approach, clamp, moveTowards, wrapAngle } from '../util/math.js';
 import { Drivetrain } from './Drivetrain.js';
 
 const HALF_CAR_WIDTH = 0.9;
@@ -51,6 +51,9 @@ export class VehicleDynamics {
         this.vy = 0;
         this.yawRate = 0;
         this.theta = 0;
+        // Which way along the road the car is going (1 towards the finish, -1 back), and how fast (m/s).
+        this.dir = 1;
+        this.sDot = 0;
         this.steer = 0;
         this.longAccel = 0;
         this.latAccel = 0;
@@ -67,13 +70,14 @@ export class VehicleDynamics {
         return Math.hypot(this.vx, this.vy);
     }
 
+    /** The speedometer: mph either way. */
     get speedMph() {
-        return this.vx / PHYS.mph;
+        return Math.abs(this.vx) / PHYS.mph;
     }
 
     /** Speed-sensitive steering lock: a little more than the grip limit needs, so keys stay controllable. */
     maxSteer() {
-        const v = Math.max(this.vx, 1);
+        const v = Math.max(Math.abs(this.vx), 1);
         return clamp((1.2 * this.mu * PHYS.g * (this.a + this.b)) / (v * v) + 0.032, 0.035, 0.55);
     }
 
@@ -125,8 +129,8 @@ export class VehicleDynamics {
         // drive/brake force is held to the grip left after cornering (ABS / feathered throttle).
         this.throttle = moveTowards(this.throttle, input.throttle, PEDAL_RATE * dt);
         this.brake = moveTowards(this.brake, input.brake, PEDAL_RATE * dt);
-        const drive = this.drivetrain.update(dtState, Math.max(0, v), this.throttle, dt);
-        const brakeTotal = v > 0.05 ? this.brake * mu * m * PHYS.g : 0;
+        const drive = this.drivetrain.update(dtState, v, this.throttle, dt);
+        const brakeTotal = Math.abs(v) > 0.05 ? Math.sign(v) * this.brake * mu * m * PHYS.g : 0;
         const frontShare = fzFront / (fzFront + fzRear);
         const muFront = mu * FRONT_GRIP;
         const muRear = mu * REAR_GRIP;
@@ -156,13 +160,17 @@ export class VehicleDynamics {
         const resist =
             this.drivetrain.resistance(v) +
             m * PHYS.g * grade +
-            (onShoulder ? 0.06 * m * PHYS.g * Math.min(1, v / 5) : 0);
+            (onShoulder ? 0.06 * m * PHYS.g * clamp(v / 5, -1, 1) : 0);
 
         const mEff = this.drivetrain.effectiveMass(dtState.gear);
         const forceAccel = (rearLong + frontLong - fyFront * Math.sin(this.steer) - resist) / mEff;
-        let ax = forceAccel + this.vy * this.yawRate;
-        if (v <= 0.05 && ax < 0) ax = 0;
-        this.vx = Math.max(0, this.vx + ax * dt);
+        const ax = forceAccel + this.vy * this.yawRate;
+        // Brakes, rolling resistance and the grade hold a car at rest and stop one rolling; only the
+        // engine, pulling the way its gear turns the wheels, sets it moving either way.
+        const way = Math.sign(this.drivetrain.ratio(dtState.gear));
+        const next = this.vx + ax * dt;
+        const pulling = drive * way > 0 && next * way > 0;
+        this.vx = (Math.abs(v) <= 0.05 || next * v < 0) && !pulling ? 0 : next;
         // Weight transfer follows the tyre forces, not the kinematic term.
         this.longAccel = approach(this.longAccel, forceAccel, 5, dt);
 
@@ -187,8 +195,9 @@ export class VehicleDynamics {
         const uDot = this.vx * sinT + this.vy * cosT;
         this.s += sDot * dt;
         this.u += uDot * dt;
-        this.theta += (this.yawRate - kappa * sDot) * dt;
-        this.theta = clamp(this.theta, -1.4, 1.4);
+        this.theta = wrapAngle(this.theta + (this.yawRate - kappa * sDot) * dt);
+        this.sDot = sDot;
+        if (Math.abs(sDot) > GAME.pullAwaySpeed) this.dir = Math.sign(sDot);
 
         return this._contacts(track, uDot);
     }
@@ -203,7 +212,7 @@ export class VehicleDynamics {
 
     /** Rock face, guard rail and the edge of the ledge. */
     _contacts(track, uDot) {
-        const speed = this.vx;
+        const speed = Math.abs(this.vx);
         const wall = track.wallOffsetAt(this.s);
         if (this.u + HALF_CAR_WIDTH > wall) {
             const impact = Math.max(uDot, 0);
@@ -235,7 +244,9 @@ export class VehicleDynamics {
         this.u = limit;
         this.vx *= 0.985;
         this.vy = pushDir * Math.abs(this.vy) * 0.3;
-        this.theta *= 0.6;
+        // Turned towards the way along the road the car faces.
+        const along = Math.abs(this.theta) > Math.PI / 2 ? Math.sign(this.theta) * Math.PI : 0;
+        this.theta = along + (this.theta - along) * 0.6;
         this.yawRate *= 0.5;
     }
 
@@ -243,7 +254,7 @@ export class VehicleDynamics {
     telemetry() {
         const e = this.engine;
         return {
-            speed: this.vx,
+            speed: Math.abs(this.vx),
             mph: this.speedMph,
             rpm: e.rpm,
             gear: e.gear,

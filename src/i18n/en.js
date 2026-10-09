@@ -33,7 +33,7 @@ export const EN = {
         start: 'Press ENTER to start',
         choice: '◀   {{car}}   ▶',
         controls:
-            'Arrows: steer / gas / brake    A / Z: shift up / down    Q/E/R/F: look    V: outside view    I: readout    M: mute    P: pause',
+            'Arrows: steer / gas / brake    A / Z: shift up / down (Z at a stop: reverse)    Q/E/R/F: look    V: outside view    I: readout    M: mute    P: pause',
         badge: 'TD',
         credit: 'A fan tribute to Test Drive by Distinctive Software and Accolade (1987).',
     },
@@ -83,6 +83,7 @@ export const EN = {
         pursuit: 'Clocked by a radar trap: pull over and stop!',
         failedToStop: 'You failed to stop. The officer is radioing for assistance.',
         escaped: 'You lost the patrol car',
+        wrongWay: 'Wrong way: the stage runs the other way',
         engineWarning: 'OVER-REV',
     },
     crash: {
@@ -91,6 +92,7 @@ export const EN = {
         edge: 'You went over the edge!',
         headOn: 'Head-on collision!',
         rearEnd: 'You ran into the back of a car!',
+        reversing: 'You backed into a car!',
         police: 'You rammed a patrol car!',
         engine: 'You blew the engine!',
         chancesLeft: 'Chances left: {{n}}',
@@ -143,7 +145,7 @@ export const EN = {
     touch: {
         title: {
             start: 'Tap to start',
-            controls: 'Touch: ◀ ▶ steer    ▲ gas    ▼ brake    − + gears    ◫ outside view',
+            controls: 'Touch: ◀ ▶ steer    ▲ gas    ▼ brake    − + gears (− at a stop: reverse)    ◫ outside view',
         },
         preview: { assetRetry: 'Tap to retry' },
         select: { hint: '◀ ▶  choose a car        Tap  take it for a test drive' },

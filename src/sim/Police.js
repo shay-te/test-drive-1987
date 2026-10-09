@@ -1,5 +1,5 @@
 import { GAME, PHYS, POLICE, ROAD } from '../config.js';
-import { approach, clamp, moveTowards } from '../util/math.js';
+import { approach, clamp, moveTowards, smoothstep } from '../util/math.js';
 import { TRAFFIC_TYPES } from '../data/traffic.js';
 import { LANE, SAME_WAY } from './Traffic.js';
 
@@ -14,9 +14,10 @@ const LOST_GAP = 300;
 /** The patrol car closes its gap at this many m/s per m too far back, and keeps to the player's lane. */
 const CLOSING = 0.6;
 const PULL_IN_RATE = 0.6;
-/** A roadblock is sought this far apart along the road (m), and none closer than this to the finish. */
+/** A roadblock is sought this far apart along the road (m), and none closer than this to either end of
+ *  the stage. */
 const ROADBLOCK_STEP = 20;
-const FINISH_CLEAR = 400;
+const END_CLEAR = 400;
 
 export const POLICE_EVENT = Object.freeze({
     pursuit: 'pursuit',
@@ -29,7 +30,8 @@ export const POLICE_EVENT = Object.freeze({
 
 /** Radar traps, the pursuit that follows a driver clocked speeding (POLICE: stop for it and get a
  *  ticket; drive on and the officer radios for assistance, a roadblock goes up ahead, and stopping
- *  then is an arrest), and the radar detector's signal. */
+ *  then is an arrest), and the radar detector's signal. A player is { s, u, speed (m/s along the road,
+ *  negative going back), mph, dir (the way they are going, as traffic's) }. */
 export class PoliceManager {
     constructor(track, traffic) {
         this.track = track;
@@ -39,7 +41,10 @@ export class PoliceManager {
         });
         this.pursuer = null;
         this.fleeing = false;
+        // The roadblock standing ({ s, dir: the way it faces traffic, cars, leaving }), and the seconds
+        // until one is ready (null when none is on its way).
         this.roadblock = null;
+        this.roadblockDue = null;
         this.stoppedFor = 0;
     }
 
@@ -59,35 +64,43 @@ export class PoliceManager {
         return this.fleeing && this.pursuer !== null;
     }
 
-    /** Advances the pursuit for a player { s, u, speed, mph }; returns a POLICE_EVENT or null. */
+    /** Advances the pursuit for `player`; returns a POLICE_EVENT or null. */
     update(dt, player) {
         const clocked = this._radar(player);
         if (clocked) return clocked;
         const stopped = this._stopped(dt, player);
         if (stopped) return stopped;
-        if (this.roadblock?.due !== undefined) {
-            this.roadblock.due -= dt;
-            if (this.roadblock.due <= 0) return this._raiseRoadblock(player);
+        if (this.onTail) this._redeploy(player);
+        if (this.roadblock?.leaving && Math.abs(this.roadblock.s - player.s) > POLICE.outOfSight) this._liftRoadblock();
+        if (this.roadblockDue !== null) {
+            this.roadblockDue -= dt;
+            if (this.roadblockDue <= 0 && !this.roadblock?.leaving) return this._raiseRoadblock(player);
         }
         if (!this.pursuer) return null;
 
         const cop = this.pursuer;
-        const gap = player.s - cop.s;
+        const gap = (player.s - cop.s) * cop.dir;
         cop.chaseTime += dt;
-        if (gap > GIVE_UP_GAP || (cop.chaseTime > CHASE_PATIENCE && gap > LOST_GAP)) {
+        if (Math.abs(gap) > GIVE_UP_GAP || (cop.chaseTime > CHASE_PATIENCE && Math.abs(gap) > LOST_GAP)) {
             this._endPursuit();
+            // Nobody knows where the car went: no roadblock is set up for it any more.
+            this.roadblockDue = null;
             return POLICE_EVENT.escaped;
         }
-        // Follows the car, never past it: no boxing in, no ramming.
-        const wanted = clamp(player.speed + CLOSING * (gap - POLICE.followGap), 0, TOP_SPEED);
-        cop.speed = moveTowards(cop.speed, wanted, ACCELERATION * dt);
-        cop.s = Math.min(cop.s + cop.speed * dt, player.s - POLICE.followGap);
-        cop.u = approach(cop.u, LANE, PULL_IN_RATE, dt);
+        if (gap < 0 || cop.turning > 0) {
+            this._turn(dt, cop);
+        } else {
+            // Follows the car, never past it: no boxing in, no ramming.
+            const wanted = clamp(player.speed * cop.dir + CLOSING * (gap - POLICE.followGap), 0, TOP_SPEED);
+            cop.speed = moveTowards(cop.speed, wanted, ACCELERATION * dt);
+            cop.s += cop.dir * Math.min(cop.speed * dt, Math.max(0, gap - POLICE.followGap));
+            cop.u = approach(cop.u, LANE * cop.dir, PULL_IN_RATE, dt);
+        }
         if (gap < POLICE.complyRange && !this.fleeing) {
             cop.signalled += dt;
             if (cop.signalled > POLICE.complySeconds) {
                 this.fleeing = true;
-                this.roadblock = { due: POLICE.roadblockDelay };
+                this.roadblockDue = POLICE.roadblockDelay;
                 return POLICE_EVENT.failedToStop;
             }
         }
@@ -101,7 +114,7 @@ export class PoliceManager {
             trap.triggered = true;
             if (player.mph > GAME.radarTriggerMph && !this.pursuer && trap.car) {
                 this.pursuer = trap.car;
-                Object.assign(this.pursuer, { siren: true, chaseTime: 0, signalled: 0 });
+                Object.assign(this.pursuer, { siren: true, chaseTime: 0, signalled: 0, turning: null });
                 return POLICE_EVENT.pursuit;
             }
         }
@@ -113,20 +126,56 @@ export class PoliceManager {
     _stopped(dt, player) {
         this.stoppedFor = player.mph < POLICE.stoppedMph ? this.stoppedFor + dt : 0;
         if (this.stoppedFor < POLICE.stopSeconds) return null;
-        const signalled = this.pursuer && player.s - this.pursuer.s < POLICE.signalRange;
-        const blocked = this.roadblock?.s !== undefined && this.roadblock.s - player.s < POLICE.roadblockReach && this.roadblock.s > player.s;
+        const signalled = this.pursuer && Math.abs(player.s - this.pursuer.s) < POLICE.signalRange;
+        const before = this.roadblock && (this.roadblock.s - player.s) * this.roadblock.dir;
+        const blocked = before > 0 && before < POLICE.roadblockReach;
         if (signalled && !this.fleeing) return POLICE_EVENT.ticket;
         if ((signalled && this.fleeing) || blocked) return POLICE_EVENT.arrested;
         return null;
     }
 
-    /** Patrol cars across the road at the first place at least POLICE.lead m ahead that a driver at the
-     *  player's speed sees in time to stop. */
+    /** A patrol car that the driver has gone back past brakes to a stop and turns round (a left U-turn
+     *  across the road) to follow them the other way. */
+    _turn(dt, cop) {
+        if (cop.speed > 0) {
+            cop.speed = Math.max(0, cop.speed - POLICE.brake * dt);
+            cop.s += cop.dir * cop.speed * dt;
+            return;
+        }
+        cop.turning = (cop.turning ?? 0) + dt;
+        const done = Math.min(1, cop.turning / POLICE.turnSeconds);
+        const from = LANE * cop.dir;
+        cop.yaw = Math.PI * done;
+        cop.u = from - 2 * from * smoothstep(0, 1, done);
+        if (done < 1) return;
+        Object.assign(cop, { dir: -cop.dir, yaw: 0, turning: null });
+    }
+
+    /** A driver who turns back has the roadblock's officers sent ahead of them: they leave it (once
+     *  out of the driver's sight) and set up again ahead, `roadblockDelay` s later. */
+    _redeploy(player) {
+        const rb = this.roadblock;
+        if (!rb) return;
+        rb.leaving = rb.dir !== player.dir;
+        if (rb.leaving && this.roadblockDue === null) this.roadblockDue = POLICE.roadblockDelay;
+    }
+
+    _liftRoadblock() {
+        for (const car of this.roadblock?.cars ?? []) this.traffic.remove(car);
+        this.roadblock = null;
+    }
+
+    /** Patrol cars across the road at the first place at least POLICE.lead m ahead (the way the player is
+     *  going) that a driver at the player's speed sees in time to stop; none if one already stands there.
+     *  Raised only once the last one has gone. */
     _raiseRoadblock(player) {
+        this.roadblockDue = null;
+        const { dir } = player;
+        if (this.roadblock?.dir === dir) return null;
         const sight = player.speed ** 2 / (2 * POLICE.brake) + POLICE.margin;
-        const last = this.track.finishS - FINISH_CLEAR;
-        for (let s = player.s + POLICE.lead; s < last; s += ROADBLOCK_STEP) {
-            if (!this._seen(s - sight, s, sight)) continue;
+        const [first, last] = [this.track.startS + END_CLEAR, this.track.finishS - END_CLEAR];
+        for (let s = player.s + dir * POLICE.lead; s > first && s < last; s += dir * ROADBLOCK_STEP) {
+            if (!this._seen(Math.min(s, s - dir * sight), Math.max(s, s - dir * sight), sight)) continue;
             // Broadside to the road (the car's length across it), side by side from the edge to the cut.
             const { length, width } = TRAFFIC_TYPES.police;
             const [left, right] = [ROAD.edgeOffset, this.track.wallOffsetAt(s)];
@@ -137,11 +186,10 @@ export class PoliceManager {
                     s, u, dir: SAME_WAY, scripted: true, siren: true, speed: 0, yaw: Math.PI / 2, length: width, width: length,
                 });
             });
-            this.roadblock = { s, cars };
+            this.roadblock = { s, dir, cars, leaving: false };
             return POLICE_EVENT.roadblock;
         }
-        // No straight left before the finish: the officers wait at the gas station instead.
-        this.roadblock = null;
+        // No straight left before the end of the stage: the officers wait there instead.
         return null;
     }
 
@@ -163,7 +211,7 @@ export class PoliceManager {
                 signal = Math.max(signal, 1 - d / DETECTOR_RANGE);
         }
         if (this.pursuer) {
-            const d = player.s - this.pursuer.s;
+            const d = Math.abs(player.s - this.pursuer.s);
             signal = Math.max(signal, clamp(1 - d / PURSUIT_DETECTOR_RANGE, 0, 1));
         }
         return signal;
@@ -172,8 +220,8 @@ export class PoliceManager {
     /** Sends the patrol cars away after a ticket, an arrest or a crash. */
     release() {
         this._endPursuit();
-        for (const car of this.roadblock?.cars ?? []) this.traffic.remove(car);
-        this.roadblock = null;
+        this._liftRoadblock();
+        this.roadblockDue = null;
         this.fleeing = false;
         this.stoppedFor = 0;
     }

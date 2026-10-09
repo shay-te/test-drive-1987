@@ -94,7 +94,8 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   joint by joint) on the wheel at quarter to three, every finger and the thumb closed round the rim
   (and round the gear knob through a shift), turning with it; on every shift the gear-side hand
   goes to the knob, to where the real car keeps that gear (the 930's four-speed H, the dog-leg
-  first of the Testarossa, Countach and Esprit, the Corvette's 4+3), the lever moves only once it
+  first of the Testarossa and Countach, the Esprit's H with fifth up on the right, the Corvette's
+  4+3), the lever moves only once it
   is there, and the left foot works the clutch; the right foot moves between throttle and brake.
   From outside the whole driver shows.
 
@@ -105,8 +106,19 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   boxing you in or ramming), radios for assistance, and a roadblock of patrol cars goes up across
   the road ahead, at a place you can see in time to stop at your speed. Stopping then, at the
   roadblock, or arriving at the gas station with him still behind you is an arrest: jail, and the
-  game is over. Get far enough ahead and he breaks off the chase; the roadblock stays. No
-  helicopters (not used for general policing then) and no spike belts (not in the guidelines).
+  game is over. Turn back (a U-turn, or a three-point turn in reverse on the narrow highway) and he
+  stops, turns round and follows, and the roadblock's officers redeploy ahead of you, the way you
+  are now going. Get far enough ahead and he breaks off the chase: a roadblock already up stays,
+  none is set up after. No helicopters (not used for general policing then) and no spike belts (not
+  in the guidelines).
+
+- Reverse and turning round: each car's real reverse gear (the 930/36's 2.44, the Testarossa's
+  2.52, the Countach's 1.96, the Esprit's Citroën 3.15, the Corvette's 2.78), down from neutral and
+  only at a standstill, the knob going where the real car's R is (left of first and forward on the
+  930 and the Corvette, above the dog-leg first on the Testarossa and Countach, back from fifth on
+  the Esprit). The car turns through any heading, so it can U-turn or three-point turn on the
+  narrow highway and drive back down it, keeping right, with traffic on the road ahead of it;
+  back past the start line it is turned round.
 
 - A blown engine smokes: grey smoke pours from where the engine sits (the 930's tail, the
   Corvette's bonnet, behind the seats of the mid-engined cars), rising, drifting with the wind,
@@ -114,13 +126,12 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
 
 ### Next (queued, in order)
 
-1. **Escape the other way:** reverse gear and a U-turn, the patrol car turning to follow.
-2. **A 1980s RCMP patrol car** in place of the 2001 Crown Victoria model.
-3. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, the railway on its bench
+1. **A 1980s RCMP patrol car** in place of the 2001 Crown Victoria model.
+2. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, the railway on its bench
    between road and shore. (The provincial road atlas and orthophotos are "access only", so they
    are not used.)
-4. **Every stage inspected section by section** for anything that does not look real.
-5. Frame rates on real phones (the cabin pass, the mirrors, shadows).
+3. **Every stage inspected section by section** for anything that does not look real.
+4. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
 
@@ -141,7 +152,7 @@ Any static web server works; no build step. three.js 0.180.0 is loaded from jsDe
 | --- | --- |
 | ← → | steer |
 | ↑ / ↓ | accelerate / brake |
-| A / Z | shift up / down (you start in neutral) |
+| A / Z | shift up / down (you start in neutral; down from neutral at a standstill is reverse) |
 | Drag or Q / E | look left / right (view stays where you leave it) |
 | R / F | look up / down |
 | C | return to forward view |

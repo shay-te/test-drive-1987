@@ -66,8 +66,10 @@ async function lighting(page, screen, stageIndex) {
     }, { preview: screen, index: stageIndex });
 }
 
-/** Software-rendered browsers on CI photograph the cabins and build the stage slowly. */
+/** Software-rendered browsers on CI photograph the cabins and build the stage slowly, and their first
+ *  frame of the stage uploads every texture on the CPU before a screenshot can be taken. */
 const LOAD_TIMEOUT_MS = 180_000;
+const FIRST_FRAME_TIMEOUT_MS = 420_000;
 
 async function confirmLoading(browser, label, userAgent) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, userAgent });
@@ -109,10 +111,13 @@ async function confirmLoading(browser, label, userAgent) {
         await page.waitForFunction(() => { return globalThis.__cabinDrawCalls > 0; }, null, { timeout: LOAD_TIMEOUT_MS });
         assert.ok(downloads.includes(200), `${label}: actual cabin download`);
         assert.deepEqual(failures, [], `${label}: browser errors`);
-        await page.screenshot({ path: `${output}/${label}-driving.png`, timeout: LOAD_TIMEOUT_MS });
+        await page.screenshot({ path: `${output}/${label}-driving.png`, timeout: FIRST_FRAME_TIMEOUT_MS });
         return { userAgent: await page.evaluate(() => { return navigator.userAgent; }), rendered: true, errors: failures };
     } catch (error) {
-        await page.screenshot({ path: `${output}/${label}-failed.png`, timeout: LOAD_TIMEOUT_MS });
+        // The evidence of a failure is best effort: the error says which load failed either way.
+        await page.screenshot({ path: `${output}/${label}-failed.png`, timeout: LOAD_TIMEOUT_MS }).catch((shot) => {
+            console.warn(`${label}: no screenshot of the failure (${shot.message})`);
+        });
         throw new Error(`${label}: ${error.message}; console: ${failures.join('; ')}`, { cause: error });
     } finally {
         await page.close();

@@ -1,10 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CRASH } from '../src/config.js';
+import { CRASH, GAME } from '../src/config.js';
 import { AudioManager } from '../src/audio/AudioManager.js';
 import { ResourceManager } from '../src/core/ResourceManager.js';
 import { carById } from '../src/data/cars.js';
-import { Session } from '../src/sim/Session.js';
+import { t } from '../src/i18n/i18n.js';
+import { REVERSE } from '../src/sim/Drivetrain.js';
+import { CRASH_CAUSE, Session } from '../src/sim/Session.js';
 import { DriveScreen } from '../src/ui/screens/DriveScreen.js';
 import { STAGES } from '../src/data/stages.js';
 import { Landscape } from '../src/sim/Landscape.js';
@@ -82,6 +84,8 @@ test('rolling in neutral, the throttle only revs the engine', async () => {
 
 test('near the redline below top gear the driver is told to shift up, and the hint clears after A', async () => {
     const { screen, key, run, tap } = await startStage();
+    // Hands off the wheel the car drifts to the centre line: no oncoming car to meet there.
+    screen.traffic.clearAround(screen.vehicle.s, 2000);
     key('keydown', 'ArrowUp');
     run(0.5);
     let waited = 0;
@@ -249,4 +253,52 @@ test('a blown engine smokes: from the tail of the rear-engined Porsche, from the
         const back = -Math.sin(a) * (newest.x - car.x) + Math.cos(a) * (newest.z - car.z);
         assert.ok(Math.sign(back) === end, `${carId}: smoke from the ${end > 0 ? 'tail' : 'bonnet'}`);
     }
+});
+
+test('at a standstill, Z past neutral selects reverse: the throttle backs the car down the road', async () => {
+    const { screen, key, run, tap } = await startStage();
+    tap('KeyZ');
+    assert.equal(screen.vehicle.engine.gear, REVERSE);
+    const start = screen.vehicle.s;
+    key('keydown', 'ArrowUp');
+    run(2);
+    key('keyup', 'ArrowUp');
+    assert.equal(screen.vehicle.engine.gear, REVERSE, 'the throttle does not pull it out of reverse');
+    assert.ok(screen.vehicle.s < start - 1, 'backed down the road');
+});
+
+test('back over the start line with the patrol car on the tail is an arrest; without one the car is turned round', async () => {
+    const { screen, run } = await startStage();
+    const { track, vehicle } = screen;
+    const cop = screen.traffic.add('police', { s: track.startS + 30, u: -1.8, dir: -1, scripted: true, siren: true, chaseTime: 0, signalled: 0 });
+    Object.assign(screen.police, { pursuer: cop, fleeing: true });
+    vehicle.reset(track.startS + 5, -1.8);
+    vehicle.theta = Math.PI;
+    vehicle.vx = 15;
+    run(1);
+    assert.equal(screen.state, 'arrested');
+
+    const free = await startStage();
+    free.screen.vehicle.reset(track.startS + 5, -1.8);
+    free.screen.vehicle.theta = Math.PI;
+    free.screen.vehicle.vx = 15;
+    free.run(1);
+    assert.equal(free.screen.state, 'driving', 'the road behind is open a little way');
+    assert.ok(free.screen.vehicle.s < track.startS);
+    free.run(GAME.backLimit / 15 + 1);
+    assert.equal(free.screen.state, 'driving');
+    assert.equal(free.screen.vehicle.s, track.startS, 'turned round on the start line');
+    assert.equal(free.screen.vehicle.theta, 0);
+    assert.equal(free.screen.toast.text, t('drive.wrongWay'));
+});
+
+test('backing into a car is a crash of its own', async () => {
+    const { screen, run } = await startStage();
+    const { vehicle } = screen;
+    vehicle.reset(screen.track.startS + 400, 1.8);
+    screen.traffic.add('truck', { s: vehicle.s - 10, u: vehicle.u, dir: 1, speed: 0, scripted: true });
+    vehicle.drivetrain.shift(vehicle.engine, -1, 0);
+    vehicle.vx = -8;
+    run(1.5);
+    assert.equal(screen.cause, CRASH_CAUSE.reversing);
 });

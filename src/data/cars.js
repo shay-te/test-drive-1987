@@ -68,7 +68,9 @@ export const CARS = [
             turbo: { spoolRpm: 2700, fullRpm: 4300, lagSec: 0.95, offBoost: 0.55, peakPsi: 11.6 },
         },
         drivetrain: {
-            gears: [2.25, 1.304, 0.893, 0.656],
+            // The 930/36 gearbox (1986-88): reverse 39:16.
+            gears: [2.25, 1.304, 0.893, 0.625],
+            reverse: 2.4375,
             finalDrive: 4.222,
             tireRadius: 0.312,
             efficiency: 0.86,
@@ -227,7 +229,8 @@ export const CARS = [
             maxRpm: 7700,
         },
         drivetrain: {
-            gears: [3.139, 2.014, 1.526, 1.167, 0.875],
+            gears: [3.139, 2.104, 1.526, 1.167, 0.875],
+            reverse: 2.523,
             finalDrive: 3.21,
             tireRadius: 0.33,
             efficiency: 0.85,
@@ -351,6 +354,7 @@ export const CARS = [
         },
         drivetrain: {
             gears: [2.232, 1.625, 1.086, 0.858, 0.707],
+            reverse: 1.96,
             finalDrive: 4.091,
             tireRadius: 0.311,
             efficiency: 0.85,
@@ -482,7 +486,9 @@ export const CARS = [
             turbo: { spoolRpm: 2600, fullRpm: 4000, lagSec: 0.7, offBoost: 0.6, peakPsi: 8 },
         },
         drivetrain: {
+            // The Citroën SM gearbox: reverse 41:13.
             gears: [2.92, 1.94, 1.32, 0.97, 0.76],
+            reverse: 3.154,
             finalDrive: 4.375,
             tireRadius: 0.331,
             efficiency: 0.86,
@@ -523,7 +529,7 @@ export const CARS = [
             model: 'assets/models/lotus/cabin.glb',
             dash: { top: '#6e6e70', face: '#9c9c9e', panel: '#8d8d90', accent: '#4a4a4c', grain: 'vinyl' },
             wheel: { spokes: 2, rim: '#141414', spoke: '#1c1c1c' },
-            shifter: { type: 'boot', pattern: 'dogleg5', knob: '#141414' },
+            shifter: { type: 'boot', pattern: 'h5', knob: '#141414' },
         },
         body: {
             length: 4.19,
@@ -604,6 +610,7 @@ export const CARS = [
         },
         drivetrain: {
             gears: [2.88, 1.91, 1.33, 1.0, 0.67],
+            reverse: 2.78,
             finalDrive: 3.07,
             tireRadius: 0.33,
             efficiency: 0.85,
@@ -710,8 +717,9 @@ export const isLocked = (car) => {
     return !car.cockpit.model;
 };
 
-/** Display label of a gear index (0 = neutral). */
+/** Display label of a gear index (0 = neutral, below it reverse). */
 export function gearLabel(car, gear) {
+    if (gear < 0) return 'R';
     if (gear === 0) return 'N';
     return car.drivetrain.gearLabels?.[gear - 1] ?? String(gear);
 }

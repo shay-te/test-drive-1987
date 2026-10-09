@@ -9,6 +9,7 @@ import { SURFACES, sideMirrorNodes, validateCabinNodes } from '../src/world/cabi
 import { rotate } from '../src/util/quaternion.js';
 import { leverAngles, radarLights, wheelAngle } from '../src/world/cabin/cabinAnimation.js';
 import { GATES, gatePosition } from '../src/cockpit/shiftGate.js';
+import { REVERSE } from '../src/sim/Drivetrain.js';
 import { profileFrame } from '../src/world/profileFrame.js';
 
 const AUTHORED = CARS.filter((car) => { return car.cockpit.model; });
@@ -155,11 +156,13 @@ test('shared wheel, lever, and radar animation handles neutral, limits, and blin
 });
 
 /** Where the knob goes for each gear in the real cars: the 930's four-speed H, the dog-leg first of the
- *  Testarossa, Countach and Esprit, and the Corvette's 4+3 (overdrive fourth is fourth's slot). */
+ *  Testarossa and Countach, the Esprit's H with fifth up on the right, and the Corvette's 4+3
+ *  (overdrive fourth is fourth's slot); and reverse. */
 const REAL_GATES = {
-    porsche4: { 1: 'left forward', 2: 'left back', 3: 'right forward', 4: 'right back' },
-    dogleg5: { 1: 'left back', 2: 'centre forward', 3: 'centre back', 4: 'right forward', 5: 'right back' },
-    overdrive: { 1: 'left forward', 2: 'left back', 3: 'right forward', 4: 'right back', 5: 'right back' },
+    porsche4: { 1: 'left forward', 2: 'left back', 3: 'right forward', 4: 'right back', [REVERSE]: 'left forward' },
+    dogleg5: { 1: 'left back', 2: 'centre forward', 3: 'centre back', 4: 'right forward', 5: 'right back', [REVERSE]: 'left forward' },
+    h5: { 1: 'left forward', 2: 'left back', 3: 'centre forward', 4: 'centre back', 5: 'right forward', [REVERSE]: 'right back' },
+    overdrive: { 1: 'left forward', 2: 'left back', 3: 'right forward', 4: 'right back', 5: 'right back', [REVERSE]: 'left forward' },
 };
 
 test('each cabin\'s lever leans its knob to where the real car keeps each gear', () => {

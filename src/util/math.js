@@ -19,6 +19,10 @@ export const smoothstep = (a, b, v) => {
 export const sign = (v) => {
     return v < 0 ? -1 : 1;
 };
+/** `angle` wrapped into -pi..pi. */
+export const wrapAngle = (angle) => {
+    return angle - TAU * Math.round(angle / TAU);
+};
 
 /** Exponential approach of `current` towards `target` (frame-rate independent). */
 export const approach = (current, target, rate, dt) => {

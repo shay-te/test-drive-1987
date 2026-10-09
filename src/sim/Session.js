@@ -11,6 +11,7 @@ export const CRASH_CAUSE = Object.freeze({
     edge: 'edge',
     headOn: 'headOn',
     rearEnd: 'rearEnd',
+    reversing: 'reversing',
     police: 'police',
     engine: 'engine',
 });

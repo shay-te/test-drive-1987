@@ -113,18 +113,22 @@ export const GAME = Object.freeze({
     radarTriggerMph: 65,
     /** Fixed physics step. */
     physicsHz: 120,
-    /** Throttle below this speed (m/s) in neutral selects first gear, as a driver pulling away would. */
+    /** Throttle below this speed (m/s) in neutral selects first gear, as a driver pulling away would;
+     *  reverse goes in only below it, and the car is moving one way along the road only above it. */
     pullAwaySpeed: 1,
+    /** How far back past the start line (m) the road is open; beyond it the car is turned round. */
+    backLimit: 60,
     /** Within this many rpm of the redline, below top gear, the driver is told to shift up. */
     shiftHintRpm: 350,
 });
 
 /** How much of the world is drawn: all of it on a graphics card, less on a software renderer that
  *  draws on the CPU (a browser without a graphics driver, such as the CI's headless ones). `forest`
- *  is the share of the trees kept. */
+ *  is the share of the trees kept, `far` how far (m) the world is drawn: a CPU spends its time on
+ *  every triangle in view. */
 export const GRAPHICS = Object.freeze({
-    full: { forest: 1, shadows: true, doorMirrors: true },
-    software: { forest: 0.15, shadows: false, doorMirrors: false },
+    full: { forest: 1, shadows: true, doorMirrors: true, far: 45000 },
+    software: { forest: 0.15, shadows: false, doorMirrors: false, far: 2000 },
 });
 
 /** A pursuit as the B.C. Police Commission's 1982 guidelines had it (in force through 1989; reproduced in
@@ -136,8 +140,10 @@ export const GRAPHICS = Object.freeze({
  *  with `margin` m to spare (s. 7.7): on a bend of radius R, with the cut or the trees `sightClearance`
  *  m inside the line, the road is seen about 2·sqrt(2·R·clearance) m ahead. Patrol cars stand broadside
  *  across it, as many as it takes from the edge to the cut.
- *  The patrol car follows `followGap` m behind and never boxes in or rams (s. 7.9-7.10). Stopping
- *  within `roadblockReach` m of the roadblock is stopping for it. */
+ *  The patrol car follows `followGap` m behind and never boxes in or rams (s. 7.9-7.10); a driver
+ *  who turns back past it is followed after it has stopped and turned round in `turnSeconds` s, and
+ *  the roadblock's officers redeploy ahead of them, leaving once they are `outOfSight` m away.
+ *  Stopping within `roadblockReach` m of the roadblock is stopping for it. */
 export const POLICE = Object.freeze({
     stoppedMph: 3,
     stopSeconds: 1.5,
@@ -150,6 +156,8 @@ export const POLICE = Object.freeze({
     margin: 60,
     roadblockReach: 250,
     followGap: 18,
+    turnSeconds: 6,
+    outOfSight: 400,
     sightClearance: 8,
     /** Time lost to a roadside speeding ticket (s). */
     ticketSeconds: 30,

@@ -27,7 +27,6 @@ import { Smoke } from './Smoke.js';
 import { Underwater } from './Underwater.js';
 import { sunDirection } from './sunDirection.js';
 
-const FAR = 45000;
 const SKY_SCALE = 40000;
 const SHADOW_EXTENT = 70;
 const SHADOW_AHEAD = 35;
@@ -85,7 +84,7 @@ export class WorldView {
             this._verticalFov(),
             VIEW.width / VIRTUAL_HEIGHT,
             WORLD_NEAR,
-            FAR,
+            this.graphics.far,
         );
         this.camera.rotation.order = 'YXZ';
         this.camera.setViewOffset(
@@ -108,7 +107,7 @@ export class WorldView {
         this.authored = new AuthoredModels(resources);
         this.vehicles = new VehicleModels(this.authored);
         // The outside view sees the car (cabin layer) and the world in one pass, lit by the world's sun.
-        this.chaseCamera = new THREE.PerspectiveCamera(CHASE.verticalFovDeg, VIEW.width / VIEW.height, WORLD_NEAR, FAR);
+        this.chaseCamera = new THREE.PerspectiveCamera(CHASE.verticalFovDeg, VIEW.width / VIEW.height, WORLD_NEAR, this.graphics.far);
         this.chaseCamera.layers.enable(CABIN_LAYER);
         this.chaseYaw = null;
         this.chaseTime = null;
@@ -357,7 +356,7 @@ export class WorldView {
             scene.add(ground);
         }
         try {
-            this.environmentTarget = pmrem.fromScene(scene, 0, LIGHTING.environmentNear, FAR, {
+            this.environmentTarget = pmrem.fromScene(scene, 0, LIGHTING.environmentNear, this.graphics.far, {
                 size: LIGHTING.environmentSize, position,
             });
             return this.environmentTarget.texture;
@@ -419,7 +418,7 @@ export class WorldView {
         }
 
         this.camera.getWorldPosition(this.sky.position);
-        this._lens(0, WORLD_NEAR, FAR);
+        this._lens(0, WORLD_NEAR, this.graphics.far);
         r.render(this.scene, this.camera);
         // The cabin is drawn last over a cleared depth buffer, so its near plane can sit at the eye.
         this._lens(CABIN_LAYER, CABIN_NEAR, CABIN_FAR);

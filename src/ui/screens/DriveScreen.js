@@ -11,7 +11,7 @@ import { POLICE_EVENT, PoliceManager } from '../../sim/Police.js';
 import { OverTheEdge } from '../../sim/OverTheEdge.js';
 import { RoadCrash } from '../../sim/RoadCrash.js';
 import { CRASH_CAUSE } from '../../sim/Session.js';
-import { LANE, ONCOMING, TrafficManager } from '../../sim/Traffic.js';
+import { LANE, TrafficManager } from '../../sim/Traffic.js';
 import { VehicleDynamics } from '../../sim/VehicleDynamics.js';
 import { WaterParticles } from '../../sim/WaterParticles.js';
 import { approach } from '../../util/math.js';
@@ -191,6 +191,19 @@ export class DriveScreen {
             // A patrol car still on the tail of a driver who would not stop follows them into the station.
             if (this.police.onTail) this.state = 'arrested';
             else this._finish();
+        } else if (vehicle.s < this.track.startS && this.state === 'driving') {
+            this._backPastStart();
+        }
+    }
+
+    /** Back over the start line: a patrol car still on the tail follows the driver back to where they set
+     *  out from; otherwise the road behind is open GAME.backLimit m, and there the car is turned round. */
+    _backPastStart() {
+        if (this.police.onTail) {
+            this.state = 'arrested';
+        } else if (this.vehicle.s < this.track.startS - GAME.backLimit) {
+            this.vehicle.reset(this.track.startS, LANE);
+            this._notice(t('drive.wrongWay'), COLORS.lcd);
         }
     }
 
@@ -198,27 +211,21 @@ export class DriveScreen {
         const { vehicle, session } = this;
         const event = vehicle.step(h, controls, this.track);
         session.tick(h);
-        this.traffic.update(h, vehicle.s);
+        this.traffic.update(h, vehicle.s, vehicle.dir);
         if (event) {
             this._crash(event.cause, event.impact);
             return;
         }
         const hit = this.traffic.collision(vehicle.s, vehicle.u);
         if (hit) {
-            const cause =
-                hit.type === 'police'
-                    ? CRASH_CAUSE.police
-                    : hit.dir === ONCOMING
-                      ? CRASH_CAUSE.headOn
-                      : CRASH_CAUSE.rearEnd;
-            this._crash(cause, Math.abs(vehicle.vx - hit.speed * hit.dir), hit);
+            this._crash(this._hitCause(hit), Math.abs(vehicle.sDot - hit.speed * hit.dir), hit);
             return;
         }
         if (vehicle.engine.blown) {
             this._crash(CRASH_CAUSE.engine, 0);
             return;
         }
-        const player = { s: vehicle.s, u: vehicle.u, speed: vehicle.vx, mph: vehicle.speedMph };
+        const player = { s: vehicle.s, u: vehicle.u, speed: vehicle.sDot, mph: vehicle.speedMph, dir: vehicle.dir };
         const police = this.police.update(h, player);
         if (police === POLICE_EVENT.pursuit) {
             this.clockedMph = player.mph;
@@ -234,8 +241,15 @@ export class DriveScreen {
         }
     }
 
+    /** What hitting traffic vehicle `hit` was: a patrol car, backing into a car, or by the way each was going. */
+    _hitCause(hit) {
+        if (hit.type === 'police') return CRASH_CAUSE.police;
+        if (this.vehicle.vx < 0) return CRASH_CAUSE.reversing;
+        return hit.dir === this.vehicle.dir ? CRASH_CAUSE.rearEnd : CRASH_CAUSE.headOn;
+    }
+
     _shift(direction) {
-        if (this.vehicle.drivetrain.shift(this.vehicle.engine, direction)) {
+        if (this.vehicle.drivetrain.shift(this.vehicle.engine, direction, this.vehicle.vx)) {
             this.audio.play('shift', { volume: 0.6 });
         }
     }
@@ -378,7 +392,7 @@ export class DriveScreen {
         this.soundscape.update(dt, {
             ...this.vehicle.telemetry(),
             radar: this.police.radarSignal(this.vehicle),
-            sirenDistance: pursuer ? this.vehicle.s - pursuer.s : null,
+            sirenDistance: pursuer ? Math.abs(this.vehicle.s - pursuer.s) : null,
             paused: this.paused || this.state === 'crashed',
             // A crash stalls the engine; it starts again when the car is back on the road.
             engineOff: this.state === 'wrecking' || this.state === 'crashed',
@@ -426,7 +440,7 @@ export class DriveScreen {
             s: vehicle.s,
             u: vehicle.u,
             theta: vehicle.theta,
-            pitch: Math.atan(track.gradeAt(vehicle.s)) + this.bodyPitch,
+            pitch: Math.atan(track.gradeAt(vehicle.s) * Math.cos(vehicle.theta)) + this.bodyPitch,
             roll: this.bodyRoll,
             pose: this.wreck?.pose ?? null,
             // A crash is watched from beside it, whichever view was chosen.
