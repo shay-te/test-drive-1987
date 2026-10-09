@@ -1,6 +1,6 @@
 import { PHYS, VIEW } from '../../config.js';
 import { CARS, carById, isLocked, neighbourCar } from '../../data/cars.js';
-import { t } from '../../i18n/i18n.js';
+import { inputKey, t } from '../../i18n/i18n.js';
 import { Drivetrain } from '../../sim/Drivetrain.js';
 import { Session } from '../../sim/Session.js';
 import { linearGradient, speckle } from '../../util/canvas.js';
@@ -93,7 +93,7 @@ export class SelectScreen {
             },
         );
         ctx.drawImage(page, 0, 0, VIEW.width, VIEW.height);
-        drawPrompt(ctx, t(isLocked(car) ? 'select.locked' : 'select.hint'), this.time, BAND - 22);
+        drawPrompt(ctx, t(isLocked(car) ? 'select.locked' : inputKey('select.hint', this.input.touch)), this.time, BAND - 22);
     }
 }
 

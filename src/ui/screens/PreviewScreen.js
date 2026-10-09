@@ -87,7 +87,7 @@ export class PreviewScreen {
 
     render(ctx) {
         if (!this.ready) {
-            drawLoading(ctx, this.time, this.failed, 'preview.assetRetry');
+            drawLoading(ctx, this.time, this.input.touch, this.failed, 'preview.assetRetry');
             return;
         }
         this.world.render(this.view);

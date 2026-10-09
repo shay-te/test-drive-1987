@@ -25,6 +25,10 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
 - Over the edge into Howe Sound: the car splashes in, floats while the water pours in, then sinks
   to the bottom (the heavy end first) as its air bubbles out; the camera follows it under, where
   fish circle the wreck. The notice says how far it fell and how deep it sank.
+- Phones: touch buttons in landscape and (in two rows) portrait, every prompt in touch words
+  ("Tap to start", "tap + to shift up"), the high-score name typed in the phone's own text box,
+  and the 3D view drawn at no more than twice the screen's size in pixels. Checked on an emulated
+  Pixel 7; frame rates on real phones are still to be measured.
 - `src/audio/`: `AudioManager`, per-car engine synthesiser (AudioWorklet), sound bank, soundscape.
 - `src/world/`: three.js world: road, cliff, drop, terrain, trees, props, vehicles, sky lighting.
 - `src/world/cabin/`: the 3D cabin carried along at the car's pose: padded dash and hood, the
@@ -61,7 +65,7 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
    provincial Digital Road Atlas: the real blasted granite cuts and cliffs, concrete barriers, the
    railway between road and shore, Lions Bay, the islands across the sound; one polished 500 m
    section first, rock assets from Poly Haven (CC0).
-3. Test on phones (touch controls, performance of the cabin pass).
+3. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
 

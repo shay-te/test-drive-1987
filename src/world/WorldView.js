@@ -16,7 +16,7 @@ import { CABIN } from './cabin/cabinLayout.js';
 import { CABIN_LAYER } from './cabin/cabinLayer.js';
 import { photographProfile } from './profilePhoto.js';
 import { photographStation } from './stationPhoto.js';
-import { chasePose, diverPose, followYaw } from './chaseView.js';
+import { chasePose, diverPose, followYaw, spectatorPose } from './chaseView.js';
 import { Underwater } from './Underwater.js';
 import { sunDirection } from './sunDirection.js';
 
@@ -362,20 +362,17 @@ export class WorldView {
         r.autoClear = true;
     }
 
-    /** Watching a crash from beside the road where it happened: behind the impact, out over the drop,
-     *  following the player's car wherever it is thrown; once it sinks, from under the water with it. */
+    /** Watching a crash from beside the road where it happened (behind the impact, out over the drop),
+     *  going after the player's car if it is thrown far; once it sinks, from under the water with it. */
     _placeSpectator({ s, u }, underwater) {
         const c = CRASH.camera;
         const car = this.cabin.root.position;
-        if (underwater) {
-            const { position, aim } = diverPose(car, this.track.toWorld(s, u), this.underwater.seaLevel);
-            this.chaseCamera.position.set(...position);
-            this.chaseCamera.lookAt(...aim);
-        } else {
-            const at = this.track.toWorld(s - c.back, u - c.out);
-            this.chaseCamera.position.set(at.x, at.y + c.up, at.z);
-            this.chaseCamera.lookAt(car.x, car.y + c.aimUp, car.z);
-        }
+        const at = this.track.toWorld(s - c.back, u - c.out);
+        const { position, aim } = underwater
+            ? diverPose(car, this.track.toWorld(s, u), this.underwater.seaLevel)
+            : spectatorPose({ x: at.x, y: at.y + c.up, z: at.z }, car);
+        this.chaseCamera.position.set(...position);
+        this.chaseCamera.lookAt(...aim);
         this.chaseCamera.updateMatrixWorld();
         this.chaseYaw = null;
     }

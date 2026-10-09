@@ -1,5 +1,5 @@
 import { CHASE, CRASH } from '../config.js';
-import { approach } from '../util/math.js';
+import { DEG, approach, clamp, lerp } from '../util/math.js';
 
 /** `angle` wrapped into -pi..pi. */
 function wrapAngle(angle) {
@@ -21,6 +21,25 @@ export function chasePose(car, yaw) {
     return {
         position: [car.x + backX * CHASE.distance, car.y + CHASE.height, car.z + backZ * CHASE.distance],
         aim: [car.x - backX * CHASE.aimAhead, car.y + CHASE.aimHeight, car.z - backZ * CHASE.aimAhead],
+    };
+}
+
+/** Watching a crash from `post` beside the road: while the car is near, from there; thrown further than
+ *  CRASH.camera.follow, the camera glides after it to look down on it from above, on the post's side. */
+export function spectatorPose(post, car) {
+    const c = CRASH.camera;
+    const away = Math.hypot(car.x - post.x, car.y - post.y, car.z - post.z);
+    const across = Math.hypot(post.x - car.x, post.z - car.z) || 1;
+    const back = c.follow * Math.cos(c.lookDownDeg * DEG);
+    const above = [
+        car.x + ((post.x - car.x) / across) * back,
+        car.y + c.follow * Math.sin(c.lookDownDeg * DEG),
+        car.z + ((post.z - car.z) / across) * back,
+    ];
+    const follow = clamp((away - c.follow) / c.follow, 0, 1);
+    return {
+        position: [lerp(post.x, above[0], follow), lerp(post.y, above[1], follow), lerp(post.z, above[2], follow)],
+        aim: [car.x, car.y + c.aimUp, car.z],
     };
 }
 

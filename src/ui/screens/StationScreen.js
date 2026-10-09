@@ -1,6 +1,6 @@
 import { VIEW } from '../../config.js';
 import { STAGES } from '../../data/stages.js';
-import { t } from '../../i18n/i18n.js';
+import { inputKey, t } from '../../i18n/i18n.js';
 import { linearGradient } from '../../util/canvas.js';
 import { formatClock } from '../../util/format.js';
 import { clamp } from '../../util/math.js';
@@ -123,7 +123,7 @@ export class StationScreen {
         if (this.full) {
             const next = STAGES[r.stage + 1];
             drawText(ctx, next.name, VIEW.width / 2, VIEW.height - 110, { size: 22, weight: 'bold' });
-            drawPrompt(ctx, t('station.continue'), this.time, VIEW.height - 64);
+            drawPrompt(ctx, t(inputKey('station.continue', this.input.touch)), this.time, VIEW.height - 64);
         }
     }
 }

@@ -1,6 +1,6 @@
 import { VIEW } from '../../config.js';
 import { CARS, carById, isLocked, neighbourCar } from '../../data/cars.js';
-import { t } from '../../i18n/i18n.js';
+import { inputKey, t } from '../../i18n/i18n.js';
 import { clamp } from '../../util/math.js';
 import { drawCarArt, drawGroundShadow } from '../CarArt.js';
 import { paintScenery } from '../scenery.js';
@@ -110,8 +110,9 @@ export class TitleScreen {
         });
         ctx.restore();
 
-        drawPrompt(ctx, t(locked ? 'select.locked' : 'title.start'), this.time, 700);
-        drawText(ctx, t('title.controls'), VIEW.width / 2, 748, { size: 15, color: COLORS.chrome });
+        const touch = this.input.touch;
+        drawPrompt(ctx, t(locked ? 'select.locked' : inputKey('title.start', touch)), this.time, 700);
+        drawText(ctx, t(inputKey('title.controls', touch)), VIEW.width / 2, 748, { size: 15, color: COLORS.chrome });
         drawText(ctx, t('title.credit'), VIEW.width / 2, 776, { size: 13, color: 'rgba(223,231,242,0.6)' });
     }
 }

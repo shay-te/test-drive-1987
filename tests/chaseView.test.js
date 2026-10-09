@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CHASE } from '../src/config.js';
-import { chasePose, followYaw } from '../src/world/chaseView.js';
+import { CHASE, CRASH } from '../src/config.js';
+import { chasePose, followYaw, spectatorPose } from '../src/world/chaseView.js';
 
 const car = { x: 10, y: 50, z: -20 };
 
@@ -31,4 +31,19 @@ test('the camera yaw starts on the car, then eases after it without overshooting
 test('across the +-pi seam the camera turns the short way round', () => {
     const next = followYaw(Math.PI - 0.05, -Math.PI + 0.05, 1 / 60);
     assert.ok(next > Math.PI - 0.05, 'keeps turning the same way instead of swinging back through 0');
+});
+
+test('a crash is watched from beside the road while the car is near, and followed when it is thrown far', () => {
+    const post = { x: 0, y: 50, z: 0 };
+    const near = { x: 6, y: 47, z: -8 };
+    const close = spectatorPose(post, near);
+    assert.deepEqual(close.position, [post.x, post.y, post.z], 'from the roadside');
+    assert.deepEqual(close.aim, [near.x, near.y + CRASH.camera.aimUp, near.z]);
+    const far = { x: 60, y: -40, z: -30 };
+    const { position } = spectatorPose(post, far);
+    const away = Math.hypot(position[0] - far.x, position[1] - far.y, position[2] - far.z);
+    assert.ok(Math.abs(away - CRASH.camera.follow) < 1e-9, 'it keeps its distance');
+    assert.ok(position[1] > far.y, 'looking down on the car, over the slope it fell down');
+    const towards = (position[0] - far.x) * (post.x - far.x) + (position[2] - far.z) * (post.z - far.z);
+    assert.ok(towards > 0, 'from the side it was watched from');
 });
