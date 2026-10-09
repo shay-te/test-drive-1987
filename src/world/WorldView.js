@@ -482,7 +482,7 @@ export class WorldView {
             } else {
                 const p = this.track.toWorld(v.s, v.u);
                 model.position.set(p.x, p.y, p.z);
-                model.rotation.set(0, -p.heading + (v.dir < 0 ? Math.PI : 0), 0);
+                model.rotation.set(0, -p.heading + (v.dir < 0 ? Math.PI : 0) + (v.yaw ?? 0), 0);
             }
             model.userData.siren = Boolean(v.siren);
             this.vehicles.animate(model, time);

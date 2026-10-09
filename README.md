@@ -46,7 +46,7 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   stands with bigleaf maple, amabilis fir and hemlock above 900 m. Each species is drawn as it grows:
   the fir's upturned branch tips, the hemlock's drooping leader, the cedar's flared red trunk and
   J-shaped branches, the alder's pale trunk and small leaves, the maple's mossy trunk and broad
-  crown. The canopy trees are drawn (180 a hectare by the road), never on bare rock, above the tree
+  crown. The canopy trees are drawn (90 a hectare by the road), never on bare rock, above the tree
   line or inside a building; within 260 m of the car tree by tree, beyond as crossed silhouette
   cards. Close to the road the ground is a coastal pine-forest floor (Poly Haven, CC0).
 - Guard rail as engineers place it: wherever the real ground 6 m beyond the edge lies 3 m or more
@@ -97,13 +97,27 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   is there, and the left foot works the clutch; the right foot moves between throttle and brake.
   From outside the whole driver shows.
 
+- Police as in British Columbia in 1987-89 (the B.C. Police Commission's 1982 pursuit guidelines and
+  its 1990 report "Police Pursuit in British Columbia"; Motor Vehicle Act s. 67): clocked by a
+  radar trap, the RCMP patrol car pulls out with lights and siren. Stop for it and you get a
+  speeding ticket (time lost). Drive on and you have failed to stop: the officer follows (never
+  boxing you in or ramming), radios for assistance, and a roadblock of patrol cars goes up across
+  the road ahead, at a place you can see in time to stop at your speed. Stopping then, at the
+  roadblock, or arriving at the gas station with him still behind you is an arrest: jail, and the
+  game is over. Get far enough ahead and he breaks off the chase; the roadblock stays. No
+  helicopters (not used for general policing then) and no spike belts (not in the guidelines).
+
 ### Next (queued, in order)
 
-1. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, concrete barriers where
-   the real road has them, the railway between road and shore. (The provincial road atlas
-   and orthophotos are "access only", so they are not used.)
-2. **Every stage inspected section by section** for anything that does not look real.
-3. Frame rates on real phones (the cabin pass, the mirrors, shadows).
+1. **Escape the other way:** reverse gear and a U-turn, the patrol car turning to follow.
+2. **The mirror in the outside view:** a rear-view inset while the camera is outside the car.
+3. **A blown engine smokes:** smoke pouring from the engine when it blows.
+4. **A 1980s RCMP patrol car** in place of the 2001 Crown Victoria model.
+5. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, the railway on its bench
+   between road and shore. (The provincial road atlas and orthophotos are "access only", so they
+   are not used.)
+6. **Every stage inspected section by section** for anything that does not look real.
+7. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
 

@@ -126,8 +126,8 @@ export const GAME = Object.freeze({
  *  The officer then radios for assistance and a roadblock is ready `roadblockDelay` s later, at least
  *  `lead` m ahead, where a driver at the car's speed sees it in time to stop braking at `brake` m/s²
  *  with `margin` m to spare (s. 7.7): on a bend of radius R, with the cut or the trees `sightClearance`
- *  m inside the line, the road is seen about 2·sqrt(2·R·clearance) m ahead. Patrol cars stand across
- *  the road at `roadblockCars` (u).
+ *  m inside the line, the road is seen about 2·sqrt(2·R·clearance) m ahead. Patrol cars stand broadside
+ *  across it, as many as it takes from the edge to the cut.
  *  The patrol car follows `followGap` m behind and never boxes in or rams (s. 7.9-7.10). Stopping
  *  within `roadblockReach` m of the roadblock is stopping for it. */
 export const POLICE = Object.freeze({
@@ -140,7 +140,6 @@ export const POLICE = Object.freeze({
     lead: 1500,
     brake: 6,
     margin: 60,
-    roadblockCars: [-2.6, 0, 2.6],
     roadblockReach: 250,
     followGap: 18,
     sightClearance: 8,

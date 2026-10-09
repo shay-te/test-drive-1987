@@ -1,5 +1,6 @@
-import { GAME, PHYS, POLICE } from '../config.js';
+import { GAME, PHYS, POLICE, ROAD } from '../config.js';
 import { approach, clamp, moveTowards } from '../util/math.js';
+import { TRAFFIC_TYPES } from '../data/traffic.js';
 import { LANE, SAME_WAY } from './Traffic.js';
 
 const TOP_SPEED = 121 * PHYS.mph;
@@ -126,8 +127,15 @@ export class PoliceManager {
         const last = this.track.finishS - FINISH_CLEAR;
         for (let s = player.s + POLICE.lead; s < last; s += ROADBLOCK_STEP) {
             if (!this._seen(s - sight, s, sight)) continue;
-            const cars = POLICE.roadblockCars.map((u) => {
-                return this.traffic.add('police', { s, u, dir: SAME_WAY, scripted: true, siren: true, speed: 0 });
+            // Broadside to the road (the car's length across it), side by side from the edge to the cut.
+            const { length, width } = TRAFFIC_TYPES.police;
+            const [left, right] = [ROAD.edgeOffset, this.track.wallOffsetAt(s)];
+            const count = Math.ceil((right - left) / length);
+            const cars = Array.from({ length: count }, (_, i) => {
+                const u = left + ((i + 0.5) * (right - left)) / count;
+                return this.traffic.add('police', {
+                    s, u, dir: SAME_WAY, scripted: true, siren: true, speed: 0, yaw: Math.PI / 2, length: width, width: length,
+                });
             });
             this.roadblock = { s, cars };
             return POLICE_EVENT.roadblock;

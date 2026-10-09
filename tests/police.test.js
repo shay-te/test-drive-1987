@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { STAGES } from '../src/data/stages.js';
-import { PHYS, POLICE } from '../src/config.js';
+import { PHYS, POLICE, ROAD } from '../src/config.js';
 import { buildTrack } from '../src/sim/TrackBuilder.js';
 import { TrafficManager, LANE } from '../src/sim/Traffic.js';
 import { PoliceManager, POLICE_EVENT } from '../src/sim/Police.js';
@@ -63,7 +63,7 @@ test('a driver who does not stop is pursued: the officer radios for help and a r
     const { events, police } = passTrap(95, 120, watch);
     assert.deepEqual(events.slice(0, 3), [POLICE_EVENT.pursuit, POLICE_EVENT.failedToStop, POLICE_EVENT.roadblock]);
     const { s, cars } = police.roadblock;
-    assert.equal(cars.length, POLICE.roadblockCars.length, 'patrol cars across the road');
+    assert.ok(cars.length >= 2, 'patrol cars across the road');
     assert.ok(cars.every((car) => { return car.siren && car.speed === 0; }), 'parked with their lights on');
     // On a bend of radius R the road is seen about 2·sqrt(2·R·clearance) ahead: far enough to stop.
     const sight = (95 * PHYS.mph) ** 2 / (2 * POLICE.brake) + POLICE.margin;
@@ -110,5 +110,15 @@ test('traffic fills both lanes and keeps its distance', () => {
             if (a === b || a.dir !== b.dir) continue;
             assert.ok(Math.abs(a.s - b.s) > (a.length + b.length) / 2, 'vehicles overlap');
         }
+    }
+});
+
+test('the roadblock closes the whole road: no line from the edge to the cut gets a car past it', () => {
+    const { police, traffic } = passTrap(95, 120);
+    const { s } = police.roadblock;
+    const half = 0.9;
+    for (let u = ROAD.edgeOffset + half; u <= track.wallOffsetAt(s) - half; u += 0.1) {
+        const hit = traffic.collision(s, u);
+        assert.ok(hit && hit.type === 'police', `a gap at u=${u.toFixed(1)}`);
     }
 });
