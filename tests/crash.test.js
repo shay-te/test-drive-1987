@@ -36,6 +36,9 @@ function traffic(type, dir, mph) {
     return manager.add(type, { s: s0 + 4, u: dir === SAME_WAY ? LANE : LANE - 0.4, dir, speed: mph * PHYS.mph, scripted: true });
 }
 
+/** Where along the road and across it a crash's car is. */
+const placeOf = (pose) => { return track.project(pose.position.x, pose.position.z, 0); };
+
 /** A body's kinetic energy, moving and spinning, plus its height energy (J). */
 function energy(body) {
     const w = rotate(conjugate(body.orientation), body.angularVelocity);
@@ -83,7 +86,9 @@ test('head-on with the refuse truck, the light car is thrown up and back; the tr
     assert.ok(gained < 1000, `the tumbling cars gained ${(gained / 1000).toFixed(1)} kJ from nowhere`);
     assert.ok(intoRock < 0.5, `bounces off the rock face instead of climbing it (${intoRock.toFixed(2)} m in)`);
     assert.ok(otherTop < 1, `the truck stays on the ground (${otherTop.toFixed(2)} m)`);
-    assert.ok(crash.time <= CRASH.maxSeconds + FALL.substep, 'stops playing at the time limit');
+    // On the road the wreck stops playing at its time limit; one thrown over the edge falls as long as a fall.
+    const limit = placeOf(crash.pose).u < ROAD.edgeOffset ? FALL.maxSeconds : CRASH.maxSeconds;
+    assert.ok(crash.time <= limit + FALL.substep, 'stops playing at the time limit');
 });
 
 test('a gentle nudge into a slower car ahead stays on the ground', () => {
@@ -121,8 +126,6 @@ test('thrown towards the rock face on a bend, the car bounces off it rather than
     assert.ok(intoRock < 0.5, `${intoRock.toFixed(2)} m into the rock`);
 });
 
-/** Where along the road and across it a crash's car is. */
-const placeOf = (pose) => { return track.project(pose.position.x, pose.position.z, 0); };
 
 test('the trees are solid: a car driven into a trunk stops against it, not through it', () => {
     const vehicle = player(45, LANE);
@@ -171,4 +174,15 @@ test('traffic still driving runs into the wreck and joins it', () => {
     }
     assert.ok(late.wrecked, 'the oncoming car ran into the wreck');
     assert.ok(crash.wrecked.some(({ vehicle }) => { return vehicle === late; }));
+});
+
+test('a road crash that throws the car over the edge plays on down the drop instead of stopping at the time limit', () => {
+    const vehicle = player(60, track.wallOffsetAt(s0) - 1);
+    vehicle.vy = 6;
+    const crash = new RoadCrash(vehicle, track, landscape);
+    while (!crash.done) crash.update(1 / 60);
+    const end = placeOf(crash.pose);
+    assert.ok(end.u < ROAD.edgeOffset, 'it went over the edge');
+    assert.ok(crash.time > CRASH.maxSeconds, `stopped playing at ${crash.time.toFixed(1)} s`);
+    assert.ok(crash.still >= FALL.restSeconds || crash.time >= FALL.maxSeconds, 'played until it came to rest');
 });
