@@ -39,6 +39,9 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   Lions Bay, Britannia Beach with its stepped mill, Squamish) stands on its footprint, with walls
   from its storeys, a gable or pyramid roof on houses and flat roofs stepping up the hillside on
   the rest (`scripts/import-buildings.mjs`).
+- The railway: BC Rail's line to Squamish as OpenStreetMap has it, out of its tunnels, on its ballast
+  bed (ties and standard-gauge rails) along the real ground, on fill above the water along the
+  shore and on steel girders over its bridges (`scripts/import-railway.mjs`).
 - The coastal forest as surveyed for the Lions Bay wildfire plan (B.A. Blackwell & Associates,
   2007): Coastal Western Hemlock forest, over 80% conifer. Stands of mature Douglas-fir, western
   hemlock, western redcedar and amabilis fir 30 to 40 m tall with their crowns high up, younger
@@ -47,9 +50,9 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   the fir's upturned branch tips, the hemlock's drooping leader, the cedar's flared red trunk and
   J-shaped branches, the alder's pale trunk and small ovate leaves, the maple's mossy trunk, broad
   crown and big five-lobed leaves; a broadleaf crown is limbs forking from the trunk, branches out
-  to its edge and leafy sprays hanging from them. The canopy trees are drawn (90 a hectare by the road), never on bare rock, above the tree
-  line or inside a building; within 260 m of the car tree by tree, beyond as crossed silhouette
-  cards. Close to the road the ground is a coastal pine-forest floor (Poly Haven, CC0).
+  to its edge and leafy sprays hanging from them. The canopy trees are drawn (50 a hectare by the
+  road), never on bare rock, above the tree line or inside a building; within 260 m of the car tree
+  by tree, beyond as crossed silhouette cards. Close to the road the ground is a coastal pine-forest floor (Poly Haven, CC0).
 - Guard rail as engineers place it: wherever the real ground 6 m beyond the edge lies 3 m or more
   below the road (from the LiDAR), runs joined across short gaps and carried on into turned-down
   ends. It is a 1980s galvanised W-beam, its two corrugations 0.69 m up, on timber posts with
@@ -141,10 +144,8 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
 ### Next (queued, in order)
 
 1. **A 1980s RCMP patrol car** in place of the 2001 Crown Victoria model.
-2. **Sea-to-Sky detail:** the railway on its bench between road and shore. (The provincial road
-   atlas and orthophotos are "access only", so they are not used.)
-3. **Every stage inspected section by section** for anything that does not look real.
-4. Frame rates on real phones (the cabin pass, the mirrors, shadows).
+2. **Every stage inspected section by section** for anything that does not look real.
+3. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
 
@@ -230,9 +231,9 @@ Elevation Model, Natural Resources Canada (Open Government Licence – Canada), 
 Terrain Tiles. The land's colour: Landsat 5 imagery of 5 September and 10 July 1987, courtesy of
 the U.S. Geological Survey / NASA (public domain), read from Microsoft's Planetary Computer.
 Rock and ground textures: Poly Haven (CC0) — Rock Face 03 by Dario Barresi and Rico Cilliers,
-Lichen Rock and Aerial Rocks 04 by Rico Cilliers, Forest Ground 04 by Rob Tuytel. The buildings: © OpenStreetMap contributors;
-`assets/terrain/sea-to-sky/buildings.json` is derived from OpenStreetMap and available under the
-ODbL. Engine recordings (CC BY 3.0 unless marked): Seppe Vanrolleghem (Porsche 930 Turbo),
+Lichen Rock and Aerial Rocks 04 by Rico Cilliers, Forest Ground 04 by Rob Tuytel. The buildings and the railway: © OpenStreetMap
+contributors; `assets/terrain/sea-to-sky/buildings.json` and `railway.json` are derived from
+OpenStreetMap and available under the ODbL. Engine recordings (CC BY 3.0 unless marked): Seppe Vanrolleghem (Porsche 930 Turbo),
 NelloRacing (RUF CTR), Jason #jcr_cars (Ferrari Testarossa), automobilemusicengines (Lamborghini
 Countach LP500S), cheesepuff on Freesound (CC0), Thomas Fletcher (Lotus Esprit S4s), LUNI Classic
 Cars (Chevrolet Corvette C4); titles and links in `assets/audio/engines/README.md`. Crash sounds

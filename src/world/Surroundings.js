@@ -13,7 +13,7 @@ export class Surroundings {
         const { south, north, west, east, rows, columns } = track.stage.route.surroundings;
         const l = landscape;
         const inside = (x, z) => {
-            return x > l.x0 + l.cell && x < l.x0 + (l.nx - 2) * l.cell && z > l.z0 + l.cell && z < l.z0 + (l.nz - 2) * l.cell;
+            return l.covers(x, z, 1);
         };
         const positions = new Float32Array(rows * columns * 3);
         const uvs = new Float32Array(rows * columns * 2);

@@ -24,6 +24,30 @@ export const LAND_DETAIL = {
 /** The houses and buildings along the route (scripts/import-buildings.mjs, from OpenStreetMap). */
 export const ROUTE_BUILDINGS = 'assets/terrain/sea-to-sky/buildings.json';
 
+/** The railway along the route out of its tunnels (scripts/import-railway.mjs, from OpenStreetMap):
+ *  BC Rail's line from North Vancouver to Squamish, on its bench above the shore of Howe Sound. */
+export const ROUTE_RAILWAY = 'assets/terrain/sea-to-sky/railway.json';
+
+/** How the railway is laid: a point every `step` m, its bed the ground smoothed over `smooth` m along
+ *  the line (a railway climbs gently), kept `clearance` m off the road's corridor (where it passes
+ *  under or over the highway out of sight), at least `aboveSea` m over the water (along the shore the
+ *  line runs on fill above high water). The ballast bed `bed.top` m wide at its top, `bed.height` m
+ *  over the ground under all of it and spreading `bed.spread` m either side down to the ground; standard-gauge
+ *  track (`gauge`, m between the rails' heads) of `rail` [width, height] (m) on ties `tie` [length,
+ *  width] (m) every `tieSpacing` m; a bridge's steel girder `girder` m deep. */
+export const RAILWAY = {
+    step: 2,
+    smooth: 30,
+    clearance: 3,
+    aboveSea: 2.5,
+    bed: { top: 3.4, height: 0.35, spread: 1.2 },
+    gauge: 1.435,
+    rail: [0.07, 0.16],
+    tie: [2.6, 0.23],
+    tieSpacing: 0.6,
+    girder: 1.4,
+};
+
 /** Paint and roofing of the route's houses, picked per building: painted and cedar-sided walls, asphalt
  *  shingle and cedar shake roofs. */
 export const BUILDING_COLORS = {

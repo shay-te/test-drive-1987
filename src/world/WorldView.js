@@ -13,7 +13,9 @@ import { VehicleModels } from './VehicleModels.js';
 import { AuthoredModels } from './AuthoredModels.js';
 import { buildBuildings } from './buildingMesh.js';
 import { clearOfBuildings, layOutBuildings } from './buildingLayout.js';
-import { LAND_DETAIL, ROUTE_BUILDINGS, SCENERY_MODELS, SCENERY_TEXTURES } from '../data/scenery.js';
+import { buildRailway } from './railway.js';
+import { layOutRailway } from './railwayLayout.js';
+import { LAND_DETAIL, ROUTE_BUILDINGS, ROUTE_RAILWAY, SCENERY_MODELS, SCENERY_TEXTURES } from '../data/scenery.js';
 import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 import { AssetCabin } from './cabin/AssetCabin.js';
 import { SIDE_MIRRORS, SURFACES, validateCabinNodes } from './cabin/cabinAsset.js';
@@ -155,6 +157,7 @@ export class WorldView {
             this.resources.image(LAND_DETAIL.map),
             this.resources.image(LAND_DETAIL.floor.map),
             this.resources.json(ROUTE_BUILDINGS),
+            this.resources.json(ROUTE_RAILWAY),
         ];
         return Promise.all([this.authored.prepare(), ...photos, ...land]);
     }
@@ -211,6 +214,7 @@ export class WorldView {
         const surroundings = new Surroundings(track, landscape, heights, materials.land);
         const buildings = layOutBuildings(this.resources.get(`json:${ROUTE_BUILDINGS}`), track, landscape);
         scene.add(builder.build(track), terrain.mesh, surroundings.mesh, terrain.sea, buildBuildings(buildings, materials.building));
+        scene.add(buildRailway(layOutRailway(this.resources.get(`json:${ROUTE_RAILWAY}`), track, landscape), materials));
         const trees = thinned(clearOfBuildings([...builder.treePlacements(track), ...landTrees(landscape, stage.seed + 71)], buildings), this.graphics.forest);
         const plants = this.graphics.undergrowth ? thinned(clearOfBuildings(builder.undergrowthPlacements(track), buildings), this.graphics.undergrowth) : [];
         this.forest = new Forest([...trees, ...plants], materials, stage.seed);

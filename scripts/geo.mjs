@@ -1,5 +1,14 @@
 /** Map projections shared by the import scripts. */
 
+/** Points [[lat, lon], ...] packed as the route's data keeps them (src/world/routeFrame.js unpacks
+ *  them): microdegrees, the first point whole and each next one as a step from the last. */
+export function packMicro(points) {
+    const micro = points.map(([lat, lon]) => { return [Math.round(lat * 1e6), Math.round(lon * 1e6)]; });
+    return micro.flatMap((point, i) => {
+        return i === 0 ? point : [point[0] - micro[i - 1][0], point[1] - micro[i - 1][1]];
+    });
+}
+
 /** [easting, northing] in UTM zone 10 (GRS80) of [lat, lon]. */
 export function toUtm([lat, lon]) {
     const k = Math.PI / 180;

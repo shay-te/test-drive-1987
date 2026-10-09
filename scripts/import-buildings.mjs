@@ -4,10 +4,10 @@
  *  Usage: node scripts/import-buildings.mjs (the query is cached in tmp/route-cache) */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { ROUTE_BUILDINGS } from '../src/data/scenery.js';
+import { packMicro } from './geo.mjs';
 import { HIGHWAY, overpass } from './sources.mjs';
 
 const REACH = 400;
-const MICRO = 1e6;
 const EARTH = 6371000;
 /** Storey height (m), and the storeys a building has when OpenStreetMap doesn't say. */
 const STOREY = 3;
@@ -49,11 +49,7 @@ for (const { geometry, tags } of elements) {
     const walls = Number.isFinite(tagged) ? tagged : storeys(tags) * STOREY;
     const flat = tags['roof:shape'] === 'flat' || FLAT_KINDS.has(tags.building) || floor > PITCHED_AREA;
     const roof = flat ? 0 : Math.min(ROOF_RANGE[1], Math.max(ROOF_RANGE[0], ROOF_PITCH * Math.sqrt(floor)));
-    const micro = ring.map(([lat, lon]) => { return [Math.round(lat * MICRO), Math.round(lon * MICRO)]; });
-    const p = micro.flatMap((corner, i) => {
-        return i === 0 ? corner : [corner[0] - micro[i - 1][0], corner[1] - micro[i - 1][1]];
-    });
-    buildings.push({ h: Number(walls.toFixed(1)), roof: Number(roof.toFixed(1)), p });
+    buildings.push({ h: Number(walls.toFixed(1)), roof: Number(roof.toFixed(1)), p: packMicro(ring) });
 }
 mkdirSync(ROUTE_BUILDINGS.split('/').slice(0, -1).join('/'), { recursive: true });
 writeFileSync(ROUTE_BUILDINGS, `${JSON.stringify({ source: 'OpenStreetMap contributors (ODbL)', buildings })}\n`);

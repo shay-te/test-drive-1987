@@ -1,8 +1,7 @@
 import { BUILDINGS, ROAD } from '../config.js';
 import { MOUNTAIN_NEAR } from '../sim/Landscape.js';
-import { worldOf } from './routeFrame.js';
+import { unpackMicro, worldOf } from './routeFrame.js';
 
-const MICRO = 1e6;
 /** A point further than this (m) from where the road frame puts it lies off the stage's ends. */
 const OFF_FRAME = 1;
 /** Every SCAN-th node is tried for the nearest one before projecting onto the road. */
@@ -10,19 +9,10 @@ const SCAN = 4;
 /** Footprints are bucketed in squares this wide (m) to find the ones over a point. */
 const HASH_CELL = 50;
 
-/** The footprints of `data` (scripts/import-buildings.mjs) as rings of [lat, lon]: the first corner
- *  is stored whole and each next one as a step from the last, in microdegrees. */
+/** The footprints of `data` (scripts/import-buildings.mjs) as rings of [lat, lon]. */
 function footprints(data) {
     return data.buildings.map((building) => {
-        const ring = [];
-        let lat = 0;
-        let lon = 0;
-        for (let k = 0; k < building.p.length; k += 2) {
-            lat += building.p[k];
-            lon += building.p[k + 1];
-            ring.push([lat / MICRO, lon / MICRO]);
-        }
-        return { ...building, ring };
+        return { ...building, ring: unpackMicro(building.p) };
     });
 }
 
@@ -33,7 +23,7 @@ function footprints(data) {
 export function layOutBuildings(data, track, landscape) {
     const l = landscape;
     const inside = ({ x, z }) => {
-        return x > l.x0 && z > l.z0 && x < l.x0 + (l.nx - 1) * l.cell && z < l.z0 + (l.nz - 1) * l.cell;
+        return l.covers(x, z);
     };
     const placed = [];
     for (const [index, building] of footprints(data).entries()) {

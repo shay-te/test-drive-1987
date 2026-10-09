@@ -82,6 +82,12 @@ export class Landscape {
         return { heights: this.heights, sides: this.sides, dropReach: this.dropReach, dropSections: this.dropSections };
     }
 
+    /** Whether world point (x, z) lies on the landscape's grid, `margin` cells in from its edge. */
+    covers(x, z, margin = 0) {
+        const inset = margin * this.cell;
+        return x > this.x0 + inset && z > this.z0 + inset && x < this.x0 + (this.nx - 1) * this.cell - inset && z < this.z0 + (this.nz - 1) * this.cell - inset;
+    }
+
     /** Ground height under world point (x, z): whichever surface is on top, as it is drawn. */
     heightAt(x, z) {
         let p = this.track.project(x, z, this.hint);
