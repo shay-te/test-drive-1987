@@ -206,3 +206,18 @@ test('a door mirror surface without its camera is refused', () => {
     const nodes = assets.get('ferrari').nodes.filter((node) => { return node.name !== 'mirror_right_camera'; });
     assert.throws(() => { sideMirrorNodes(nodes); }, /right door mirror/);
 });
+
+test('every car carries its licence plate on its tail, facing back, the size of a real plate', () => {
+    for (const car of AUTHORED) {
+        const { plates, length, eye } = car.body;
+        const rear = plates.filter(({ facing }) => { return facing[2] > 0.9; });
+        assert.equal(rear.length, 1, `${car.id}: one plate at the back`);
+        assert.ok(Math.abs(rear[0].at[2] - (length - eye)) < 0.35, `${car.id}: on the tail, not inside the car`);
+        for (const { at, size } of plates) {
+            assert.ok(Math.abs(at[0]) < 0.05, `${car.id}: plates sit in the middle`);
+            assert.ok(at[1] > 0.2 && at[1] < 0.8, `${car.id}: at bumper height`);
+            // From a North American 12 x 6 in plate to a European 520 x 110 mm one.
+            assert.ok(size[0] >= 0.26 && size[0] <= 0.53 && size[1] >= 0.09 && size[1] <= 0.16, `${car.id}: ${size}`);
+        }
+    }
+});

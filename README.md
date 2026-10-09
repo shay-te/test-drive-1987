@@ -134,14 +134,17 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   drawn within 120 m of the car; foliage keeps its cover at a distance (alpha raised with the mip
   level) instead of thinning to specks.
 
+- "TEST DRIVE" on the car's licence plates, as British Columbia issued them from 1985: blue on
+  reflective white, BRITISH COLUMBIA above and BEAUTIFUL below, the provincial flag between the
+  serial's halves; in each model's own plate recess, front and rear where the car has both.
+
 ### Next (queued, in order)
 
-1. **"TEST DRIVE" on the player's licence plate.**
-2. **A 1980s RCMP patrol car** in place of the 2001 Crown Victoria model.
-3. **Sea-to-Sky detail:** the railway on its bench between road and shore. (The provincial road
+1. **A 1980s RCMP patrol car** in place of the 2001 Crown Victoria model.
+2. **Sea-to-Sky detail:** the railway on its bench between road and shore. (The provincial road
    atlas and orthophotos are "access only", so they are not used.)
-4. **Every stage inspected section by section** for anything that does not look real.
-5. Frame rates on real phones (the cabin pass, the mirrors, shadows).
+3. **Every stage inspected section by section** for anything that does not look real.
+4. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
 

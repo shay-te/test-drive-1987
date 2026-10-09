@@ -26,6 +26,7 @@ export const EN = {
         mile: 'MILE',
         chances: 'CHANCES',
         locked: 'LOCKED',
+        beautiful: 'BEAUTIFUL',
     },
     title: {
         logo: 'TEST DRIVE',
@@ -158,6 +159,7 @@ export const EN = {
         station: { continue: 'Tap for the next stage' },
         results: { enterName: 'New high score! Tap to type your name', continue: 'Tap' },
     },
+    plate: { province: 'BRITISH COLUMBIA' },
     signs: {
         speedLimit: 'SPEED\nLIMIT',
         gas1mi: 'GAS\n1 MILE',
