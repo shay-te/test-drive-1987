@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ROAD } from '../config.js';
-import { FOREST, LAND_DETAIL, SCENERY_TEXTURES } from '../data/scenery.js';
+import { LAND_DETAIL, SCENERY_TEXTURES } from '../data/scenery.js';
+import { SPECIES } from '../data/forest.js';
 import { withoutTiling } from './noTiling.js';
 import { TRI_START, triplanarFragment, triplanarRock, triplanarVertex } from './triplanar.js';
 import { t } from '../i18n/i18n.js';
@@ -9,10 +10,21 @@ import { linearGradient, multilineText, speckle } from '../util/canvas.js';
 import { hexToRgb, mixRgb } from '../util/color.js';
 import { createRng } from '../util/math.js';
 
-/** The pictures of a branch spray (along, across) and of a whole tree (across, up), in pixels. */
-const NEEDLES_SIZE = [256, 128];
+/** The pictures of a branch spray and a leaf cluster (along, across) and of a whole tree (across, up),
+ *  in pixels; the silhouettes are painted in these greys and tinted tree by tree. */
+const SPRAY_SIZE = [256, 128];
+const CLUSTER_SIZE = [256, 256];
 const SILHOUETTE_SIZE = [128, 256];
+const SILHOUETTE_GREYS = ['#a8a8a8', '#c0c0c0', '#d8d8d8', '#f0f0f0'];
 const NEEDLE_SEED = 41;
+/** Leaves bigger than this (share of the cluster) are lobed, like a maple's. */
+const LOBED_LEAF = 0.12;
+const LEAVES_PER_CLUSTER = 260;
+/** A leaf's length in the cluster picture, per unit of the species' `leaf` and of the picture's width. */
+const LEAF_SCALE = 0.7;
+/** A conifer silhouette's crown starts this share of the way down; a broadleaf one is so many blobs. */
+const SILHOUETTE_CROWN = 0.8;
+const SILHOUETTE_BLOBS = 160;
 const GALVANISED_SIZE = 256;
 
 /** Road texture covers both lanes and one 12 m dash period of the centre line. */
@@ -62,8 +74,8 @@ export class WorldMaterials {
         });
         this.wood = new THREE.MeshStandardMaterial({ color: '#6b5236', roughness: 0.9 });
         this.building = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 });
-        // Branch sprays near by, whole silhouettes far off: cut out of their pictures, smoothed at the
-        // edges by the multisampling.
+        // Each species' bark, and its foliage cut out of its picture (sprays of needles or clusters of
+        // leaves), smoothed at the edges by the multisampling; far off, one silhouette per kind of tree.
         const foliage = (key, width, height, draw) => {
             return new THREE.MeshStandardMaterial({
                 map: this._texture(key, width, height, draw, { repeat: false }),
@@ -73,11 +85,21 @@ export class WorldMaterials {
                 roughness: 0.92,
             });
         };
-        this.needles = foliage('needles', NEEDLES_SIZE[0], NEEDLES_SIZE[1], drawNeedles);
-        this.treeSilhouette = foliage('silhouette', SILHOUETTE_SIZE[0], SILHOUETTE_SIZE[1], drawSilhouette);
-        this.bark = new THREE.MeshStandardMaterial({ color: FOREST.colors.bark, roughness: 1 });
-        // Rock fallen from the cut: the same granite, without the face's shading.
-        this.boulder = triplanarRock(new THREE.MeshStandardMaterial({ roughness: 0.96 }), 'boulder', this._rockTextures(SCENERY_TEXTURES.rock), SCENERY_TEXTURES.rock.metres);
+        this.trees = Object.fromEntries(Object.entries(SPECIES).map(([name, species]) => {
+            const conifer = species.kind === 'conifer';
+            const [width, height] = conifer ? SPRAY_SIZE : CLUSTER_SIZE;
+            return [name, {
+                bark: new THREE.MeshStandardMaterial({ color: species.bark, roughness: 1 }),
+                foliage: foliage(`foliage:${name}`, width, height, (ctx, w, h) => {
+                    if (conifer) drawSpray(ctx, w, h, species);
+                    else drawLeafCluster(ctx, w, h, species);
+                }),
+            }];
+        }));
+        this.silhouettes = {
+            conifer: foliage('silhouette:conifer', SILHOUETTE_SIZE[0], SILHOUETTE_SIZE[1], drawConiferSilhouette),
+            broadleaf: foliage('silhouette:broadleaf', SILHOUETTE_SIZE[1], SILHOUETTE_SIZE[1], drawBroadleafSilhouette),
+        };
         this.signCache = new Map();
     }
 
@@ -245,9 +267,9 @@ function drawGalvanised(ctx, w, h) {
     }
 }
 
-/** Needles along a twig from (x, y) heading `angle`, `length` px: dark inside, fresher green outside. */
-function needleTwig(ctx, rng, x, y, angle, length, needle) {
-    const colors = FOREST.colors.needles;
+/** Needles along a twig from (x, y) heading `angle`, `length` px, `needle` px long: shaded inside,
+ *  fresher towards the tip, in `colors` (dark to fresh). */
+function needleTwig(ctx, rng, x, y, angle, length, needle, colors) {
     ctx.lineCap = 'round';
     for (let d = 0; d < length; d += 1.5) {
         const px = x + Math.cos(angle) * d;
@@ -266,39 +288,79 @@ function needleTwig(ctx, rng, x, y, angle, length, needle) {
     }
 }
 
-/** A Douglas fir branch spray seen from above, its twig from the trunk (left) to the tip (right):
- *  side twigs sweeping forward, widest a third of the way out, each furred with needles. */
-function drawNeedles(ctx, w, h) {
+/** A branch spray seen from above, its twig from the trunk (left) to the tip (right): side twigs
+ *  sweeping forward, widest a third of the way out, furred with the species' needles. */
+function drawSpray(ctx, w, h, species) {
     const rng = createRng(NEEDLE_SEED);
     ctx.clearRect(0, 0, w, h);
     const mid = h / 2;
-    needleTwig(ctx, rng, 0, mid, 0, w * 0.97, h * 0.07);
+    const needle = species.needle * w;
+    needleTwig(ctx, rng, 0, mid, 0, w * 0.97, needle, species.foliage);
     for (let x = w * 0.08; x < w * 0.92; x += w * 0.06) {
-        const out = x / w;
-        const reach = h * 0.42 * Math.sin(Math.PI * Math.min(1, out * 1.4)) * rng.range(0.75, 1.05);
-        for (const side of [-1, 1]) needleTwig(ctx, rng, x, mid, side * rng.range(0.6, 0.9), reach, h * 0.06);
+        const reach = h * 0.42 * Math.sin(Math.PI * Math.min(1, (x / w) * 1.4)) * rng.range(0.75, 1.05);
+        for (const side of [-1, 1]) needleTwig(ctx, rng, x, mid, side * rng.range(0.6, 0.9), reach, needle * 0.85, species.foliage);
     }
 }
 
-/** A whole fir as it shows from a distance: a dark spire of drooping branch sprays round a trunk. */
-function drawSilhouette(ctx, w, h) {
-    const t = FOREST.tree;
+/** A cluster of the species' leaves on its twigs: alder's oval and toothed, maple's broad and lobed. */
+function drawLeafCluster(ctx, w, h, species) {
+    const rng = createRng(NEEDLE_SEED + 2);
+    ctx.clearRect(0, 0, w, h);
+    const size = species.leaf * w * LEAF_SCALE;
+    const lobes = species.leaf > LOBED_LEAF ? 5 : 1;
+    for (let k = 0; k < LEAVES_PER_CLUSTER; k++) {
+        const angle = rng() * Math.PI * 2;
+        const out = rng() ** 0.6;
+        const r = out * (w / 2 - size / 2);
+        const [x, y] = [w / 2 + Math.cos(angle) * r, h / 2 + Math.sin(angle) * r];
+        // Shaded towards the heart of the cluster, fresh at its rim.
+        const shade = Math.min(species.foliage.length - 1, Math.floor(out * species.foliage.length * rng.range(0.7, 1.2)));
+        ctx.fillStyle = species.foliage[shade];
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rng() * Math.PI * 2);
+        ctx.beginPath();
+        for (let lobe = 0; lobe < lobes; lobe++) {
+            ctx.rotate((Math.PI * 2) / lobes);
+            ctx.ellipse(0, -size * (lobes > 1 ? 0.25 : 0), size * (lobes > 1 ? 0.28 : 0.32), size * 0.5, 0, 0, Math.PI * 2);
+        }
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+/** A conifer as it shows from a distance: a dark spire of drooping branch sprays round a trunk. */
+function drawConiferSilhouette(ctx, w, h) {
     const rng = createRng(NEEDLE_SEED + 1);
     ctx.clearRect(0, 0, w, h);
-    ctx.strokeStyle = FOREST.colors.bark;
+    ctx.strokeStyle = SILHOUETTE_GREYS[0];
     ctx.lineWidth = w * 0.03;
     ctx.beginPath();
     ctx.moveTo(w / 2, h);
     ctx.lineTo(w / 2, 0);
     ctx.stroke();
-    // The card spans the crown's widest reach either side of the trunk.
-    for (let y = h * (1 - t.crownBase); y > h * 0.01; y -= h * 0.018) {
-        const up = 1 - y / h;
-        const reach = (w / 2) * ((1 - up) / (1 - t.crownBase)) ** t.taper * rng.range(0.75, 1.05);
+    for (let y = h * SILHOUETTE_CROWN; y > h * 0.01; y -= h * 0.018) {
+        const reach = (w / 2) * (y / h / SILHOUETTE_CROWN) ** 0.9 * rng.range(0.75, 1.05);
         for (const side of [-1, 1]) {
             const angle = side > 0 ? rng.range(0.15, 0.45) : Math.PI - rng.range(0.15, 0.45);
-            needleTwig(ctx, rng, w / 2, y, angle, reach, w * 0.05);
+            needleTwig(ctx, rng, w / 2, y, angle, reach, w * 0.05, SILHOUETTE_GREYS);
         }
+    }
+}
+
+/** A broadleaf tree from a distance: a rounded crown of leaf clusters over a short trunk. */
+function drawBroadleafSilhouette(ctx, w, h) {
+    const rng = createRng(NEEDLE_SEED + 3);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = SILHOUETTE_GREYS[0];
+    ctx.fillRect(w * 0.48, h * 0.6, w * 0.04, h * 0.4);
+    for (let k = 0; k < SILHOUETTE_BLOBS; k++) {
+        const angle = rng() * Math.PI * 2;
+        const r = rng() ** 0.5;
+        ctx.fillStyle = SILHOUETTE_GREYS[Math.floor(rng() * SILHOUETTE_GREYS.length)];
+        ctx.beginPath();
+        ctx.arc(w / 2 + Math.cos(angle) * r * w * 0.38, h * 0.38 + Math.sin(angle) * r * h * 0.3, w * rng.range(0.05, 0.1), 0, Math.PI * 2);
+        ctx.fill();
     }
 }
 

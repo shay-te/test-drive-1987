@@ -39,11 +39,16 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   Lions Bay, Britannia Beach with its stepped mill, Squamish) stands on its footprint, with walls
   from its storeys, a gable or pyramid roof on houses and flat roofs stepping up the hillside on
   the rest (`scripts/import-buildings.mjs`).
-- The coastal forest: Douglas firs and hemlocks 12 to 34 m tall, 90 a hectare on the slopes by the
-  road and thinning to 8 a hectare a kilometre off, never on rock too steep to hold soil, above the
-  tree line or inside a building. Each tree is a trunk and whorls of drooping branch sprays painted
-  needle by needle; beyond 450 m it becomes three crossed cards of its silhouette. Close to the road
-  the ground is the floor of a coastal pine forest (Poly Haven, CC0).
+- The coastal forest as surveyed for the Lions Bay wildfire plan (B.A. Blackwell & Associates,
+  2007): Coastal Western Hemlock forest, over 80% conifer. Stands of mature Douglas-fir, western
+  hemlock, western redcedar and amabilis fir 30 to 40 m tall with their crowns high up, younger
+  stands of 20 to 33 m, red alder stands (more of them on the road's disturbed edge) and mixed
+  stands with bigleaf maple, amabilis fir and hemlock above 900 m. Each species is drawn as it grows:
+  the fir's upturned branch tips, the hemlock's drooping leader, the cedar's flared red trunk and
+  J-shaped branches, the alder's pale trunk and small leaves, the maple's mossy trunk and broad
+  crown. The canopy trees are drawn (180 a hectare by the road), never on bare rock, above the tree
+  line or inside a building; within 260 m of the car tree by tree, beyond as crossed silhouette
+  cards. Close to the road the ground is a coastal pine-forest floor (Poly Haven, CC0).
 - Guard rail as engineers place it: wherever the real ground 6 m beyond the edge lies 3 m or more
   below the road (from the LiDAR), runs joined across short gaps and carried on into turned-down
   ends. It is a 1980s galvanised W-beam, its two corrugations 0.69 m up, on timber posts with
@@ -94,14 +99,11 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
 
 ### Next (queued, in order)
 
-1. **The real forest's species and density:** Douglas-fir, western hemlock and redcedar, with red
-   alder and bigleaf maple by the road and creeks and Sitka spruce at Furry Creek, each drawn as it
-   grows and mixed as surveyed along the route.
-2. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, concrete barriers where
+1. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, concrete barriers where
    the real road has them, the railway between road and shore. (The provincial road atlas
    and orthophotos are "access only", so they are not used.)
-3. **Every stage inspected section by section** for anything that does not look real.
-4. Frame rates on real phones (the cabin pass, the mirrors, shadows).
+2. **Every stage inspected section by section** for anything that does not look real.
+3. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
 

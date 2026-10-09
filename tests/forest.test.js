@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PHYS, ROAD } from '../src/config.js';
-import { FOREST, LAND_DETAIL } from '../src/data/scenery.js';
+import { FOREST, HIGHLAND, SPECIES, STANDS } from '../src/data/forest.js';
+import { LAND_DETAIL } from '../src/data/scenery.js';
 import { STAGES } from '../src/data/stages.js';
 import { MOUNTAIN_NEAR, VALLEY_NEAR } from '../src/sim/Landscape.js';
 import { layOutStage, restoreStage } from '../src/sim/stageData.js';
@@ -13,6 +14,9 @@ const land = landTrees(landscape, 71);
  *  WorldBuilder, which needs WebGL). */
 const drops = landscape.dropSections;
 const roadside = roadsideTrees(track, (i) => { return [[drops[i], 0, drops[i].length - 5]]; }, 3);
+
+/** The shortest and tallest any stand grows. */
+const TALLEST = [Math.min(HIGHLAND.heights[0], ...STANDS.map((s) => { return s.heights[0]; })), Math.max(HIGHLAND.heights[1], ...STANDS.map((s) => { return s.heights[1]; }))];
 
 const offsetOf = (tree) => {
     let best = 0;
@@ -29,7 +33,8 @@ test('the forest beyond the road keeps off the ribbons, the sea and the peaks, a
     let near = 0;
     for (const tree of land) {
         assert.ok(tree.y + 1 > TREE_LINE_LOW && tree.y < FOREST.treeLine, `a tree at ${tree.y.toFixed(0)} m`);
-        assert.ok(tree.height >= FOREST.heights[0] && tree.height <= FOREST.heights[1]);
+        assert.ok(tree.height >= TALLEST[0] && tree.height <= TALLEST[1], `a ${tree.height.toFixed(0)} m tree`);
+        assert.ok(SPECIES[tree.species], tree.species);
         const { u } = offsetOf(tree);
         // A grid cell's own offset decides; a tree may sit up to half a cell nearer the road.
         assert.ok(u < -(VALLEY_NEAR - landscape.cell) || u > MOUNTAIN_NEAR - landscape.cell, `a tree at u=${u.toFixed(0)}`);
@@ -61,4 +66,14 @@ test('every stage grows its forest', () => {
         const stage = restoreStage(layOutStage(index));
         assert.ok(landTrees(stage.landscape, 71).length > 3000, `${STAGES[index].name}`);
     }
+});
+
+test('the forest is the surveyed one: over 80% conifer, alder in its stands and more of it by the road', () => {
+    const share = (trees, test) => { return trees.filter(test).length / trees.length; };
+    const conifer = (tree) => { return SPECIES[tree.species].kind === 'conifer'; };
+    const alder = (tree) => { return tree.species === 'redAlder'; };
+    assert.ok(share(land, conifer) > 0.75, `${(share(land, conifer) * 100).toFixed(0)}% conifer`);
+    assert.ok(share(land, alder) > 0.08 && share(land, alder) < 0.25, 'alder stands');
+    assert.ok(share(roadside, alder) > share(land, alder), 'alder likes the road\'s disturbed edge');
+    for (const name of Object.keys(SPECIES)) assert.ok(land.some((tree) => { return tree.species === name; }), `some ${name}`);
 });
