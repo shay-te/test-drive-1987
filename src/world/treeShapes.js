@@ -16,13 +16,17 @@ const CARD_ROLL = Math.PI / 4;
 const BEND_AT = 0.55;
 /** Foliage normals lean out of the crown and this much upwards, so it shades as one mass. */
 const NORMAL_LIFT = 0.45;
-/** Broadleaf limbs: how thick at the trunk (per metre of height); leaf clusters sit this far out
- *  through the crown (share of its radius), each this share of the crown's width. */
+/** Broadleaf limbs: how thick at the trunk (per metre of height), a branch's share of that; branches
+ *  end this far out through the crown (share of its radius) and carry their sprays along this outer
+ *  share of their length. */
 const LIMB_RADIUS = 0.006;
-const SHELL = [0.55, 1];
-const CLUSTER = 0.2;
-/** How far a leaf cluster's facing strays from straight out of the crown. */
-const CLUSTER_TILT = 0.8;
+const BRANCH_RADIUS = 0.4;
+const SHELL = [0.7, 1.05];
+const SPRAYS_ALONG = [0.35, 1];
+/** How far a spray strays from straight out of the crown, and how much it reaches up (it droops at the
+ *  tip by the species' `droop`). */
+const SPRAY_SCATTER = 0.9;
+const SPRAY_RISE = 0.35;
 const SILHOUETTE_CARDS = 3;
 
 /** One tree of `species` (src/data/forest.js) of unit height standing on its origin, its shape from
@@ -101,27 +105,43 @@ function addSprays(parts, species, rng, lean) {
     }
 }
 
-/** A broadleaf crown: main limbs from the top of the trunk, leaf clusters over the crown's shell. */
+/** A broadleaf crown: main limbs forking up and out from the trunk, branches from them out to an
+ *  uneven shell, and leafy sprays along each branch's outer part, reaching out of the crown and
+ *  drooping at the tips, rolled every way so the crown shows leaves from every side. */
 function addLeaves(parts, species, rng) {
     const [width, height] = species.crown;
+    const fork = new THREE.Vector3(0, species.crownBase, 0);
     const centre = new THREE.Vector3(0, species.crownBase + height / 2, 0);
+    const shell = (direction, reach) => {
+        return centre.clone().add(new THREE.Vector3(direction.x * width, (direction.y * height) / 2, direction.z * width).multiplyScalar(reach));
+    };
+    const scatter = (v, amount) => {
+        return v.clone().add(new THREE.Vector3(rng() - 0.5, rng() - 0.5, rng() - 0.5).multiplyScalar(amount)).normalize();
+    };
     for (let l = 0; l < species.limbs; l++) {
-        const azimuth = (l / species.limbs) * TAU + rng() * 0.6;
-        const tip = new THREE.Vector3(Math.cos(azimuth) * width * 0.7, centre.y + height * rng.range(0, 0.35), Math.sin(azimuth) * width * 0.7);
-        limb(parts, new THREE.Vector3(0, species.crownBase + height * 0.15, 0), tip, LIMB_RADIUS);
-    }
-    for (let c = 0; c < species.clusters; c++) {
-        const out = new THREE.Vector3(rng() * 2 - 1, rng() * 2 - 1, rng() * 2 - 1).normalize();
-        const at = centre.clone().add(new THREE.Vector3(out.x * width, (out.y * height) / 2, out.z * width).multiplyScalar(rng.range(...SHELL)));
-        const size = width * 2 * CLUSTER * rng.range(0.8, 1.2);
-        // Each cluster faces out of the crown (tilted a little at random), so none shows only its edge.
-        const facing = out.clone().add(new THREE.Vector3(rng() - 0.5, rng() - 0.5, rng() - 0.5).multiplyScalar(CLUSTER_TILT)).normalize();
-        const along = new THREE.Vector3(0, 1, 0).cross(facing);
-        if (along.lengthSq() < 1e-6) along.set(1, 0, 0);
-        along.normalize().applyAxisAngle(facing, rng() * TAU);
-        const across = facing.clone().cross(along);
-        const path = [at.clone().addScaledVector(along, -size / 2), at, at.clone().addScaledVector(along, size / 2)];
-        bentCard(parts, path, across.multiplyScalar(size * species.spray), centre);
+        const azimuth = ((l + rng.range(-0.3, 0.3)) / species.limbs) * TAU;
+        const up = rng.range(0.1, 0.6);
+        const tip = shell(new THREE.Vector3(Math.cos(azimuth), up, Math.sin(azimuth)).normalize(), rng.range(0.55, 0.75));
+        limb(parts, fork, tip, LIMB_RADIUS);
+        for (let b = 0; b < species.branches; b++) {
+            const from = fork.clone().lerp(tip, rng.range(0.3, 1));
+            const out = scatter(from.clone().sub(centre).add(new THREE.Vector3(Math.cos(azimuth), 0, Math.sin(azimuth))), 1.2);
+            const to = shell(out, rng.range(...SHELL));
+            limb(parts, from, to, LIMB_RADIUS * BRANCH_RADIUS);
+            for (let k = 0; k < species.sprays; k++) {
+                const at = from.clone().lerp(to, rng.range(...SPRAYS_ALONG));
+                const reach = width * species.reach * rng.range(0.75, 1.25);
+                const heading = scatter(at.clone().sub(centre).setY(0).normalize().setY(SPRAY_RISE), SPRAY_SCATTER);
+                const droop = (angle) => {
+                    return heading.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0).cross(heading).normalize(), -angle);
+                };
+                const path = [at, at.clone().addScaledVector(heading, reach * BEND_AT)];
+                path.push(path[1].clone().addScaledVector(droop(species.droop), reach * (1 - BEND_AT)));
+                const flat = new THREE.Vector3(0, 1, 0).cross(heading).normalize();
+                const side = flat.applyAxisAngle(heading, rng.range(-1, 1) * CARD_ROLL * 1.6);
+                bentCard(parts, path, side.multiplyScalar(reach * species.spray), centre);
+            }
+        }
     }
 }
 

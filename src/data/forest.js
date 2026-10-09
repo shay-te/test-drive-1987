@@ -7,9 +7,11 @@
  *  sprays from `crownBase` of its height to the top, reaching `spread` of its height at its base and
  *  narrowing by `taper`, drooping by up to `droop` rad and turning back up by `upturn` (rad) at the
  *  tips; `leader` bends its top over (rad), `flare` widens the trunk's foot (share of its radius). A
- *  broadleaf crown is `clusters` leaf clusters through an ellipsoid `crown` [width, height] (shares of
- *  the tree's height) above `crownBase`, from `limbs` main limbs. `spray` is a spray's or cluster's
- *  width (share of its length); colours run from the shaded inside of the foliage to its fresh tips. */
+ *  broadleaf crown fills an ellipsoid `crown` [width, height] (shares of the tree's height) above
+ *  `crownBase`: `limbs` main limbs fork from the trunk there, each with `branches` branches out to the
+ *  crown's edge carrying `sprays` leafy sprays `reach` of the crown's width long, drooping `droop`
+ *  (rad) at the tips, with leaves `leaf` of a spray's length. `spray` is a spray's width (share of its
+ *  length); colours run from the shaded inside of the foliage to its fresh tips. */
 export const SPECIES = {
     douglasFir: {
         kind: 'conifer', whorls: 15, branches: 6, crownBase: 0.42, spread: 0.13, taper: 0.85, droop: 0.12, upturn: 0.35, leader: 0, flare: 0.25,
@@ -28,12 +30,12 @@ export const SPECIES = {
         spray: 0.7, foliage: ['#142c1b', '#1c3a23', '#26482b', '#335834'], bark: '#87877f', needle: 0.06,
     },
     redAlder: {
-        kind: 'broadleaf', clusters: 70, limbs: 4, crownBase: 0.35, crown: [0.26, 0.55], spray: 1, flare: 0.2,
-        foliage: ['#355423', '#46682b', '#577c33', '#6d913c'], bark: '#b4b1a8', leaf: 0.09,
+        kind: 'broadleaf', limbs: 4, branches: 8, sprays: 5, crownBase: 0.35, crown: [0.26, 0.55], reach: 0.36, droop: 0.5, spray: 0.75, flare: 0.2,
+        foliage: ['#304d20', '#41622a', '#527733', '#6a8d3d'], bark: '#9a988f', leaf: 0.1,
     },
     bigleafMaple: {
-        kind: 'broadleaf', clusters: 85, limbs: 5, crownBase: 0.28, crown: [0.36, 0.6], spray: 1, flare: 0.35,
-        foliage: ['#3c5a22', '#50722a', '#668732', '#8a9e42'], bark: '#5b6743', leaf: 0.16,
+        kind: 'broadleaf', limbs: 5, branches: 8, sprays: 5, crownBase: 0.28, crown: [0.36, 0.6], reach: 0.33, droop: 0.6, spray: 0.8, flare: 0.35,
+        foliage: ['#38561f', '#4b6d28', '#618230', '#7f973c'], bark: '#5b6743', leaf: 0.17,
     },
 };
 

@@ -10,18 +10,21 @@ import { linearGradient, multilineText, speckle } from '../util/canvas.js';
 import { hexToRgb, mixRgb } from '../util/color.js';
 import { createRng } from '../util/math.js';
 
-/** The pictures of a branch spray and a leaf cluster (along, across) and of a whole tree (across, up),
- *  in pixels; the silhouettes are painted in these greys and tinted tree by tree. */
+/** The pictures of a branch spray, of needles or of leaves (along, across), and of a whole tree (across,
+ *  up), in pixels; the silhouettes are painted in these greys and tinted tree by tree. */
 const SPRAY_SIZE = [256, 128];
-const CLUSTER_SIZE = [256, 256];
 const SILHOUETTE_SIZE = [128, 256];
 const SILHOUETTE_GREYS = ['#a8a8a8', '#c0c0c0', '#d8d8d8', '#f0f0f0'];
 const NEEDLE_SEED = 41;
-/** Leaves bigger than this (share of the cluster) are lobed, like a maple's. */
+/** Leaves bigger than this (share of the spray) are palmate, like a maple's: five lobes over this
+ *  spread (rad) from the stalk, the middle one longest. Smaller ones are ovate, this wide for their
+ *  length. */
 const LOBED_LEAF = 0.12;
-const LEAVES_PER_CLUSTER = 420;
-/** A leaf's length in the cluster picture, per unit of the species' `leaf` and of the picture's width. */
-const LEAF_SCALE = 0.45;
+const LOBES = [[-1.7, 0.5], [-0.85, 0.85], [0, 1], [0.85, 0.85], [1.7, 0.5]];
+const OVATE = 0.36;
+/** Side shoots stand this many leaf lengths apart along the twig, carry so many leaves each. */
+const SHOOT_STEP = 0.3;
+const LEAVES_PER_SHOOT = [2, 4];
 /** A conifer silhouette's crown starts this share of the way down; a broadleaf one is so many blobs. */
 const SILHOUETTE_CROWN = 0.8;
 const SILHOUETTE_BLOBS = 160;
@@ -88,12 +91,11 @@ export class WorldMaterials {
         };
         this.trees = Object.fromEntries(Object.entries(SPECIES).map(([name, species]) => {
             const conifer = species.kind === 'conifer';
-            const [width, height] = conifer ? SPRAY_SIZE : CLUSTER_SIZE;
             return [name, {
                 bark: new THREE.MeshStandardMaterial({ color: species.bark, roughness: 1 }),
-                foliage: foliage(`foliage:${name}`, width, height, (ctx, w, h) => {
+                foliage: foliage(`foliage:${name}`, SPRAY_SIZE[0], SPRAY_SIZE[1], (ctx, w, h) => {
                     if (conifer) drawSpray(ctx, w, h, species);
-                    else drawLeafCluster(ctx, w, h, species);
+                    else drawLeafSpray(ctx, w, h, species);
                 }),
             }];
         }));
@@ -303,42 +305,87 @@ function drawSpray(ctx, w, h, species) {
     }
 }
 
-/** A cluster of the species' leaves on its twigs (alder's oval and toothed, maple's broad and lobed),
- *  each shaded from its base to its tip with a darker midrib, the heart of the cluster in shade. */
-function drawLeafCluster(ctx, w, h, species) {
+/** A leafy spray seen from above, its twig from the branch (left) to the tip (right): side shoots by
+ *  turns either side, longest part-way out, each with leaves on stalks angled forward (alder's ovate,
+ *  maple's broad and five-lobed), shaded inside the crown and fresher towards the tip. */
+function drawLeafSpray(ctx, w, h, species) {
     const rng = createRng(NEEDLE_SEED + 2);
     ctx.clearRect(0, 0, w, h);
-    const size = species.leaf * w * LEAF_SCALE;
-    const lobes = species.leaf > LOBED_LEAF ? 5 : 1;
+    const mid = h / 2;
+    const size = species.leaf * w;
     const colors = species.foliage;
-    for (let k = 0; k < LEAVES_PER_CLUSTER; k++) {
-        const angle = rng() * Math.PI * 2;
-        const out = rng() ** 0.6;
-        const r = out * (w / 2 - size);
-        const [x, y] = [w / 2 + Math.cos(angle) * r, h / 2 + Math.sin(angle) * r];
-        const shade = Math.min(colors.length - 2, Math.floor(out * (colors.length - 1) * rng.range(0.7, 1.2)));
-        const leaf = size * rng.range(0.75, 1.15);
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle + Math.PI / 2 + rng.range(-0.6, 0.6));
-        const fill = ctx.createLinearGradient(0, leaf * 0.5, 0, -leaf * 0.5);
-        fill.addColorStop(0, colors[shade]);
-        fill.addColorStop(1, colors[shade + 1]);
-        ctx.fillStyle = fill;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = colors[0];
+    ctx.lineWidth = Math.max(1.5, size * 0.08);
+    ctx.beginPath();
+    ctx.moveTo(0, mid);
+    ctx.lineTo(w * 0.92, mid);
+    ctx.stroke();
+    const leaves = [];
+    let side = 1;
+    for (let x = size * 0.3; x < w - size * 0.8; x += size * SHOOT_STEP * rng.range(0.8, 1.2), side = -side) {
+        const out = x / w;
+        const angle = side * rng.range(0.45, 1.05);
+        const reach = (h / 2 - size * 0.5) * Math.sin(Math.PI * Math.min(1, 0.15 + out * 1.1)) * rng.range(0.55, 1);
+        const [tx, ty] = [x + Math.cos(angle) * reach, mid + Math.sin(angle) * reach];
+        ctx.lineWidth = Math.max(1, size * 0.04);
         ctx.beginPath();
-        for (let lobe = 0; lobe < lobes; lobe++) {
-            ctx.rotate((Math.PI * 2) / lobes);
-            ctx.ellipse(0, -leaf * (lobes > 1 ? 0.25 : 0), leaf * (lobes > 1 ? 0.28 : 0.3), leaf * 0.5, 0, 0, Math.PI * 2);
-        }
-        ctx.fill();
-        ctx.strokeStyle = colors[0];
-        ctx.lineWidth = Math.max(1, leaf * 0.05);
-        ctx.beginPath();
-        ctx.moveTo(0, leaf * 0.5);
-        ctx.lineTo(0, -leaf * 0.45);
+        ctx.moveTo(x, mid);
+        ctx.lineTo(tx, ty);
         ctx.stroke();
-        ctx.restore();
+        const count = Math.round(rng.range(...LEAVES_PER_SHOOT));
+        for (let k = 0; k < count; k++) {
+            const t = 1 - k * rng.range(0.3, 0.45);
+            leaves.push({ x: x + (tx - x) * t, y: mid + (ty - mid) * t, angle: angle * rng.range(0.4, 1.2), out });
+        }
     }
+    leaves.push({ x: w * 0.92, y: mid, angle: rng.range(-0.2, 0.2), out: 1 });
+    // The leaves inside the crown first, the sunlit tips over them.
+    leaves.sort((a, b) => { return a.out - b.out; });
+    for (const leaf of leaves) {
+        const shade = Math.min(colors.length - 2, Math.floor(leaf.out * (colors.length - 1) * rng.range(0.6, 1.3)));
+        drawLeaf(ctx, leaf.x, leaf.y, leaf.angle, size * rng.range(0.75, 1.15), species.leaf > LOBED_LEAF, [colors[shade], colors[shade + 1]], colors[0]);
+    }
+}
+
+/** One leaf on its stalk from (x, y) heading `angle`, `length` px: palmate (`lobed`) or ovate, shaded
+ *  from its base to its tip in `fill` (two colours), its veins in `vein`. */
+function drawLeaf(ctx, x, y, angle, length, lobed, fill, vein) {
+    const stalk = length * 0.25;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.strokeStyle = vein;
+    ctx.lineWidth = Math.max(1, length * 0.04);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(stalk, 0);
+    ctx.stroke();
+    ctx.translate(stalk, 0);
+    const blade = length - stalk;
+    const gradient = ctx.createLinearGradient(0, 0, blade, 0);
+    gradient.addColorStop(0, fill[0]);
+    gradient.addColorStop(1, fill[1]);
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    for (const [turn, share] of lobed ? LOBES : [[0, 1]]) {
+        const lobe = blade * share;
+        const half = lobe * (lobed ? 0.22 : OVATE / 2);
+        const [c, s] = [Math.cos(turn), Math.sin(turn)];
+        const at = (u, v) => { return [u * c - v * s, u * s + v * c]; };
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(...at(lobe * 0.35, -half * 2), ...at(lobe, 0));
+        ctx.quadraticCurveTo(...at(lobe * 0.35, half * 2), 0, 0);
+    }
+    ctx.fill();
+    ctx.lineWidth = Math.max(0.6, length * 0.02);
+    ctx.beginPath();
+    for (const [turn, share] of lobed ? LOBES : [[0, 1]]) {
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(turn) * blade * share * 0.85, Math.sin(turn) * blade * share * 0.85);
+    }
+    ctx.stroke();
+    ctx.restore();
 }
 
 /** A conifer as it shows from a distance: a dark spire of drooping branch sprays round a trunk. */

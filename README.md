@@ -45,8 +45,9 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   stands of 20 to 33 m, red alder stands (more of them on the road's disturbed edge) and mixed
   stands with bigleaf maple, amabilis fir and hemlock above 900 m. Each species is drawn as it grows:
   the fir's upturned branch tips, the hemlock's drooping leader, the cedar's flared red trunk and
-  J-shaped branches, the alder's pale trunk and small leaves, the maple's mossy trunk and broad
-  crown. The canopy trees are drawn (90 a hectare by the road), never on bare rock, above the tree
+  J-shaped branches, the alder's pale trunk and small ovate leaves, the maple's mossy trunk, broad
+  crown and big five-lobed leaves; a broadleaf crown is limbs forking from the trunk, branches out
+  to its edge and leafy sprays hanging from them. The canopy trees are drawn (90 a hectare by the road), never on bare rock, above the tree
   line or inside a building; within 260 m of the car tree by tree, beyond as crossed silhouette
   cards. Close to the road the ground is a coastal pine-forest floor (Poly Haven, CC0).
 - Guard rail as engineers place it: wherever the real ground 6 m beyond the edge lies 3 m or more
