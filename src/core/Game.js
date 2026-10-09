@@ -1,5 +1,4 @@
-/** Longest frame step the simulation takes, so a stalled tab doesn't teleport the car. */
-const MAX_FRAME = 1 / 20;
+import { GAME } from '../config.js';
 
 /** Runs the frame loop and switches between the screens registered by name. */
 export class Game {
@@ -25,7 +24,7 @@ export class Game {
     }
 
     _frame(time) {
-        const dt = this.lastTime === null ? 0 : Math.min(MAX_FRAME, (time - this.lastTime) / 1000);
+        const dt = this.lastTime === null ? 0 : Math.min(GAME.maxFrame, (time - this.lastTime) / 1000);
         this.lastTime = time;
         const { input, display, audio } = this.services;
         input.poll();

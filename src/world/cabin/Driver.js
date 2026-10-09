@@ -32,7 +32,7 @@ export class Driver {
             return { bone: part(tube, material), joint: part(ball, material) };
         };
         this.arms = [0, 1].map(() => {
-            return { upper: limb('jacket'), fore: limb('jacket'), cuff: limb('jacket') };
+            return { upper: limb('jacket'), fore: limb('jacket'), cuff: part(ball, 'jacket') };
         });
         this.hands = [hands.left, hands.right].map((model) => { return this._hand(model); });
         this.legs = [0, 1].map(() => {
@@ -59,12 +59,11 @@ export class Driver {
                 bone.position.set(position.x, position.y, position.z);
                 bone.quaternion.setFromRotationMatrix(this.basis.makeBasis(this.axes[0].copy(x), this.axes[1].copy(y), this.axes[2].copy(z)));
             }
-            // The sleeve bends to follow the hand over its last stretch (its cuff runs back from the wrist
-            // along the hand's +z), so it covers the glove's cut-off wrist however the wrist bends.
-            const wrist = this.hands[i].wrist;
-            this.to.set(0, 0, DRIVER.cuff).applyQuaternion(wrist.quaternion).add(wrist.position);
-            this._limb(parts.fore, arm.elbow, this.to, r.forearm);
-            this._limb(parts.cuff, this.to, wrist.position, r.forearm);
+            this._limb(parts.fore, arm.elbow, arm.wrist, r.forearm);
+            // A cuff ball at the wrist, the sleeve's own width, covers the glove's cut-off wrist (it ends
+            // well within that) however the hand turns, without bending the forearm off its straight line.
+            parts.cuff.position.copy(this.hands[i].wrist.position);
+            parts.cuff.scale.setScalar(r.forearm);
         });
         pose.legs.forEach((leg, i) => {
             const parts = this.legs[i];
