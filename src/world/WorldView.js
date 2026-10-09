@@ -8,7 +8,7 @@ import { Terrain } from './Terrain.js';
 import { buildTrees } from './Props.js';
 import { VehicleModels } from './VehicleModels.js';
 import { AuthoredModels } from './AuthoredModels.js';
-import { SCENERY_MODELS } from '../data/scenery.js';
+import { SCENERY_MODELS, SCENERY_TEXTURES } from '../data/scenery.js';
 import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 import { AssetCabin } from './cabin/AssetCabin.js';
 import { SIDE_MIRRORS, SURFACES, validateCabinNodes } from './cabin/cabinAsset.js';
@@ -121,9 +121,12 @@ export class WorldView {
     }
 
     /** Loads everything a stage with `car` needs before scene construction: its cabin (resolved, null
-     *  without one), the road users' and the scenery models. */
+     *  without one), the road users' and the scenery models, and the rock photographs. */
     prepare(car) {
-        return Promise.all([this.prepareCabin(car), this.authored.prepare()]).then(([cabin]) => { return cabin; });
+        const photos = Object.values(SCENERY_TEXTURES).flatMap(({ map, normal }) => {
+            return [this.resources.image(map), this.resources.image(normal)];
+        });
+        return Promise.all([this.prepareCabin(car), this.authored.prepare(), ...photos]).then(([cabin]) => { return cabin; });
     }
 
     /** Loads and validates the car's cached cabin asset (null for a car without one). */

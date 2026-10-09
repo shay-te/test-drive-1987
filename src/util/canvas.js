@@ -31,24 +31,3 @@ export function radialGradient(ctx, x, y, r0, r1, stops) {
     for (const [offset, color] of stops) gradient.addColorStop(offset, color);
     return gradient;
 }
-
-/** Converts a height field (Float32Array, w*h, values 0..1) into a tangent-space normal map. */
-export function normalMapFromHeights(ctx, heights, width, height, strength) {
-    const image = ctx.createImageData(width, height);
-    const at = (x, y) => {
-        return heights[((y + height) % height) * width + ((x + width) % width)];
-    };
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const dx = (at(x + 1, y) - at(x - 1, y)) * strength;
-            const dy = (at(x, y + 1) - at(x, y - 1)) * strength;
-            const len = Math.hypot(dx, dy, 1);
-            const i = (y * width + x) * 4;
-            image.data[i] = ((-dx / len) * 0.5 + 0.5) * 255;
-            image.data[i + 1] = ((dy / len) * 0.5 + 0.5) * 255;
-            image.data[i + 2] = (1 / len) * 255;
-            image.data[i + 3] = 255;
-        }
-    }
-    ctx.putImageData(image, 0, 0);
-}

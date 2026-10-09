@@ -1,15 +1,13 @@
 import * as THREE from 'three';
 import { ROAD } from '../config.js';
+import { SCENERY_TEXTURES } from '../data/scenery.js';
 import { t } from '../i18n/i18n.js';
 import { font } from '../ui/theme.js';
-import { linearGradient, multilineText, normalMapFromHeights, speckle } from '../util/canvas.js';
+import { linearGradient, multilineText, speckle } from '../util/canvas.js';
 import { hexToRgb, mixRgb } from '../util/color.js';
-import { Noise, clamp, smoothstep } from '../util/math.js';
 
 /** Road texture covers both lanes and one 12 m dash period of the centre line. */
 export const ROAD_TEXTURE_LENGTH = 12;
-export const ROCK_TEXTURE_SIZE = 13;
-const ROCK_PIXELS = 512;
 
 /** Procedural textures and the shared three.js materials of a stage. */
 export class WorldMaterials {
@@ -30,8 +28,8 @@ export class WorldMaterials {
             }),
             roughness: 1,
         });
-        this.rock = this._rockMaterial(stage.rock, 'rock');
-        this.cliff = this._rockMaterial(stage.rockDark, 'cliff');
+        this.rock = this._rockMaterial(SCENERY_TEXTURES.rock);
+        this.cliff = this._rockMaterial(SCENERY_TEXTURES.cliff);
         this.terrain = new THREE.MeshStandardMaterial({
             vertexColors: true,
             map: this._texture('scrub', 256, 256, (ctx, w, h) => {
@@ -73,26 +71,19 @@ export class WorldMaterials {
         return texture;
     }
 
-    _rockMaterial(baseHex, key) {
-        const heights = this.resources.memo('rock:heights', () => {
-            return rockHeights(ROCK_PIXELS);
-        });
-        const map = this._texture(`${key}:${baseHex}`, ROCK_PIXELS, ROCK_PIXELS, (ctx, w, h) => {
-            drawRock(ctx, w, h, heights, baseHex, this.stage.vegetation);
-        });
-        const normalMap = this._texture(
-            'rock:normal',
-            ROCK_PIXELS,
-            ROCK_PIXELS,
-            (ctx, w, h) => {
-                normalMapFromHeights(ctx, heights, w, h, 5);
-            },
-            { color: false },
-        );
+    /** Rock from a photograph (`photo` from SCENERY_TEXTURES, loaded by WorldView.prepare). */
+    _rockMaterial(photo) {
+        const texture = (path, color) => {
+            const map = new THREE.Texture(this.resources.get(`image:${path}`));
+            map.anisotropy = this.anisotropy;
+            map.wrapS = map.wrapT = THREE.RepeatWrapping;
+            if (color) map.colorSpace = THREE.SRGBColorSpace;
+            map.needsUpdate = true;
+            return map;
+        };
         return new THREE.MeshStandardMaterial({
-            map,
-            normalMap,
-            normalScale: new THREE.Vector2(1.4, 1.4),
+            map: texture(photo.map, true),
+            normalMap: texture(photo.normal, false),
             roughness: 0.96,
             vertexColors: true,
         });
@@ -178,61 +169,6 @@ function drawDelineator(ctx, w, h) {
     ctx.fillRect(0, 0, w, h * 0.22);
     ctx.fillStyle = '#ffb21e';
     ctx.fillRect(w * 0.25, h * 0.06, w * 0.5, h * 0.1);
-}
-
-/** Layered sedimentary rock: fbm relief, stepped strata ledges and long vertical fractures. */
-function rockHeights(size) {
-    const noise = new Noise(424242);
-    const heights = new Float32Array(size * size);
-    const period = 3;
-    for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-            // Sample on a torus so the texture tiles seamlessly.
-            const a = (x / size) * Math.PI * 2;
-            const b = (y / size) * Math.PI * 2;
-            const nx = Math.cos(a) * period;
-            const nz = Math.sin(a) * period;
-            const ny = Math.cos(b) * period;
-            const nw = Math.sin(b) * period;
-            const relief = noise.fbm3(nx + nw * 0.5, ny, nz - nw * 0.5, 5);
-            const band = (y / size) * 5 + relief * 1.6;
-            const ledge = smoothstep(0.7, 0.95, band - Math.floor(band)) * 0.12;
-            const fracture = Math.pow(1 - Math.abs(noise.noise3(nx * 2.2 + 7, ny * 0.35, nz * 2.2)), 26);
-            heights[y * size + x] = clamp(0.52 + relief * 0.5 - ledge - fracture * 0.3, 0, 1);
-        }
-    }
-    return heights;
-}
-
-function drawRock(ctx, w, h, heights, baseHex, vegetationHex) {
-    const base = mixRgb(hexToRgb(baseHex), [128, 120, 110], 0.18);
-    const dark = mixRgb(base, [24, 20, 16], 0.62);
-    const light = mixRgb(base, [228, 216, 196], 0.32);
-    const moss = hexToRgb(vegetationHex);
-    const noise = new Noise(77);
-    const image = ctx.createImageData(w, h);
-    for (let y = 0; y < h; y++) {
-        // Each stratum has its own tint.
-        const tint = 0.9 + 0.2 * noise.noise1((y / h) * 9);
-        for (let x = 0; x < w; x++) {
-            const i = y * w + x;
-            const v = heights[i];
-            let c = v < 0.5 ? mixRgb(dark, base, v * 2) : mixRgb(base, light, (v - 0.5) * 2);
-            c = [c[0] * tint, c[1] * tint, c[2] * tint];
-            if (v > 0.66 && noise.noise2(x * 0.05, y * 0.05) > 0.35) c = mixRgb(c, moss, 0.35);
-            image.data.set([c[0], c[1], c[2], 255], i * 4);
-        }
-    }
-    ctx.putImageData(image, 0, 0);
-    // Water stains running down the face.
-    for (let i = 0; i < 10; i++) {
-        const x = ((i * 137) % w) + 5;
-        ctx.fillStyle = linearGradient(ctx, 0, 0, 0, h, [
-            [0, 'rgba(25,18,12,0.2)'],
-            [1, 'rgba(25,18,12,0)'],
-        ]);
-        ctx.fillRect(x, 0, 3 + (i % 4) * 2, h * (0.4 + (i % 5) * 0.12));
-    }
 }
 
 const SIGN_STYLES = {
