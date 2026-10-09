@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { ROAD } from '../config.js';
 import { LAND_DETAIL, SCENERY_TEXTURES } from '../data/scenery.js';
 import { withoutTiling } from './noTiling.js';
+import { TRI_START, triplanarFragment, triplanarRock, triplanarVertex } from './triplanar.js';
 import { t } from '../i18n/i18n.js';
 import { font } from '../ui/theme.js';
 import { linearGradient, multilineText, speckle } from '../util/canvas.js';
@@ -30,11 +31,10 @@ export class WorldMaterials {
             roughness: 1,
         });
         this.rock = this._rockMaterial(SCENERY_TEXTURES.rock);
-        this.cliff = this._rockMaterial(SCENERY_TEXTURES.cliff);
         // The land as Landsat 5 saw it in September 1987, over the route's surroundings, with real ground
-        // photographed close up worked into it.
+        // photographed close up worked into it and bare rock wherever it is too steep to hold anything.
         this.land = new THREE.MeshStandardMaterial({ map: this._photo(stage.route.surroundings.image, true, false), roughness: 1 });
-        this._addDetail(this.land, this._photo(LAND_DETAIL.map, false), LAND_DETAIL.metres);
+        this._landShader(this.land, this._photo(LAND_DETAIL.map, false), LAND_DETAIL.metres);
         this.steel = new THREE.MeshStandardMaterial({ color: '#c3c8ce', roughness: 0.42, metalness: 0.7 });
         // Smooth enough to throw the low sun back as a glint.
         // Two-sided, so from under the water its surface closes the view above.
@@ -46,17 +46,15 @@ export class WorldMaterials {
             roughness: 0.6,
         });
         this.wood = new THREE.MeshStandardMaterial({ color: '#6b5236', roughness: 0.9 });
+        this.building = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 });
         this.foliage = new THREE.MeshStandardMaterial({
             color: '#2e4a24',
             roughness: 0.95,
             flatShading: true,
         });
         this.bark = new THREE.MeshStandardMaterial({ color: '#4a3524', roughness: 1 });
-        this.boulder = new THREE.MeshStandardMaterial({
-            color: stage.rockDark,
-            roughness: 0.95,
-            flatShading: true,
-        });
+        // Rock fallen from the cut: the same granite, without the face's shading.
+        this.boulder = triplanarRock(new THREE.MeshStandardMaterial({ roughness: 0.96 }), 'boulder', this._rockTextures(SCENERY_TEXTURES.rock), SCENERY_TEXTURES.rock.metres);
         this.signCache = new Map();
     }
 
@@ -79,32 +77,49 @@ export class WorldMaterials {
         return map;
     }
 
+    /** The textures of a rock photograph (`photo` from SCENERY_TEXTURES), tiled. */
+    _rockTextures(photo) {
+        return { map: this._photo(photo.map, true), normal: this._photo(photo.normal, false) };
+    }
+
     /** Multiplies the grey `detail` photograph, laid flat over the world at a broad and a close scale
-     *  (m), into `material`'s colour: crisp ground under colours that come only in 30 m pixels. Each
-     *  sample averages mid-grey, so twice each keeps the colour's brightness. */
-    _addDetail(material, detail, [broad, close]) {
-        withoutTiling(material, `land-detail-${broad}-${close}`, (fragment, shader) => {
+     *  (m), into `material`'s colour: crisp ground under colours that come only in 30 m pixels (each
+     *  sample averages mid-grey, so twice each keeps the brightness). Where the ground is too steep to
+     *  hold soil (LAND_DETAIL.bareRock) it turns to the weathered rock of SCENERY_TEXTURES.cliff. */
+    _landShader(material, detail, [broad, close]) {
+        const rock = SCENERY_TEXTURES.cliff;
+        const [bare, soil] = LAND_DETAIL.bareRock.map((v) => { return v.toFixed(2); });
+        const [fade, gone] = LAND_DETAIL.reach.map((v) => { return v.toFixed(1); });
+        withoutTiling(material, `land-${broad}-${close}`, (fragment, shader) => {
             shader.uniforms.detailMap = { value: detail };
-            shader.vertexShader = `varying vec2 vDetail;\n${shader.vertexShader}`.replace(
-                '#include <begin_vertex>',
-                '#include <begin_vertex>\n    vDetail = (modelMatrix * vec4(transformed, 1.0)).xz;',
-            );
-            const sample = (metres) => { return `textureNoTile(detailMap, vDetail / ${metres.toFixed(1)}, false).r`; };
-            return `uniform sampler2D detailMap;\nvarying vec2 vDetail;\n${fragment}`.replace(
-                '#include <map_fragment>',
-                `#include <map_fragment>\n    diffuseColor.rgb *= 4.0 * ${sample(broad)} * ${sample(close)};`,
-            );
+            triplanarVertex(shader, this._rockTextures(rock));
+            const span = rock.metres.toFixed(2);
+            return triplanarFragment(`uniform sampler2D detailMap;\n${fragment}`)
+                .replace('#include <map_fragment>', `#include <map_fragment>
+    ${TRI_START}
+    float bare = smoothstep(${soil}, ${bare}, triN.y);
+    // Fine detail and photographed rock only where they can be seen; far off, their averages.
+    float near = 1.0 - smoothstep(${fade}, ${gone}, length(vViewPosition));
+    vec2 ground = vTriWorld.xz / ${broad.toFixed(1)};
+    vec2 fine = vTriWorld.xz / ${close.toFixed(1)};
+    vec2 fineDx = triDx.xz / ${close.toFixed(1)};
+    vec2 fineDy = triDy.xz / ${close.toFixed(1)};
+    float closeUp = 0.5;
+    if (near > 0.0) closeUp = mix(0.5, textureNoTileGrad(detailMap, fine, fineDx, fineDy).r, near);
+    diffuseColor.rgb *= 4.0 * textureNoTile(detailMap, ground).r * closeUp;
+    vec3 rock = textureLod(rockMap, vec2(0.5), 16.0).rgb;
+    if (near > 0.0 && bare > 0.0) rock = mix(rock, triplanarColor(rockMap, vTriWorld, triDx, triDy, triN, ${span}), near);
+    diffuseColor.rgb = mix(diffuseColor.rgb, rock, bare);`)
+                .replace('#include <clearcoat_normal_fragment_begin>', `if (near > 0.0 && bare > 0.0) normal = normalize(mix(normal, toView(triplanarNormal(rockNormal, vTriWorld, triDx, triDy, triN, ${span})), bare * near));
+#include <clearcoat_normal_fragment_begin>`);
         });
     }
 
-    /** Rock from a photograph (`photo` from SCENERY_TEXTURES). */
+    /** Rock from a photograph (`photo` from SCENERY_TEXTURES), laid along the world's axes and shaded
+     *  by the ribbon's vertex colours. */
     _rockMaterial(photo) {
-        return withoutTiling(new THREE.MeshStandardMaterial({
-            map: this._photo(photo.map, true),
-            normalMap: this._photo(photo.normal, false),
-            roughness: 0.96,
-            vertexColors: true,
-        }), photo.map);
+        const material = new THREE.MeshStandardMaterial({ roughness: 0.96, vertexColors: true });
+        return triplanarRock(material, photo.map, this._rockTextures(photo), photo.metres);
     }
 
     /** Material for a road sign face of `kind` (see drawSign). */

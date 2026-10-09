@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { CHASE, CRASH, LIGHTING, VIEW, WATER } from '../config.js';
+import { DRIVER } from '../data/driver.js';
 import { DEG } from '../util/math.js';
 import { WorldMaterials } from './Materials.js';
 import { WorldBuilder } from './WorldBuilder.js';
@@ -8,7 +9,9 @@ import { Terrain } from './Terrain.js';
 import { buildTrees } from './Props.js';
 import { VehicleModels } from './VehicleModels.js';
 import { AuthoredModels } from './AuthoredModels.js';
-import { LAND_DETAIL, SCENERY_MODELS, SCENERY_TEXTURES } from '../data/scenery.js';
+import { buildBuildings } from './buildingMesh.js';
+import { clearOfBuildings, layOutBuildings } from './buildingLayout.js';
+import { LAND_DETAIL, ROUTE_BUILDINGS, SCENERY_MODELS, SCENERY_TEXTURES } from '../data/scenery.js';
 import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 import { AssetCabin } from './cabin/AssetCabin.js';
 import { SIDE_MIRRORS, SURFACES, validateCabinNodes } from './cabin/cabinAsset.js';
@@ -124,20 +127,29 @@ export class WorldView {
     }
 
     /** Loads everything the world shows of `stage`, whatever the car: the road users' and the scenery
-     *  models, the rock photographs, and the land around its route (heights and Landsat picture). */
+     *  models, the rock photographs, and the land around its route (heights, Landsat picture, buildings). */
     prepareStage(stage) {
         const { heights, image } = stage.route.surroundings;
         const photos = Object.values(SCENERY_TEXTURES).flatMap(({ map, normal }) => {
             return [this.resources.image(map), this.resources.image(normal)];
         });
-        const land = [this.resources.binary(heights), this.resources.image(image), this.resources.image(LAND_DETAIL.map)];
+        const land = [
+            this.resources.binary(heights),
+            this.resources.image(image),
+            this.resources.image(LAND_DETAIL.map),
+            this.resources.json(ROUTE_BUILDINGS),
+        ];
         return Promise.all([this.authored.prepare(), ...photos, ...land]);
     }
 
-    /** Loads and validates the car's cached cabin asset (null for a car without one). */
+    /** Loads and validates the car's cached cabin asset (null for a car without one), and the driver's
+     *  rigged hands that go in it. */
     prepareCabin(car) {
         if (!car.cockpit.model) return null;
-        return this.resources.model(car.cockpit.model, async (url) => {
+        const hands = Object.values(DRIVER.handModels).map((path) => {
+            return this.resources.model(path, async (url) => { return (await new GLTFLoader().loadAsync(url)).scene; });
+        });
+        const cabin = this.resources.model(car.cockpit.model, async (url) => {
             const asset = await new GLTFLoader().loadAsync(url);
             const nodes = [];
             asset.scene.traverse((node) => { nodes.push(node); });
@@ -147,6 +159,7 @@ export class WorldView {
             }
             return asset.scene;
         });
+        return Promise.all([cabin, ...hands]).then(([scene]) => { return scene; });
     }
 
     /** A side-on photo of the car's authored model (null without one), taken once per session. */
@@ -177,8 +190,10 @@ export class WorldView {
         const terrain = new Terrain(landscape, stage, materials);
         const heights = new Int16Array(this.resources.get(`binary:${stage.route.surroundings.heights}`));
         const surroundings = new Surroundings(track, landscape, heights, materials.land);
-        scene.add(builder.build(track), terrain.mesh, surroundings.mesh, terrain.sea);
-        scene.add(buildTrees([...builder.treePlacements(track), ...terrain.treePlacements()], materials));
+        const buildings = layOutBuildings(this.resources.get(`json:${ROUTE_BUILDINGS}`), track, landscape);
+        scene.add(builder.build(track), terrain.mesh, surroundings.mesh, terrain.sea, buildBuildings(buildings, materials.building));
+        const trees = clearOfBuildings([...builder.treePlacements(track), ...terrain.treePlacements()], buildings);
+        scene.add(buildTrees(trees, materials));
         scene.fog = new THREE.FogExp2(stage.fog.color, stage.fog.density);
         this.underwater = new Underwater(scene, landscape.waterLevel);
         this._installCabin(scene, stage, car, cabinAsset, track.bearing);
@@ -203,6 +218,7 @@ export class WorldView {
             this.mirrorTarget.texture,
             cabinAsset,
             Object.fromEntries(Object.entries(this.doorMirrors).map(([side, mirror]) => { return [side, mirror.target.texture]; })),
+            Object.fromEntries(Object.entries(DRIVER.handModels).map(([side, path]) => { return [side, this.resources.get(`model:${path}`)]; })),
         );
         this.cabin.root.rotation.order = 'YXZ';
         this.cabin.eye.add(this.camera);

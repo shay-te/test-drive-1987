@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createRng } from '../util/math.js';
 import { MOUNTAIN_NEAR, SEA_LEVEL, VALLEY_NEAR } from '../sim/Landscape.js';
-import { latLonOf } from './routeFrame.js';
+import { landUv } from './routeFrame.js';
 
 const FOREST_TREES = 5500;
 /** Trees grow from this height above the sea. */
@@ -41,7 +41,6 @@ export class Terrain {
 
     _buildMesh(material) {
         const l = this.landscape;
-        const { south, north, west, east } = this.stage.route.surroundings;
         const geometry = new THREE.PlaneGeometry(
             (l.nx - 1) * l.cell,
             (l.nz - 1) * l.cell,
@@ -56,8 +55,7 @@ export class Terrain {
             const iz = Math.floor(k / l.nx);
             const [x, z] = [l.x0 + ix * l.cell, l.z0 + iz * l.cell];
             pos.setXYZ(k, x, l.heights[iz * l.nx + ix], z);
-            const [lat, lon] = latLonOf(l.track, x, z);
-            uv.setXY(k, (lon - west) / (east - west), (lat - south) / (north - south));
+            uv.setXY(k, ...landUv(l.track, x, z));
         }
         geometry.computeVertexNormals();
         const mesh = new THREE.Mesh(geometry, material);

@@ -12,8 +12,9 @@ import { onCabinLayer } from './cabinLayer.js';
 
 /** An authored cabin instance sharing cached geometry and owning its live display resources and driver. */
 export class AssetCabin {
-    /** `sideTextures` holds the door mirror pictures ({ left, right }) for the mirrors this cabin has. */
-    constructor(car, resources, anisotropy, mirrorTexture, template, sideTextures) {
+    /** `sideTextures` holds the door mirror pictures ({ left, right }) for the mirrors this cabin has,
+     *  `hands` the driver's rigged hands ({ left, right } models). */
+    constructor(car, resources, anisotropy, mirrorTexture, template, sideTextures, hands) {
         if (!template) throw new Error(`Cabin asset was not prepared for ${car.id}`);
         this.root = template.clone(true);
         const nodes = [];
@@ -26,14 +27,14 @@ export class AssetCabin {
         this._displays(car, resources, anisotropy, mirrorTexture);
         this.sideMirrors = sideMirrorNodes(nodes);
         for (const [side, mirror] of Object.entries(this.sideMirrors)) this._mirror(mirror.surface, sideTextures[side]);
-        this._seatDriver();
+        this._seatDriver(hands);
     }
 
     /** The driver, and where the cabin puts their hands: the rim (measured from the wheel's own
      *  geometry) and the top of the gear knob. */
-    _seatDriver() {
+    _seatDriver(hands) {
         const b = this.bindings;
-        this.driver = new Driver();
+        this.driver = new Driver(hands);
         this.root.add(onCabinLayer(this.driver.group));
         let rim = null;
         let knob = null;

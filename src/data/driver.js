@@ -26,7 +26,8 @@ export const DRIVER = {
     radius: { upperArm: 0.048, forearm: 0.042, thigh: 0.075, shin: 0.055, neck: 0.055 },
     // The gloved hand: the palm's width across the knuckles, length from wrist to knuckles and thickness;
     // each finger's place across the palm (+ towards the index side), bone lengths and radius, index
-    // first; the thumb's, its root this share of the palm back from the knuckles; the palm on the rim
+    // first; the thumb's, its root this share of the palm back from the knuckles; where the fingers'
+    // metacarpal joints lie, this share of the way from the wrist to the knuckles; the palm on the rim
     // tilted towards the driver (driver-ward share of its outward lean); the bars it holds (m).
     hand: {
         palm: [0.084, 0.095, 0.03],
@@ -37,6 +38,7 @@ export const DRIVER = {
             { across: -0.031, bones: [0.035, 0.021, 0.019], radius: 0.0085 },
         ],
         thumb: { across: 0.045, root: 0.6, bones: [0.04, 0.032, 0.027], radius: 0.0105, start: 0.6 },
+        metacarpal: 0.33,
         rimTilt: 0.8,
         knobTilt: 0.35,
         rim: 0.016,
@@ -51,6 +53,8 @@ export const DRIVER = {
     // Torso width and depth; it rises this far above the shoulder joints.
     torso: [0.4, 0.24],
     shoulderRise: 0.07,
+    /** Rigged hands (WebXR's generic hand, MIT), posed joint by joint from the hand pose. */
+    handModels: { left: 'assets/models/driver/hand-left.glb', right: 'assets/models/driver/hand-right.glb' },
     colors: {
         jacket: '#2f4058', gloves: '#9a7650', trousers: '#2a2a30', shoes: '#111111', skin: '#c49b7c', hair: '#3a2a1e',
     },

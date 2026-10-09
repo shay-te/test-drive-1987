@@ -23,3 +23,10 @@ export function latLonOf(track, x, z) {
         origin[1] + (dx + track.routeOrigin[0]) / metresPerDegree[0],
     ];
 }
+
+/** Where world point (x, z) falls on the picture of the route's surroundings: [u, v] (0..1). */
+export function landUv(track, x, z) {
+    const { south, north, west, east } = track.stage.route.surroundings;
+    const [lat, lon] = latLonOf(track, x, z);
+    return [(lon - west) / (east - west), (lat - south) / (north - south)];
+}
