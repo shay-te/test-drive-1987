@@ -1,7 +1,7 @@
 import { CRASH, FALL, ROAD } from '../config.js';
 import { TRAFFIC_TYPES } from '../data/traffic.js';
 import { rotate } from '../util/quaternion.js';
-import { add, cross, dot, normalize, scale, sub, vec } from '../util/vector.js';
+import { add, cross, dot, length, normalize, scale, sub, vec } from '../util/vector.js';
 import { groundNormal } from './Landscape.js';
 import { airLost, playerBody, trafficBody, underwater } from './wreckBodies.js';
 import { bodyContacts, overlaps, trunkContacts } from './wreckContacts.js';
@@ -140,17 +140,29 @@ function poseOf(body, centre) {
     return { position: sub(body.position, rotate(q, centre)), quaternion: q };
 }
 
-/** The two cars spring apart along the line between them, sharing the momentum by mass; the harder
- *  the hit, the more they ride up over each other (the lighter most) and spin, off-centre hits about
- *  the vertical, the riding car nose-up. */
+/** The two cars spring apart along the line between them, sharing the momentum by mass, and drag on
+ *  each other as they scrape past (a glancing hit turns both); the harder the hit, the more they ride
+ *  up over each other (the lighter most) and spin, off-centre hits about the vertical, the riding car
+ *  nose-up. */
 function collide(a, b, lengthA, lengthB) {
     const between = sub(b.position, a.position);
     const n = normalize(vec(between.x, 0, between.z));
-    const closing = Math.max(0, dot(sub(a.velocity, b.velocity), n));
+    const relative = sub(a.velocity, b.velocity);
+    const closing = Math.max(0, dot(relative, n));
     const total = a.mass + b.mass;
-    const impulse = ((1 + CRASH.restitution) * closing * a.mass * b.mass) / total;
+    const reduced = (a.mass * b.mass) / total;
+    const { nudge, hard, fade } = CRASH.restitution;
+    const impulse = (1 + Math.max(hard, nudge * Math.exp(-closing / fade))) * closing * reduced;
     a.velocity = add(a.velocity, scale(n, -impulse / a.mass));
     b.velocity = add(b.velocity, scale(n, impulse / b.mass));
+    // Friction across the line between them, up to stopping their sliding past each other.
+    const slide = sub(relative, scale(n, dot(relative, n)));
+    const slip = length(slide);
+    if (slip > 1e-6) {
+        const drag = scale(slide, Math.min(CRASH.friction * impulse, reduced * slip) / slip);
+        a.velocity = sub(a.velocity, scale(drag, 1 / a.mass));
+        b.velocity = add(b.velocity, scale(drag, 1 / b.mass));
+    }
     a.velocity.y += CRASH.rideUp * closing * (b.mass / total);
     b.velocity.y += CRASH.rideUp * closing * (a.mass / total);
     const side = cross(n, UP);

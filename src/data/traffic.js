@@ -56,12 +56,14 @@ export const TRAFFIC_TYPES = {
         speedMph: [40, 54],
         model: 'assets/models/van/model.glb',
     },
-    // A Mack MR refuse truck: slow, and slower still up the grade.
+    // A Mack MR refuse truck: slow, and slower still up the grade. Empty, its 16,000-18,000 lb chassis
+    // (Wikipedia, Mack MC/MR) carries a rear-loader body of up to 12,390 lb (a 20 yd3 packer body,
+    // City of Charleston bid specification 2022-26).
     truck: {
         length: 9.3,
         width: 2.95,
         height: 3.95,
-        massKg: 12000,
+        massKg: 13400,
         speedMph: [34, 50],
         model: 'assets/models/truck/model.glb',
     },

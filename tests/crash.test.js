@@ -10,6 +10,8 @@ import { LANE, ONCOMING, SAME_WAY, TrafficManager } from '../src/sim/Traffic.js'
 import { buildTrack } from '../src/sim/TrackBuilder.js';
 import { VehicleDynamics } from '../src/sim/VehicleDynamics.js';
 import { conjugate, rotate } from '../src/util/quaternion.js';
+import { dot, normalize, scale, sub, vec } from '../src/util/vector.js';
+import { playerBody } from '../src/sim/wreckBodies.js';
 
 const stage = STAGES[0];
 const track = buildTrack(stage);
@@ -185,4 +187,39 @@ test('a road crash that throws the car over the edge plays on down the drop inst
     assert.ok(end.u < ROAD.edgeOffset, 'it went over the edge');
     assert.ok(crash.time > CRASH.maxSeconds, `stopped playing at ${crash.time.toFixed(1)} s`);
     assert.ok(crash.still >= FALL.restSeconds || crash.time >= FALL.maxSeconds, 'played until it came to rest');
+});
+
+/** The player's Porsche at `mph` into a standing car of `type` `ahead` m on and `aside` m across; the
+ *  two bodies' velocities and masses just after the hit. */
+function hitStanding(mph, type, ahead, aside = 0) {
+    const vehicle = player(mph);
+    const before = playerBody(vehicle, track).body.velocity;
+    const standing = new TrafficManager(track, stage).add(type, { s: s0 + ahead, u: LANE + aside, dir: SAME_WAY, speed: 0, scripted: true });
+    const crash = new RoadCrash(vehicle, track, landscape, standing);
+    return { before, a: crash.body, b: crash.joined[0].body };
+}
+
+test('cars crumple: a hard hit is soaked up and they move off nearly together; a nudge springs them apart', () => {
+    const parting = ({ before, a, b }) => {
+        const n = normalize(vec(b.position.x - a.position.x, 0, b.position.z - a.position.z));
+        return dot(sub(b.velocity, a.velocity), n) / dot(before, n);
+    };
+    assert.ok(parting(hitStanding(70, 'continental', 4.6)) < 0.1, 'a hard hit');
+    assert.ok(parting(hitStanding(4, 'continental', 4.4)) > 0.25, 'a nudge');
+});
+
+test('a hit shares the momentum by the cars\' real weights, and a glancing one drags the car that hits', () => {
+    for (const [type, aside] of [['beetle', 0], ['continental', 0], ['truck', 0], ['continental', 1.6]]) {
+        const { before, a, b } = hitStanding(55, type, 4.6, aside);
+        const given = scale(sub(a.velocity, before), a.mass);
+        const taken = scale(b.velocity, b.mass);
+        assert.ok(Math.hypot(given.x + taken.x, given.z + taken.z) < 1e-6 * a.mass, `${type}: momentum lost or made`);
+        if (aside) {
+            // Friction across the line between them turns the hitting car off its course.
+            const n = normalize(vec(b.position.x - a.position.x, 0, b.position.z - a.position.z));
+            const change = normalize(vec(given.x, 0, given.z));
+            assert.ok(Math.abs(dot(change, n)) < Math.cos(0.15), 'pushed only along the line between them');
+        }
+    }
+    assert.ok(hitStanding(55, 'truck', 5.5).b.velocity.x ** 2 < hitStanding(55, 'beetle', 4.6).b.velocity.x ** 2, 'the truck barely moves');
 });
