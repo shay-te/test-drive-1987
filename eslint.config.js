@@ -40,6 +40,7 @@ const browserGlobals = [
     'self',
     'Worker',
     'structuredClone',
+    'Response',
 ];
 
 export default [
