@@ -62,6 +62,8 @@ export class ResultsScreen {
         });
         if (this.summit)
             drawText(ctx, t('results.dealer'), VIEW.width / 2, 110, { size: 19, color: COLORS.chrome });
+        else if (this.session.arrested)
+            drawText(ctx, t('results.jailed'), VIEW.width / 2, 110, { size: 19, color: COLORS.chrome });
         this._sheet(ctx);
         if (this.entering) {
             drawPrompt(ctx, t(inputKey('results.enterName', this.input.touch)), this.time, VIEW.height - 120);

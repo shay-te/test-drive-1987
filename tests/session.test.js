@@ -1,16 +1,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CARS } from '../src/data/cars.js';
-import { GAME, PHYS } from '../src/config.js';
+import { GAME, PHYS, POLICE } from '../src/config.js';
 import { CRASH_CAUSE, Session } from '../src/sim/Session.js';
 
-test('a ticket costs a chance and adds the time penalty', () => {
+test('a speeding ticket costs the time it takes to be written, not a chance', () => {
     const session = new Session(CARS[0]);
     session.beginStage();
     session.tick(100);
     session.recordTicket();
-    assert.equal(session.chances, GAME.chances - 1);
-    assert.equal(session.elapsed, 100 + GAME.ticketPenaltySec);
+    assert.equal(session.chances, GAME.chances);
+    assert.equal(session.elapsed, 100 + POLICE.ticketSeconds);
+    assert.equal(session.over, false);
+});
+
+test('an arrest for failing to stop is jail: the run is over', () => {
+    const session = new Session(CARS[0]);
+    session.recordArrest();
+    assert.equal(session.arrested, true);
+    assert.equal(session.over, true);
 });
 
 test('five crashes end the run, ramming a patrol car ends it at once', () => {

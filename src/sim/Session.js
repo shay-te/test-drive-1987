@@ -1,4 +1,4 @@
-import { GAME, PHYS } from '../config.js';
+import { GAME, PHYS, POLICE } from '../config.js';
 import { STAGES } from '../data/stages.js';
 
 /** Points per stage: average mph squared times stage km, scaled. */
@@ -27,6 +27,7 @@ export class Session {
         this.penalty = 0;
         this.tickets = 0;
         this.crashes = 0;
+        this.arrested = false;
     }
 
     get stage() {
@@ -72,12 +73,16 @@ export class Session {
         return this.over;
     }
 
+    /** A roadside speeding ticket: the time it takes to be written, and on the record. */
     recordTicket() {
         this.tickets++;
-        this.penalty += GAME.ticketPenaltySec;
-        this.chances = Math.max(0, this.chances - 1);
-        if (this.chances === 0) this.over = true;
-        return this.over;
+        this.penalty += POLICE.ticketSeconds;
+    }
+
+    /** Arrested for failing to stop for the police: jail, and the run is over. */
+    recordArrest() {
+        this.arrested = true;
+        this.over = true;
     }
 
     /** Closes the stage at the gas station and returns its score line. */

@@ -22,6 +22,7 @@ import {
     drawOutsideReadout,
     drawPaused,
     drawStageIntro,
+    drawArrest,
     drawTicket,
     drawToast,
 } from '../driveOverlays.js';
@@ -41,7 +42,6 @@ const FUEL_USED = 0.6;
 /** Impacts above this speed (m/s) crack the windshield; each one more, until it is shattered. */
 const CRACK_IMPACT = 6;
 const MAX_CRACKS = 5;
-const TICKET_BRAKE = 1;
 /** Where on the glass an impact can crack it (layout px), the fall's tilt per second, body sway rate. */
 const CRACK_AREA = { x: 380, y: 120, w: 520, h: 220 };
 const BODY_RATE = 6;
@@ -166,7 +166,8 @@ export class DriveScreen {
         if (this.toast) this.toast.time += dt;
         if (this.state === 'driving') this._drive(dt);
         else if (this.state === 'wrecking') this._wrecking(dt);
-        else if (this.state === 'ticket') this._stopForTicket(dt);
+        else if (this.state === 'ticket' && this.input.pressed('confirm')) this._afterTicket();
+        else if (this.state === 'arrested' && this.input.pressed('confirm')) this._afterArrest();
         else if (this.state === 'crashed' && this.input.pressed('confirm')) this._afterCrash();
     }
 
@@ -182,7 +183,11 @@ export class DriveScreen {
             this.accumulator -= STEP;
             this._step(STEP, controls);
         }
-        if (vehicle.s >= this.track.finishS && this.state === 'driving') this._finish();
+        if (vehicle.s >= this.track.finishS && this.state === 'driving') {
+            // A patrol car still on the tail of a driver who would not stop follows them into the station.
+            if (this.police.onTail) this.state = 'arrested';
+            else this._finish();
+        }
     }
 
     _step(h, controls) {
@@ -214,11 +219,14 @@ export class DriveScreen {
         if (police === POLICE_EVENT.pursuit) {
             this.clockedMph = player.mph;
             this._notice(t('drive.pursuit'), COLORS.danger);
+        } else if (police === POLICE_EVENT.failedToStop) {
+            this._notice(t('drive.failedToStop'), COLORS.danger);
         } else if (police === POLICE_EVENT.escaped) {
             this._notice(t('drive.escaped'), COLORS.lcd);
-        } else if (police === POLICE_EVENT.pulledOver) {
+        } else if (police === POLICE_EVENT.ticket) {
             this.state = 'ticket';
-            this.stateTime = 0;
+        } else if (police === POLICE_EVENT.arrested) {
+            this.state = 'arrested';
         }
     }
 
@@ -325,22 +333,17 @@ export class DriveScreen {
         this.state = 'driving';
     }
 
-    /** Pulled over: the car brakes to a stop, then the citation is written. */
-    _stopForTicket(dt) {
-        const { vehicle } = this;
-        this.stateTime += dt;
-        if (vehicle.vx > 0.3) {
-            vehicle.step(dt, { steer: 0, throttle: 0, brake: TICKET_BRAKE }, this.track);
-            return;
-        }
-        if (!this.input.pressed('confirm')) return;
-        const over = this.session.recordTicket();
+    /** Stopped for the patrol car: the ticket is written, the patrol car leaves and the drive goes on. */
+    _afterTicket() {
+        this.session.recordTicket();
         this.police.release();
-        if (over) {
-            this._leave('results', { session: this.session });
-            return;
-        }
         this.state = 'driving';
+    }
+
+    /** Arrested for failing to stop: jail, the end of the run. */
+    _afterArrest() {
+        this.session.recordArrest();
+        this._leave('results', { session: this.session });
     }
 
     _finish() {
@@ -460,8 +463,8 @@ export class DriveScreen {
         }
         if (this.state === 'crashed')
             drawCrash(ctx, this.cause, this._fallStats(), session.chances, this.over, this.time, this.input.touch);
-        if (this.state === 'ticket' && this.vehicle.vx <= 0.3)
-            drawTicket(ctx, this.car, this.clockedMph, this.time, this.input.touch);
+        if (this.state === 'ticket') drawTicket(ctx, this.car, this.clockedMph, this.time, this.input.touch);
+        if (this.state === 'arrested') drawArrest(ctx, this.time, this.input.touch);
         const telemetry = this.vehicle.telemetry();
         const gear = gearLabel(this.car, telemetry.gear);
         if (this.outside) {

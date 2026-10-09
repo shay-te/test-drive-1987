@@ -217,3 +217,19 @@ test('a crash stalls the engine until the car is back on the road', async () => 
     run(0.1);
     assert.equal(heard.at(-1).off, false, 'started again');
 });
+
+test('driving into the gas station with the patrol car still on your tail is an arrest: jail, game over', async () => {
+    const { screen, run, tap } = await startStage();
+    const visits = [];
+    screen.game = { go(name, params) { visits.push([name, params]); } };
+    const cop = screen.traffic.add('police', { s: screen.track.finishS - 40, u: 1.8, dir: 1, scripted: true, siren: true, chaseTime: 0, signalled: 0 });
+    Object.assign(screen.police, { pursuer: cop, fleeing: true });
+    screen.vehicle.reset(screen.track.finishS - 10, 1.8);
+    screen.vehicle.vx = 25;
+    run(1);
+    assert.equal(screen.state, 'arrested');
+    tap('Enter');
+    assert.equal(visits[0][0], 'results');
+    assert.equal(visits[0][1].session.arrested, true);
+    assert.equal(visits[0][1].session.over, true);
+});

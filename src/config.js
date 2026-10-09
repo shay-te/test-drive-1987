@@ -111,13 +111,41 @@ export const GAME = Object.freeze({
     speedLimitMph: 55,
     /** Passing a radar trap above this speed starts a pursuit. */
     radarTriggerMph: 65,
-    ticketPenaltySec: 30,
     /** Fixed physics step. */
     physicsHz: 120,
     /** Throttle below this speed (m/s) in neutral selects first gear, as a driver pulling away would. */
     pullAwaySpeed: 1,
     /** Within this many rpm of the redline, below top gear, the driver is told to shift up. */
     shiftHintRpm: 350,
+});
+
+/** A pursuit as the B.C. Police Commission's 1982 guidelines had it (in force through 1989; reproduced in
+ *  its 1990 report "Police Pursuit in British Columbia"). A driver stopped (under `stoppedMph` for
+ *  `stopSeconds`) within `signalRange` m of the patrol car has stopped for it; one who has not stopped
+ *  `complySeconds` s after it came within `complyRange` m has failed to stop (Motor Vehicle Act s. 67).
+ *  The officer then radios for assistance and a roadblock is ready `roadblockDelay` s later, at least
+ *  `lead` m ahead, where a driver at the car's speed sees it in time to stop braking at `brake` m/s²
+ *  with `margin` m to spare (s. 7.7): on a bend of radius R, with the cut or the trees `sightClearance`
+ *  m inside the line, the road is seen about 2·sqrt(2·R·clearance) m ahead. Patrol cars stand across
+ *  the road at `roadblockCars` (u).
+ *  The patrol car follows `followGap` m behind and never boxes in or rams (s. 7.9-7.10). Stopping
+ *  within `roadblockReach` m of the roadblock is stopping for it. */
+export const POLICE = Object.freeze({
+    stoppedMph: 3,
+    stopSeconds: 1.5,
+    signalRange: 250,
+    complyRange: 150,
+    complySeconds: 10,
+    roadblockDelay: 40,
+    lead: 1500,
+    brake: 6,
+    margin: 60,
+    roadblockCars: [-2.6, 0, 2.6],
+    roadblockReach: 250,
+    followGap: 18,
+    sightClearance: 8,
+    /** Time lost to a roadside speeding ticket (s). */
+    ticketSeconds: 30,
 });
 
 /** How the car body and the driver's head move with the car (the camera rides on both). */
