@@ -179,10 +179,10 @@ function specRow(ctx, column, y, label, value) {
     for (let x = from; x < to; x += 7) ctx.fillRect(x, y + 5, 2, 2);
 }
 
-/** Speed against time from a simulated standing start, with the upshift points marked. */
+/** Speed against time from a simulated road test, with the upshift points marked. */
 function accelerationGraph(ctx, car) {
     const g = GRAPH;
-    const launch = new Drivetrain(car).simulateLaunch(g.maxMph * PHYS.mph, g.maxSec);
+    const launch = new Drivetrain(car).roadTest(g.maxSec, g.maxMph * PHYS.mph);
     const px = (sec) => {
         return g.x + (sec / g.maxSec) * g.w;
     };

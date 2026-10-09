@@ -30,6 +30,16 @@ export const moveTowards = (current, target, step) => {
     return Math.abs(target - current) <= step ? target : current + Math.sign(target - current) * step;
 };
 
+/** Bisects [lo, hi] for the point where `tooLow(x)` turns false; `tooLow` must hold below it. */
+export function bisect(lo, hi, tooLow, steps = 24) {
+    for (let i = 0; i < steps; i++) {
+        const mid = (lo + hi) / 2;
+        if (tooLow(mid)) lo = mid;
+        else hi = mid;
+    }
+    return (lo + hi) / 2;
+}
+
 /** Seeded PRNG (mulberry32). Returns a function producing floats in [0, 1). */
 export function createRng(seed) {
     let s = seed >>> 0;

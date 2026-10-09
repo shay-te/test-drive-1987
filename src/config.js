@@ -50,7 +50,24 @@ export const PHYS = Object.freeze({
     mph: 0.44704,
     foot: 0.3048,
     lbftToNm: 1.35582,
+    /** One horsepower is one lb-ft of torque turning at this many rpm. */
+    lbftRpmPerHp: 5252,
     lbToKg: 0.453592,
+});
+
+/** How the brochure's figures were measured, and how the drivetrain is fitted to them. */
+export const ROAD_TEST = Object.freeze({
+    /** US magazines start the clock after the car has rolled one foot (m). */
+    rollout: 0.3048,
+    quarterMile: 402.336,
+    /** The tester tries launch revs in steps of this many rpm and keeps the quickest to 60 mph. */
+    launchStep: 250,
+    /** Longest test run (s) and the bounds of the fitted torque factor. */
+    duration: 30,
+    torqueFactor: [0.6, 1.4],
+    passes: 3,
+    /** Share of peak power an engine still makes at its redline. */
+    redlinePower: 0.92,
 });
 
 export const GAME = Object.freeze({
