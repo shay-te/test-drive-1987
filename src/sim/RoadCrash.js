@@ -3,7 +3,7 @@ import { TRAFFIC_TYPES } from '../data/traffic.js';
 import { rotate } from '../util/quaternion.js';
 import { add, cross, dot, normalize, scale, sub, vec } from '../util/vector.js';
 import { groundNormal } from './Landscape.js';
-import { playerBody, trafficBody } from './wreckBodies.js';
+import { airLost, playerBody, trafficBody, underwater } from './wreckBodies.js';
 
 const UP = vec(0, 1, 0);
 
@@ -33,9 +33,11 @@ export class RoadCrash {
         this.hardestHit = 0;
     }
 
-    /** Runs the crash for `dt` seconds; returns the hardest hits (m/s) each car took in that time. */
+    /** Runs the crash for `dt` seconds; returns the hardest hits (m/s) each car took in that time, and
+     *  like a fall over the edge, the speed the player's car hit the water at and the air it let out. */
     update(dt) {
-        const hits = { player: 0, other: 0 };
+        const hits = { player: 0, other: 0, splash: 0, air: 0 };
+        const flooded = this.body.flooded;
         this.accumulator += dt;
         while (this.accumulator >= FALL.substep && !this.done) {
             this.accumulator -= FALL.substep;
@@ -43,16 +45,23 @@ export class RoadCrash {
             this.time += FALL.substep;
             if (this.body.impact > FALL.hitSpeed) hits.player = Math.max(hits.player, this.body.impact);
             if (this.otherBody?.impact > FALL.hitSpeed) hits.other = Math.max(hits.other, this.otherBody.impact);
+            hits.splash = Math.max(hits.splash, this.body.splash);
             const resting = this.bodies.every((body) => { return body.speed < FALL.restSpeed && body.spin < FALL.restSpin; });
             this.still = resting ? this.still + FALL.substep : 0;
         }
         this.hardestHit = Math.max(this.hardestHit, hits.player);
+        hits.air = airLost(this.body, flooded);
         for (const body of this.bodies) if (body.impact > FALL.wreckSpeed) body.rollingShare = 1;
         return hits;
     }
 
     get done() {
         return this.still >= FALL.restSeconds || this.time >= CRASH.maxSeconds;
+    }
+
+    /** The player's car is under the sea's surface, deep enough to watch from beneath it. */
+    get underwater() {
+        return underwater(this.body, this.ground.waterLevel);
     }
 
     /** The player's car-space origin and turn: the cabin and the camera ride on it. */
@@ -112,6 +121,7 @@ function bounce(body, track, vehicle) {
 function rockFaceRamp(track, landscape) {
     const ground = {
         hint: 0,
+        waterLevel: landscape.waterLevel,
         heightAt(x, z) {
             const p = track.project(x, z, ground.hint);
             ground.hint = p.i;

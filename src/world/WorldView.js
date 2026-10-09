@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { CHASE, CRASH, LIGHTING, VIEW } from '../config.js';
+import { CHASE, CRASH, LIGHTING, VIEW, WATER } from '../config.js';
 import { DEG } from '../util/math.js';
 import { WorldMaterials } from './Materials.js';
 import { WorldBuilder } from './WorldBuilder.js';
@@ -16,7 +16,8 @@ import { CABIN } from './cabin/cabinLayout.js';
 import { CABIN_LAYER } from './cabin/cabinLayer.js';
 import { photographProfile } from './profilePhoto.js';
 import { photographStation } from './stationPhoto.js';
-import { chasePose, followYaw } from './chaseView.js';
+import { chasePose, diverPose, followYaw } from './chaseView.js';
+import { Underwater } from './Underwater.js';
 import { sunDirection } from './sunDirection.js';
 
 const FAR = 24000;
@@ -169,12 +170,14 @@ export class WorldView {
         scene.add(builder.build(track), terrain.mesh, terrain.ring, terrain.sea);
         scene.add(buildTrees([...builder.treePlacements(track), ...terrain.treePlacements()], materials));
         scene.fog = new THREE.FogExp2(stage.fog.color, stage.fog.density);
+        this.underwater = new Underwater(scene, landscape.waterLevel);
         this._installCabin(scene, stage, car, cabinAsset, track.bearing);
     }
 
     loadPreview(stage, car, cabinAsset) {
         this.dispose();
         this.track = null;
+        this.underwater = null;
         // No road here: the car faces north.
         this._installCabin(new THREE.Scene(), stage, car, cabinAsset, 0);
     }
@@ -275,6 +278,7 @@ export class WorldView {
         scene.add(this.sun, this.sun.target);
         this.skyLight = new THREE.HemisphereLight(stage.fog.color, stage.rockDark, LIGHTING.skyIntensity);
         scene.add(this.skyLight);
+        this.daylight = { sun: this.sun.intensity, sky: this.skyLight.intensity };
     }
 
     /** Capture the stage once: road and rock contrast belongs in reflections as well as the sky. */
@@ -321,6 +325,11 @@ export class WorldView {
         this.sun.target.position.set(focus.x, focus.y, focus.z);
         this.sun.position.copy(this.sun.target.position).addScaledVector(this.sunDirection, 450);
         const car = this.cabin.root.position;
+        const underwater = Boolean(view.underwater);
+        this.underwater?.update({ underwater, car, water: view.water, time: view.time });
+        const daylight = underwater ? WATER.light : 1;
+        this.sun.intensity = this.daylight.sun * daylight;
+        this.skyLight.intensity = this.daylight.sky * daylight;
         this.cabinSun.target.position.copy(car);
         this.cabinSun.position.copy(car).addScaledVector(this.sunDirection, 10);
         this.scene.updateMatrixWorld();
@@ -328,7 +337,7 @@ export class WorldView {
         const r = this.renderer;
         for (const light of this.cabinLights) light.visible = !outside;
         if (outside) {
-            if (view.spectator) this._placeSpectator(view.spectator);
+            if (view.spectator) this._placeSpectator(view.spectator, underwater);
             else this._placeChase(view.time);
             this.chaseCamera.getWorldPosition(this.sky.position);
             r.render(this.scene, this.chaseCamera);
@@ -354,13 +363,19 @@ export class WorldView {
     }
 
     /** Watching a crash from beside the road where it happened: behind the impact, out over the drop,
-     *  following the player's car wherever it is thrown. */
-    _placeSpectator({ s, u }) {
+     *  following the player's car wherever it is thrown; once it sinks, from under the water with it. */
+    _placeSpectator({ s, u }, underwater) {
         const c = CRASH.camera;
-        const at = this.track.toWorld(s - c.back, u - c.out);
         const car = this.cabin.root.position;
-        this.chaseCamera.position.set(at.x, at.y + c.up, at.z);
-        this.chaseCamera.lookAt(car.x, car.y + c.aimUp, car.z);
+        if (underwater) {
+            const { position, aim } = diverPose(car, this.track.toWorld(s, u), this.underwater.seaLevel);
+            this.chaseCamera.position.set(...position);
+            this.chaseCamera.lookAt(...aim);
+        } else {
+            const at = this.track.toWorld(s - c.back, u - c.out);
+            this.chaseCamera.position.set(at.x, at.y + c.up, at.z);
+            this.chaseCamera.lookAt(car.x, car.y + c.aimUp, car.z);
+        }
         this.chaseCamera.updateMatrixWorld();
         this.chaseYaw = null;
     }

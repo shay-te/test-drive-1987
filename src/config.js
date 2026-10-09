@@ -116,6 +116,49 @@ export const CRASH = Object.freeze({
     skipAfter: 1.5,
     /** Where the crash is watched from: behind the impact, out over the drop, above the road (m). */
     camera: { back: 16, out: 9, up: 4.5, aimUp: 0.6 },
+    /** Under water the camera follows the car down: this far beyond it, above it, below the surface. */
+    diver: { distance: 7, up: 1.2, belowSurface: 0.8 },
+});
+
+/** The sea a car goes into: how it floats, floods and sinks, and what the water does around it. */
+export const WATER = Object.freeze({
+    /** Sea water and steel (kg/m3). */
+    density: 1025,
+    steel: 7850,
+    /** Share of a car's bounding box that is air as it goes in, and how long it takes to fill (s). */
+    airShare: 0.4,
+    floodSeconds: 6,
+    /** The water's drag on the whole car (drag coefficient times area, m2); a hull point is fully
+     *  in once this deep (m). */
+    dragArea: 3,
+    surface: 0.25,
+    /** The car counts as under water once its centre is this deep (m). */
+    underwater: 1,
+    /** Splash: droplets per m/s the car goes in at, their upward and outward speeds (m/s) and size (m). */
+    splashPerSpeed: 6,
+    splashUp: [3, 9],
+    splashOut: [1, 5],
+    dropSize: [0.04, 0.12],
+    /** Bubbles released per m3 of air the car loses, from within this box around its centre (m), their
+     *  size at the depth they left (m), how fast they rise (m/s) and wobble (m, Hz). */
+    bubblesPerAir: 60,
+    bubbleSpread: [0.8, 0.5, 1.8],
+    bubbleSize: [0.03, 0.09],
+    rise: [0.6, 1.2],
+    wobble: { amount: 0.25, hz: [1.5, 3] },
+    /** Depth of sea water that presses as hard as the air above it (m). */
+    atmosphere: 10.3,
+    /** The water's look from inside: fog colour and density, and the daylight that gets down. */
+    fog: { color: '#1f5763', density: 0.06 },
+    light: 0.4,
+    /** Fish around a sunk car: how many, their circling radius (m), speed (m/s), depth band around
+     *  the car (m), size (m) and how fast their tails beat (Hz). */
+    fish: { count: 28, radius: [3, 9], speed: [0.6, 1.4], depth: [-1.5, 2.5], size: [0.25, 0.45], tailHz: 3 },
+    /** A fish's girth and depth as shares of its length, and how far its tail swings (rad). */
+    fishShape: { width: 0.16, height: 0.28, tailSwing: 0.6 },
+    colors: { fish: '#8e9d9b', bubble: '#d6eff3', drop: '#eef6f7' },
+    /** Most droplets or bubbles drawn at once. */
+    maxParticles: 800,
 });
 
 /** The outside camera (V): behind and above the car, its yaw easing after the car's. */

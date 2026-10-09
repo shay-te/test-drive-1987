@@ -56,6 +56,7 @@ export class Landscape {
         this.noise = new Noise(stage.seed + 17);
         this.reliefNoise = new Noise(stage.seed + 99);
         this.cell = CELL;
+        this.waterLevel = SEA_LEVEL;
         const b = track.bounds;
         this.x0 = b.minX - MARGIN;
         this.z0 = b.minZ - MARGIN;

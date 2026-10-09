@@ -15,6 +15,7 @@ import { CRASH_CAUSE } from '../../sim/Session.js';
 import { buildTrack } from '../../sim/TrackBuilder.js';
 import { LANE, ONCOMING, TrafficManager } from '../../sim/Traffic.js';
 import { VehicleDynamics } from '../../sim/VehicleDynamics.js';
+import { WaterParticles } from '../../sim/WaterParticles.js';
 import { approach } from '../../util/math.js';
 import {
     drawCrash,
@@ -99,6 +100,8 @@ export class DriveScreen {
         const { car, session } = this;
         this.track = buildTrack(session.stage);
         this.landscape = new Landscape(this.track, session.stage);
+        this.water = new WaterParticles(this.landscape.waterLevel, session.stage.seed);
+        this.sunk = false;
         this.world.load(this.track, session.stage, car, this.landscape, cabinAsset);
         this.vehicle = new VehicleDynamics(car);
         this.vehicle.reset(this.track.startS, LANE);
@@ -269,9 +272,25 @@ export class DriveScreen {
             this._crack(hits.player);
         }
         if (hits.other) this.audio.play('crash', { volume: Math.min(1, hits.other / LOUD_HIT) / 2 });
+        this._sea(hits, dt);
         if (this.wrecked) this.wrecked.pose = this.wreck.otherPose;
         const skip = this.wreck.time > CRASH.skipAfter && this.input.pressed('confirm');
         if (this.wreck.done || skip) this.state = 'crashed';
+    }
+
+    /** Into the sea: a splash where the car went in, the air bubbling out of it, a glug as it goes under. */
+    _sea(hits, dt) {
+        const at = this.wreck.body.position;
+        if (hits.splash) {
+            this.audio.play('splash', { volume: Math.min(1, hits.splash / LOUD_HIT) });
+            this.water.splash(at, hits.splash);
+        }
+        if (hits.air) this.water.bubble(at, hits.air);
+        if (this.wreck.underwater && !this.sunk) {
+            this.sunk = true;
+            this.audio.play('bubbles');
+        }
+        this.water.update(dt);
     }
 
     _afterCrash() {
@@ -287,6 +306,8 @@ export class DriveScreen {
         this.police.release();
         this.cracks = [];
         this.wreck = null;
+        this.water.clear();
+        this.sunk = false;
         this.state = 'driving';
     }
 
@@ -376,6 +397,8 @@ export class DriveScreen {
             pose: this.wreck?.pose ?? null,
             // A crash is watched from beside it, whichever view was chosen.
             spectator: this.wreck ? this.impactAt : null,
+            underwater: Boolean(this.wreck?.underwater),
+            water: this.water,
             head,
             cockpit: {
                 state: this.cockpit,
@@ -432,10 +455,16 @@ export class DriveScreen {
         if (this.paused) drawPaused(ctx);
     }
 
-    /** The numbers of a fall over the edge for the crash notice, or null. */
+    /** The numbers of a fall over the edge (and into the sea) for the crash notice, or null. */
     _fallStats() {
         const w = this.wreck;
         if (this.cause !== CRASH_CAUSE.edge || !w) return null;
+        if (w.sank > 0) {
+            return t('crash.intoTheSea', {
+                ft: Math.round((w.startHeight - this.landscape.waterLevel) / PHYS.foot),
+                depth: Math.round(w.sank / PHYS.foot),
+            });
+        }
         return t('crash.fallStats', {
             ft: Math.round(w.drop / PHYS.foot),
             s: w.time.toFixed(1),

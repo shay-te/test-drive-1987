@@ -1,4 +1,4 @@
-import { FALL } from '../config.js';
+import { FALL, WATER } from '../config.js';
 import { fromEulerYXZ, rotate } from '../util/quaternion.js';
 import { add, scale, vec } from '../util/vector.js';
 import { RigidBody } from './RigidBody.js';
@@ -19,8 +19,10 @@ export function playerBody(vehicle, track) {
             mass: c.massKg,
             inertia: boxInertia(c.massKg, b.width, b.height, b.length),
             points: hull(b.width, b.height, -b.eye, b.length - b.eye, b.wheels.map((w) => { return w.x - b.eye; }), centre),
+            volume: b.width * b.height * b.length,
             dragArea: FALL.dragArea,
             contact: FALL,
+            water: WATER,
         },
         {
             position: add(vec(ground.x, ground.y, ground.z), rotate(orientation, centre)),
@@ -46,8 +48,10 @@ export function trafficBody(vehicle, track, spec) {
             mass: spec.massKg,
             inertia: boxInertia(spec.massKg, vehicle.width, vehicle.height, vehicle.length),
             points: hull(vehicle.width, vehicle.height, -half, half, [-axle, axle], centre),
+            volume: vehicle.width * vehicle.height * vehicle.length,
             dragArea: FALL.dragArea,
             contact: FALL,
+            water: WATER,
         },
         {
             position: add(vec(ground.x, ground.y, ground.z), rotate(orientation, centre)),
@@ -57,6 +61,16 @@ export function trafficBody(vehicle, track, spec) {
         },
     );
     return { body, centre };
+}
+
+/** The air (m3) `body` has let out since it was `flooded` this full. */
+export function airLost(body, flooded) {
+    return (body.flooded - flooded) * body.volume * WATER.airShare;
+}
+
+/** `body` is under the surface at `sea`, deep enough to watch from beneath it. */
+export function underwater(body, sea) {
+    return body.position.y < sea - WATER.underwater;
 }
 
 /** Principal moments of a solid box (body frame: x across, y up, z along). */

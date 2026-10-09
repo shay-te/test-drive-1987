@@ -1,10 +1,10 @@
 import { FALL } from '../config.js';
 import { rotate } from '../util/quaternion.js';
 import { sub } from '../util/vector.js';
-import { playerBody } from './wreckBodies.js';
+import { airLost, playerBody, underwater } from './wreckBodies.js';
 
 /** A car gone over the edge: a rigid body launched with the car's last motion, tumbling down the drop
- *  and the valley side until it stops, keeping the numbers of the fall. */
+ *  until it stops, or into the sea, where it floats, fills and sinks; keeps the numbers of the fall. */
 export class OverTheEdge {
     constructor(vehicle, track, landscape) {
         this.landscape = landscape;
@@ -17,14 +17,19 @@ export class OverTheEdge {
         this.topSpeed = this.body.speed;
         this.hardestHit = 0;
         this.deepestCrush = 0;
+        this.sank = 0;
         this.accumulator = 0;
     }
 
     /** Runs the fall for `dt` seconds; returns the hardest hit (m/s) the car took in that time, 0 if
-     *  none, as { player } like a road crash's hits. */
+     *  none, as { player } like a road crash's hits, the speed it hit the water at (`splash`) and the
+     *  air that escaped from it (`air`, m3). */
     update(dt) {
         const body = this.body;
+        const sea = this.landscape.waterLevel;
+        const flooded = body.flooded;
         let hit = 0;
+        let splash = 0;
         this.accumulator += dt;
         while (this.accumulator >= FALL.substep && !this.done) {
             this.accumulator -= FALL.substep;
@@ -33,12 +38,21 @@ export class OverTheEdge {
             this.topSpeed = Math.max(this.topSpeed, body.speed);
             this.deepestCrush = Math.max(this.deepestCrush, body.penetration);
             if (body.impact > FALL.hitSpeed) hit = Math.max(hit, body.impact);
-            const resting = body.speed < FALL.restSpeed && body.spin < FALL.restSpin;
+            splash = Math.max(splash, body.splash);
+            this.sank = Math.max(this.sank, sea - body.position.y);
+            // A car still filling with water is not done: it is afloat, or still letting its air out.
+            const filling = body.wet > 0 && body.flooded < 1;
+            const resting = body.speed < FALL.restSpeed && body.spin < FALL.restSpin && !filling;
             this.still = resting ? this.still + FALL.substep : 0;
         }
         this.hardestHit = Math.max(this.hardestHit, hit);
         if (this.hardestHit > FALL.wreckSpeed) body.rollingShare = 1;
-        return { player: hit, other: 0 };
+        return { player: hit, other: 0, splash, air: airLost(body, flooded) };
+    }
+
+    /** The car is under the sea's surface, deep enough to watch from beneath it. */
+    get underwater() {
+        return underwater(this.body, this.landscape.waterLevel);
     }
 
     get done() {
