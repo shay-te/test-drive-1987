@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import { CockpitState } from '../src/cockpit/CockpitState.js';
 import { DriverMotion } from '../src/cockpit/DriverMotion.js';
 import { driverPose, twoBone } from '../src/cockpit/driverPose.js';
-import { knobBar, rimBar } from '../src/cockpit/handPose.js';
+import { blendHands, handJoints, knobBar, rimBar, wrapHand } from '../src/cockpit/handPose.js';
 import { gatePosition } from '../src/cockpit/shiftGate.js';
 import { CARS } from '../src/data/cars.js';
 import { DRIVER } from '../src/data/driver.js';
-import { cross, length, normalize, sub, vec } from '../src/util/vector.js';
+import { cross, dot, length, normalize, sub, vec } from '../src/util/vector.js';
 
 const near = (a, b, tolerance = 1e-6) => { return length(sub(a, b)) < tolerance; };
 /** How far `p` is from the axis of `bar` (a rimBar or knobBar). */
@@ -118,3 +118,37 @@ test('the gear knob moves only once the hand has reached it, and the pedals foll
     assert.ok(cockpit.driver.reach < 0.05 && cockpit.driver.clutch < 0.05, 'hand back on the wheel, clutch up');
     assert.ok(cockpit.driver.throttle > 0.99, 'right foot down on the throttle');
 });
+
+test('the hand rig gets all 25 WebXR joints, each bone pointing at the next and its back away from the bar', () => {
+    const bar = rimBar(vec(-0.55, 0.85, -0.4), wheel);
+    const onRim = wrapHand(bar);
+    const onKnob = wrapHand(knobBar(vec(0.05, 0.6, -0.35), 1));
+    for (const hand of [onRim, blendHands(onRim, onKnob, 0.5), onKnob]) {
+        const joints = handJoints(hand);
+        const byName = Object.fromEntries(joints.map((joint) => { return [joint.name, joint]; }));
+        assert.equal(joints.length, 25);
+        for (const prefix of ['index-finger', 'middle-finger', 'ring-finger', 'pinky-finger']) {
+            for (const name of ['metacarpal', 'phalanx-proximal', 'phalanx-intermediate', 'phalanx-distal', 'tip']) assert.ok(byName[`${prefix}-${name}`], `${prefix}-${name}`);
+        }
+        for (const { name, x, y, z } of joints) {
+            for (const [a, b] of [[x, y], [y, z], [z, x]]) assert.ok(Math.abs(dot(a, b)) < 1e-9, `${name}: square axes`);
+            assert.ok(Math.abs(length(x) - 1) < 1e-9 && Math.abs(length(y) - 1) < 1e-9 && Math.abs(length(z) - 1) < 1e-9, `${name}: unit axes`);
+            assert.ok(dot(cross(x, y), z) > 0.999, `${name}: right-handed`);
+        }
+        const along = (from, to) => {
+            const bone = normalize(sub(byName[to].position, byName[from].position));
+            assert.ok(dot(scaleBack(byName[from].z), bone) > 0.999, `${from}: -z points at ${to}`);
+        };
+        along('wrist', 'middle-finger-phalanx-proximal');
+        along('index-finger-phalanx-proximal', 'index-finger-phalanx-intermediate');
+        along('pinky-finger-phalanx-distal', 'pinky-finger-tip');
+        along('thumb-phalanx-proximal', 'thumb-phalanx-distal');
+        const middle = byName['middle-finger-phalanx-intermediate'];
+        assert.ok(dot(middle.y, normalize(sub(middle.position, hand.bar))) > 0.5, 'the back of the finger faces away from the bar');
+        assert.ok(dot(byName.wrist.y, hand.palm.out) > 0.95, 'the back of the hand faces out');
+    }
+});
+
+function scaleBack(v) {
+    return vec(-v.x, -v.y, -v.z);
+}

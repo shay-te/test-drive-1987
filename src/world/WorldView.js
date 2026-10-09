@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { CHASE, CRASH, LIGHTING, VIEW, WATER } from '../config.js';
+import { DRIVER } from '../data/driver.js';
 import { DEG } from '../util/math.js';
 import { WorldMaterials } from './Materials.js';
 import { WorldBuilder } from './WorldBuilder.js';
@@ -141,10 +142,14 @@ export class WorldView {
         return Promise.all([this.authored.prepare(), ...photos, ...land]);
     }
 
-    /** Loads and validates the car's cached cabin asset (null for a car without one). */
+    /** Loads and validates the car's cached cabin asset (null for a car without one), and the driver's
+     *  rigged hands that go in it. */
     prepareCabin(car) {
         if (!car.cockpit.model) return null;
-        return this.resources.model(car.cockpit.model, async (url) => {
+        const hands = Object.values(DRIVER.handModels).map((path) => {
+            return this.resources.model(path, async (url) => { return (await new GLTFLoader().loadAsync(url)).scene; });
+        });
+        const cabin = this.resources.model(car.cockpit.model, async (url) => {
             const asset = await new GLTFLoader().loadAsync(url);
             const nodes = [];
             asset.scene.traverse((node) => { nodes.push(node); });
@@ -154,6 +159,7 @@ export class WorldView {
             }
             return asset.scene;
         });
+        return Promise.all([cabin, ...hands]).then(([scene]) => { return scene; });
     }
 
     /** A side-on photo of the car's authored model (null without one), taken once per session. */
@@ -212,6 +218,7 @@ export class WorldView {
             this.mirrorTarget.texture,
             cabinAsset,
             Object.fromEntries(Object.entries(this.doorMirrors).map(([side, mirror]) => { return [side, mirror.target.texture]; })),
+            Object.fromEntries(Object.entries(DRIVER.handModels).map(([side, path]) => { return [side, this.resources.get(`model:${path}`)]; })),
         );
         this.cabin.root.rotation.order = 'YXZ';
         this.cabin.eye.add(this.camera);

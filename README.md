@@ -12,7 +12,8 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
 
 ### Done
 
-- `src/sim/`: drivetrain (calibrated to each car's 0-60 and top speed), tyre/vehicle dynamics,
+- `src/sim/`: drivetrain (fitted to each car's road test: 0-60, 0-100, quarter mile and top
+  speed), tyre/vehicle dynamics,
   stages laid on the real road (rock face right, drop left), traffic, radar traps and pursuit,
   scoring. Tested.
 - The Sea-to-Sky Highway (BC 99): the five stages are consecutive 8.6 km legs of the real road
@@ -25,13 +26,19 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   bank where the side is flat) with the real mountainside above it, and the drop is the real slope
   down to the shore. Today's highway is a divided four-lane road; the game keeps the old two-lane
   road and hangs the real slopes off its edges. The sea floor shelves away from the shore. The
-  rock is photographed (Poly Haven, CC0): cracked rock greyed to granite for the cuts, lichen-grown
-  rock for the drop (`scripts/import-texture.mjs`).
+  rock is photographed (Poly Haven, CC0; `scripts/import-texture.mjs`): cracked rock greyed to
+  granite for the cuts and the boulders fallen from them, lichen-grown rock wherever a natural slope
+  is too steep to hold soil. Rock is laid along the world's axes (biplanar mapping), so it never
+  stretches up a cliff, and no photograph shows a repeating tile.
 - All the land around, as it was in 1987: the real terrain out to about 35 km (Howe Sound's
   islands, the ranges either side, the peaks and glaciers to the north) in the colours the Landsat 5
   satellite saw on 5 September 1987 (`scripts/import-landsat.mjs`), with the same picture on the
-  ground beside the road, sharpened close up by a real aerial photograph of mossy, rocky ground
-  (Poly Haven, CC0). The view reaches 45 km through a thin coastal haze.
+  ground beside the road and down the drop, sharpened close up by a real aerial photograph of
+  mossy, rocky ground (Poly Haven, CC0). The view reaches 45 km through a thin coastal haze.
+- The real buildings: every one OpenStreetMap has within 400 m of the highway (Horseshoe Bay,
+  Lions Bay, Britannia Beach with its stepped mill, Squamish) stands on its footprint, with walls
+  from its storeys, a gable or pyramid roof on houses and flat roofs stepping up the hillside on
+  the rest (`scripts/import-buildings.mjs`).
 - The cut is blasted granite: blocks a couple of metres across, each set back by its own amount,
   dark joints between them, at about a metre's detail.
 - Stages load in the background: from the moment the title screen shows, a worker lays out the
@@ -67,10 +74,13 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   drop takes it; every hard hit cracks the windshield again, up to shattered. ENTER skips ahead.
 - Working door mirrors on every car (the Porsche has the driver's only, as the model does): each
   shows the lane behind, just past the car's flank.
-- A visible driver, as in Wing Commander (1990): gloved hands on the wheel at quarter to three, every
-  finger and the thumb closed round the rim (and round the gear knob through a shift), turning with it; on every shift the gear-side hand goes to the knob (the left one in the
-  right-hand-drive Lotus), the lever moves only once it is there, and the left foot works the
-  clutch; the right foot moves between throttle and brake. From outside the whole driver shows.
+- A visible driver, as in Wing Commander (1990): rigged gloved hands (a skinned hand model posed
+  joint by joint) on the wheel at quarter to three, every finger and the thumb closed round the rim
+  (and round the gear knob through a shift), turning with it; on every shift the gear-side hand
+  goes to the knob, to where the real car keeps that gear (the 930's four-speed H, the dog-leg
+  first of the Testarossa, Countach and Esprit, the Corvette's 4+3), the lever moves only once it
+  is there, and the left foot works the clutch; the right foot moves between throttle and brake.
+  From outside the whole driver shows.
 
 ### Next (queued, in order)
 
@@ -79,10 +89,10 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
    five exact cars exist (only stand-ins: a 911 of unknown year, a Murcielago V12, a Saab turbo
    four, a Corvette of unknown generation), so the engines stay synthesised until recordings
    with usable rights are found. Drop them in `assets/audio/engines/` (see its README).
-2. **Sea-to-Sky detail:** concrete barriers where the real road has them, the railway between
-   road and shore, Lions Bay's houses, the islands across the sound. (The provincial road atlas and orthophotos are "access only", so they are not used.)
-3. **No repeating tiles anywhere:** the rock, cliff and ground photographs sampled without visible
-   repetition, every stage inspected section by section.
+2. **Sea-to-Sky detail:** a denser, real-looking coastal forest near the road, concrete barriers
+   where the real road has them, the railway between road and shore. (The provincial road atlas
+   and orthophotos are "access only", so they are not used.)
+3. **Every stage inspected section by section** for anything that does not look real.
 4. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
@@ -123,7 +133,10 @@ Every car, the traffic, the patrol car and the gas station are Sketchfab models 
 
 Porsche 911 Turbo, Ferrari Testarossa, Lamborghini Countach 5000 QV, Lotus Esprit Turbo and
 Chevrolet Corvette. Each uses its real gear ratios, final drive, tyre size, weight and torque
-curve; the simulation self-calibrates to the published 0-60 mph time and top speed.
+curve; the simulation fits itself to the brochure's road test as US magazines ran it (clock
+started after a one-foot rollout, the tester's quickest launch revs, shifts at the redline): 0-60,
+0-100, the quarter mile and its trap speed, and the top speed. The acceleration graph in the
+brochure is that simulated run.
 Choose with ◀ ▶ on the title screen or in the brochure. The title shows a car with an authored
 model as a side-on photo of that model; cars without one are marked LOCKED and cannot be driven yet.
 
@@ -154,4 +167,7 @@ Elevation Model, Natural Resources Canada (Open Government Licence – Canada), 
 Terrain Tiles. The land's colour: Landsat 5 imagery of 5 September and 10 July 1987, courtesy of
 the U.S. Geological Survey / NASA (public domain), read from Microsoft's Planetary Computer.
 Rock and ground textures: Poly Haven (CC0) — Rock Face 03 by Dario Barresi and Rico Cilliers,
-Lichen Rock and Aerial Rocks 04 by Rico Cilliers.
+Lichen Rock and Aerial Rocks 04 by Rico Cilliers. The buildings: © OpenStreetMap contributors;
+`assets/terrain/sea-to-sky/buildings.json` is derived from OpenStreetMap and available under the
+ODbL. The driver's hands: the generic hand of the W3C Immersive Web WebXR Input Profiles
+(`@webxr-input-profiles/assets`, MIT licence).
