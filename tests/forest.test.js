@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PHYS, ROAD } from '../src/config.js';
-import { FOREST, HIGHLAND, SPECIES, STANDS } from '../src/data/forest.js';
+import { FOREST, HIGHLAND, SPECIES, STANDS, UNDERGROWTH } from '../src/data/forest.js';
 import { LAND_DETAIL } from '../src/data/scenery.js';
 import { STAGES } from '../src/data/stages.js';
 import { MOUNTAIN_NEAR, VALLEY_NEAR } from '../src/sim/Landscape.js';
 import { layOutStage, restoreStage } from '../src/sim/stageData.js';
-import { TREE_LINE_LOW, landTrees, roadsideTrees } from '../src/world/forestLayout.js';
+import { TREE_LINE_LOW, landTrees, roadsideTrees, roadsideUndergrowth } from '../src/world/forestLayout.js';
 
 const { track, landscape } = restoreStage(layOutStage(1));
 const land = landTrees(landscape, 71);
@@ -84,5 +84,26 @@ test('the forest is the surveyed one: over 80% conifer, alder in its stands and 
     assert.ok(share(land, conifer) > 0.75, `${(share(land, conifer) * 100).toFixed(0)}% conifer`);
     assert.ok(share(land, alder) > 0.08 && share(land, alder) < 0.25, 'alder stands');
     assert.ok(share(roadside, alder) > share(land, alder), 'alder likes the road\'s disturbed edge');
-    for (const name of Object.keys(SPECIES)) assert.ok(land.some((tree) => { return tree.species === name; }), `some ${name}`);
+    const trees = Object.keys(SPECIES).filter((name) => { return ['conifer', 'broadleaf'].includes(SPECIES[name].kind); });
+    for (const name of trees) assert.ok(land.some((tree) => { return tree.species === name; }), `some ${name}`);
+});
+
+test('the forest floor by the road: sword fern and salal as thick as configured, standing on the ground, never on the road', () => {
+    const plants = roadsideUndergrowth(track, (i) => { return [[drops[i], 0, drops[i].length - 5]]; }, 5);
+    // A drop's section runs from far down it (rising u) up to the edge; the plants keep to the reach.
+    const area = drops.reduce((sum, section) => { return sum + Math.max(0, section.at(-5).u - Math.max(section[0].u, -UNDERGROWTH.reach)) * track.segment; }, 0);
+    const perHectare = plants.length / (area / PHYS.hectare);
+    // Bare rock and the shore keep some ground bare.
+    assert.ok(perHectare > UNDERGROWTH.perHectare * 0.4 && perHectare <= UNDERGROWTH.perHectare * 1.05, `${perHectare.toFixed(0)} plants a hectare`);
+    const ferns = plants.filter((p) => { return p.species === 'swordFern'; }).length / plants.length;
+    assert.ok(Math.abs(ferns - UNDERGROWTH.species.swordFern) < 0.05, `${(ferns * 100).toFixed(0)}% sword fern`);
+    const sample = plants.filter((_, k) => { return k % 25 === 0; });
+    let floating = 0;
+    for (const plant of sample) {
+        assert.ok(offsetOf(plant).u < ROAD.edgeOffset, 'off the road');
+        assert.ok(plant.height >= SPECIES[plant.species].heights[0] && plant.height <= SPECIES[plant.species].heights[1]);
+        if (landscape.heightAt(plant.x, plant.z) - plant.y < -0.5) floating++;
+    }
+    // As for the trees, a section fanned past its neighbour on a tight bend is the ground drawn there.
+    assert.ok(floating / sample.length < 0.01, `${floating} of ${sample.length} floating`);
 });

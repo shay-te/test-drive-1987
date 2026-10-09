@@ -132,11 +132,11 @@ export const GAME = Object.freeze({
 
 /** How much of the world is drawn: all of it on a graphics card, less on a software renderer that
  *  draws on the CPU (a browser without a graphics driver, such as the CI's headless ones). `forest`
- *  is the share of the trees kept, `far` how far (m) the world is drawn: a CPU spends its time on
- *  every triangle in view. */
+ *  is the share of the trees kept (`undergrowth` of the ferns and shrubs), `far` how far (m) the
+ *  world is drawn: a CPU spends its time on every triangle in view. */
 export const GRAPHICS = Object.freeze({
-    full: { forest: 1, shadows: true, doorMirrors: true, far: 45000 },
-    software: { forest: 0.15, shadows: false, doorMirrors: false, far: 2000 },
+    full: { forest: 1, undergrowth: 1, shadows: true, doorMirrors: true, far: 45000 },
+    software: { forest: 0.15, undergrowth: 0, shadows: false, doorMirrors: false, far: 2000 },
 });
 
 /** A pursuit as the B.C. Police Commission's 1982 guidelines had it (in force through 1989; reproduced in

@@ -212,7 +212,8 @@ export class WorldView {
         const buildings = layOutBuildings(this.resources.get(`json:${ROUTE_BUILDINGS}`), track, landscape);
         scene.add(builder.build(track), terrain.mesh, surroundings.mesh, terrain.sea, buildBuildings(buildings, materials.building));
         const trees = thinned(clearOfBuildings([...builder.treePlacements(track), ...landTrees(landscape, stage.seed + 71)], buildings), this.graphics.forest);
-        this.forest = new Forest(trees, materials, stage.seed);
+        const plants = this.graphics.undergrowth ? thinned(clearOfBuildings(builder.undergrowthPlacements(track), buildings), this.graphics.undergrowth) : [];
+        this.forest = new Forest([...trees, ...plants], materials, stage.seed);
         scene.add(this.forest.group);
         scene.fog = new THREE.FogExp2(stage.fog.color, stage.fog.density);
         this.underwater = new Underwater(scene, landscape.waterLevel);

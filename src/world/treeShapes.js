@@ -36,9 +36,11 @@ export function treeGeometry(species, seed) {
     const parts = { positions: [], normals: [], uvs: [] };
     const rng = createRng(seed);
     const lean = (up) => { return species.leader ? species.leader * smoothstep(LEADER_FROM, 1, up) ** 2 * (1 - LEADER_FROM) : 0; };
-    addTrunk(parts, species, lean);
+    if (species.kind === 'conifer' || species.kind === 'broadleaf') addTrunk(parts, species, lean);
     const bark = parts.positions.length / 3;
     if (species.kind === 'conifer') addSprays(parts, species, rng, lean);
+    else if (species.kind === 'fern') patch(species, rng, (at, size) => { addFronds(parts, species, rng, at, size); });
+    else if (species.kind === 'shrub') patch(species, rng, (at, size) => { addLeaves(parts, species, rng, at, size); });
     else addLeaves(parts, species, rng);
     const geometry = cardGeometry(parts);
     geometry.addGroup(0, bark, 0);
@@ -105,13 +107,41 @@ function addSprays(parts, species, rng, lean) {
     }
 }
 
-/** A broadleaf crown: main limbs forking up and out from the trunk, branches from them out to an
- *  uneven shell, and leafy sprays along each branch's outer part, reaching out of the crown and
- *  drooping at the tips, rolled every way so the crown shows leaves from every side. */
-function addLeaves(parts, species, rng) {
-    const [width, height] = species.crown;
-    const fork = new THREE.Vector3(0, species.crownBase, 0);
-    const centre = new THREE.Vector3(0, species.crownBase + height / 2, 0);
+/** A patch of the forest floor: `species.clumps` plants of it within `species.patch` (share of its
+ *  height) of the patch's centre, each grown by `grow(at, size)` at its own size. */
+function patch(species, rng, grow) {
+    for (let c = 0; c < species.clumps; c++) {
+        const [angle, out] = [rng() * TAU, c === 0 ? 0 : species.patch * Math.sqrt(rng())];
+        grow(new THREE.Vector3(Math.cos(angle) * out, 0, Math.sin(angle) * out), rng.range(0.65, 1.1));
+    }
+}
+
+/** A fern clump at `at`, `size` times the unit plant: its fronds rising from the crown at the ground
+ *  in a ring, each arching over and drooping to its tip. */
+function addFronds(parts, species, rng, at, size) {
+    const base = at.clone();
+    const centre = at.clone().setY(0.4 * size);
+    for (let f = 0; f < species.fronds; f++) {
+        const azimuth = ((f + rng.range(-0.3, 0.3)) / species.fronds) * TAU;
+        const rise = rng.range(...species.rise);
+        const out = new THREE.Vector3(Math.cos(azimuth), 0, Math.sin(azimuth));
+        const along = (angle) => { return out.clone().multiplyScalar(Math.cos(angle)).setY(Math.sin(angle)); };
+        const length = rng.range(0.8, 1.2) * size;
+        const path = [base, base.clone().addScaledVector(along(rise), length * BEND_AT)];
+        path.push(path[1].clone().addScaledVector(along(rise - species.droop), length * (1 - BEND_AT)));
+        const flat = new THREE.Vector3(-Math.sin(azimuth), 0, Math.cos(azimuth));
+        bentCard(parts, path, flat.applyAxisAngle(along(rise), rng.range(-0.4, 0.4)).multiplyScalar(length * species.spray), centre);
+    }
+}
+
+/** A broadleaf crown (or a shrub at `at`, `size` times the unit plant): main limbs forking up and out
+ *  from the trunk, branches from them out to an uneven shell, and leafy sprays along each branch's
+ *  outer part, reaching out of the crown and drooping at the tips, rolled every way so the crown shows
+ *  leaves from every side. */
+function addLeaves(parts, species, rng, at = new THREE.Vector3(), size = 1) {
+    const [width, height] = species.crown.map((d) => { return d * size; });
+    const fork = at.clone().setY(species.crownBase * size);
+    const centre = at.clone().setY((species.crownBase + species.crown[1] / 2) * size);
     const shell = (direction, reach) => {
         return centre.clone().add(new THREE.Vector3(direction.x * width, (direction.y * height) / 2, direction.z * width).multiplyScalar(reach));
     };
@@ -122,12 +152,12 @@ function addLeaves(parts, species, rng) {
         const azimuth = ((l + rng.range(-0.3, 0.3)) / species.limbs) * TAU;
         const up = rng.range(0.1, 0.6);
         const tip = shell(new THREE.Vector3(Math.cos(azimuth), up, Math.sin(azimuth)).normalize(), rng.range(0.55, 0.75));
-        limb(parts, fork, tip, LIMB_RADIUS);
+        limb(parts, fork, tip, LIMB_RADIUS * size);
         for (let b = 0; b < species.branches; b++) {
             const from = fork.clone().lerp(tip, rng.range(0.3, 1));
             const out = scatter(from.clone().sub(centre).add(new THREE.Vector3(Math.cos(azimuth), 0, Math.sin(azimuth))), 1.2);
             const to = shell(out, rng.range(...SHELL));
-            limb(parts, from, to, LIMB_RADIUS * BRANCH_RADIUS);
+            limb(parts, from, to, LIMB_RADIUS * BRANCH_RADIUS * size);
             for (let k = 0; k < species.sprays; k++) {
                 const at = from.clone().lerp(to, rng.range(...SPRAYS_ALONG));
                 const reach = width * species.reach * rng.range(0.75, 1.25);

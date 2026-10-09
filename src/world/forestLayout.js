@@ -1,13 +1,15 @@
 import { PHYS } from '../config.js';
-import { FOREST, HIGHLAND, STANDS } from '../data/forest.js';
+import { FOREST, HIGHLAND, SPECIES, STANDS, UNDERGROWTH } from '../data/forest.js';
 import { LAND_DETAIL } from '../data/scenery.js';
 import { MOUNTAIN_NEAR, SEA_LEVEL, VALLEY_NEAR } from '../sim/Landscape.js';
 import { Noise, createRng, lerp } from '../util/math.js';
 
 /** Trees grow from this height above the sea. */
 export const TREE_LINE_LOW = 3;
-/** A trunk starts this far into the ground, so it never stands on air over a slope. */
+/** A trunk starts this far into the ground, so it never stands on air over a slope; a fern or a shrub
+ *  this far, its base in the litter. */
 const TREE_SINK = 0.5;
+const PLANT_SINK = 0.1;
 /** Beyond the ribbons the grid only carries the real ground this much further out (m). */
 const GRID_CLEAR = { valley: 15, mountain: 10 };
 /** Natural clearings: where the landscape's noise at this scale falls below CLEARING. */
@@ -66,19 +68,45 @@ function holdsSoil(run, rise) {
 export function roadsideTrees(track, sections, seed) {
     const rng = createRng(seed);
     const grow = forester(track.stage, rng);
+    return roadsidePlants(track, sections, rng, {
+        perHectare: FOREST.density.roadside,
+        // Sampled at the roadside density, kept at the density for its distance from the road.
+        keep: (u) => { return rng() * FOREST.density.roadside <= density(Math.abs(u)); },
+        sink: TREE_SINK,
+        grow: (x, y, z) => { return grow(x, y, z, true); },
+    });
+}
+
+/** The ferns and shrubs of the forest floor on the road-side ribbons (UNDERGROWTH), `sections` as for
+ *  the trees. [{ x, y, z, species, height }] */
+export function roadsideUndergrowth(track, sections, seed) {
+    const rng = createRng(seed);
+    return roadsidePlants(track, sections, rng, {
+        perHectare: UNDERGROWTH.perHectare,
+        keep: (u) => { return Math.abs(u) < UNDERGROWTH.reach; },
+        sink: PLANT_SINK,
+        grow: () => {
+            const species = weighted(UNDERGROWTH.species, rng());
+            return { species, height: rng.range(...SPECIES[species].heights) };
+        },
+    });
+}
+
+/** Plants on the road-side ribbons, sampled `plan.perHectare` a hectare where `plan.keep(u)` lets them,
+ *  on ground that holds soil above the shore, `plan.sink` m into it, of what `plan.grow(x, y, z)` says. */
+function roadsidePlants(track, sections, rng, plan) {
     const placements = [];
-    const perSquareMetre = FOREST.density.roadside / PHYS.hectare;
+    const perSquareMetre = plan.perHectare / PHYS.hectare;
     const place = (i, section, from, to) => {
         const u = lerp(section[from].u, section[to].u, rng());
-        // Sampled at the roadside density, kept at the density for its distance from the road.
-        if (rng() * FOREST.density.roadside > density(Math.abs(u))) return;
+        if (!plan.keep(u)) return;
         let k = from;
         while (k < to - 1 && section[k + 1].u < u) k++;
         const [a, b] = [section[k], section[k + 1]];
         if (!holdsSoil(b.u - a.u, b.h - a.h)) return;
         const h = lerp(a.h, b.h, (u - a.u) / (b.u - a.u));
-        const p = track.nodeWorld(i, u, h - TREE_SINK, {});
-        if (p.y > SEA_LEVEL + TREE_LINE_LOW) placements.push({ x: p.x, y: p.y, z: p.z, ...grow(p.x, p.y, p.z, true) });
+        const p = track.nodeWorld(i, u, h - plan.sink, {});
+        if (p.y > SEA_LEVEL + TREE_LINE_LOW) placements.push({ x: p.x, y: p.y, z: p.z, ...plan.grow(p.x, p.y, p.z) });
     };
     for (let i = 0; i < track.count; i++) {
         for (const [section, from, to] of sections(i)) {

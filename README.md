@@ -129,14 +129,19 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   Corvette's bonnet, behind the seats of the mid-engined cars), rising, drifting with the wind,
   swelling and thinning out, until the car is sent back on the road.
 
+- The forest floor by the road: patches of sword fern (fronds arching from the crown) and salal
+  (low leafy shrubs) on the ground beside the road, as the Lions Bay plan describes the understory,
+  drawn within 120 m of the car; foliage keeps its cover at a distance (alpha raised with the mip
+  level) instead of thinning to specks.
+
 ### Next (queued, in order)
 
-1. **A 1980s RCMP patrol car** in place of the 2001 Crown Victoria model.
-2. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, the railway on its bench
-   between road and shore. (The provincial road atlas and orthophotos are "access only", so they
-   are not used.)
-3. **Every stage inspected section by section** for anything that does not look real.
-4. Frame rates on real phones (the cabin pass, the mirrors, shadows).
+1. **"TEST DRIVE" on the player's licence plate.**
+2. **A 1980s RCMP patrol car** in place of the 2001 Crown Victoria model.
+3. **Sea-to-Sky detail:** the railway on its bench between road and shore. (The provincial road
+   atlas and orthophotos are "access only", so they are not used.)
+4. **Every stage inspected section by section** for anything that does not look real.
+5. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
 

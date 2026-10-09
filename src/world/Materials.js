@@ -28,6 +28,8 @@ const LEAVES_PER_SHOOT = [2, 4];
 /** A conifer silhouette's crown starts this share of the way down; a broadleaf one is so many blobs. */
 const SILHOUETTE_CROWN = 0.8;
 const SILHOUETTE_BLOBS = 160;
+/** Foliage alpha is raised this much per mip level, keeping thin leaves' cover at a distance. */
+const MIP_COVERAGE = 0.25;
 const GALVANISED_SIZE = 256;
 
 /** Road texture covers both lanes and one 12 m dash period of the centre line. */
@@ -81,13 +83,24 @@ export class WorldMaterials {
         // Each species' bark, and its foliage cut out of its picture (sprays of needles or clusters of
         // leaves), smoothed at the edges by the multisampling; far off, one silhouette per kind of tree.
         const foliage = (key, width, height, draw) => {
-            return new THREE.MeshStandardMaterial({
+            const material = new THREE.MeshStandardMaterial({
                 map: this._texture(key, width, height, draw, { repeat: false }),
                 alphaTest: 0.5,
                 alphaToCoverage: true,
                 side: THREE.DoubleSide,
                 roughness: 0.92,
             });
+            // Mipmaps average thin needles and leaflets into faint alpha that the cut-out drops: the
+            // alpha is raised with the mip level so foliage keeps its cover at a distance (B. Golus).
+            material.onBeforeCompile = (shader) => {
+                shader.fragmentShader = shader.fragmentShader.replace('#include <alphatest_fragment>', `
+                    vec2 texels = vMapUv * vec2(${width}.0, ${height}.0);
+                    float lod = max(0.0, 0.5 * log2(max(dot(dFdx(texels), dFdx(texels)), dot(dFdy(texels), dFdy(texels)))));
+                    diffuseColor.a *= 1.0 + lod * ${MIP_COVERAGE.toFixed(2)};
+                    #include <alphatest_fragment>`);
+            };
+            material.customProgramCacheKey = () => { return `foliage-${width}x${height}`; };
+            return material;
         };
         this.trees = Object.fromEntries(Object.entries(SPECIES).map(([name, species]) => {
             const conifer = species.kind === 'conifer';
@@ -95,6 +108,7 @@ export class WorldMaterials {
                 bark: new THREE.MeshStandardMaterial({ color: species.bark, roughness: 1 }),
                 foliage: foliage(`foliage:${name}`, SPRAY_SIZE[0], SPRAY_SIZE[1], (ctx, w, h) => {
                     if (conifer) drawSpray(ctx, w, h, species);
+                    else if (species.kind === 'fern') drawFrond(ctx, w, h, species);
                     else drawLeafSpray(ctx, w, h, species);
                 }),
             }];
@@ -345,6 +359,32 @@ function drawLeafSpray(ctx, w, h, species) {
     for (const leaf of leaves) {
         const shade = Math.min(colors.length - 2, Math.floor(leaf.out * (colors.length - 1) * rng.range(0.6, 1.3)));
         drawLeaf(ctx, leaf.x, leaf.y, leaf.angle, size * rng.range(0.75, 1.15), species.leaf > LOBED_LEAF, [colors[shade], colors[shade + 1]], colors[0]);
+    }
+}
+
+/** A fern frond seen from above, its stalk (left) to its tip (right): leaflets in pairs either side,
+ *  longest a third of the way out and shortening to the tip, each a narrow pointed blade angled
+ *  forward, glossy dark green paling to the fresh tip. */
+function drawFrond(ctx, w, h, species) {
+    const rng = createRng(NEEDLE_SEED + 4);
+    ctx.clearRect(0, 0, w, h);
+    const mid = h / 2;
+    const colors = species.foliage;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = colors[0];
+    ctx.lineWidth = Math.max(1.5, w * 0.008);
+    ctx.beginPath();
+    ctx.moveTo(0, mid);
+    ctx.lineTo(w * 0.98, mid);
+    ctx.stroke();
+    const step = species.leaf * w * 0.42;
+    for (let x = w * 0.12; x < w * 0.97; x += step * rng.range(0.9, 1.1)) {
+        const out = x / w;
+        const reach = (h / 2) * 0.95 * Math.sin(Math.PI * Math.min(1, 0.25 + out * 0.95)) ** 0.7;
+        const shade = Math.min(colors.length - 2, Math.floor(out * (colors.length - 1) * rng.range(0.8, 1.2)));
+        for (const side of [-1, 1]) {
+            drawLeaf(ctx, x, mid, side * rng.range(1.05, 1.3), reach * rng.range(0.85, 1), false, [colors[shade], colors[shade + 1]], colors[0]);
+        }
     }
 }
 
