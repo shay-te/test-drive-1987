@@ -1,5 +1,6 @@
 import { DRIVER } from '../data/driver.js';
 import { lerp } from '../util/math.js';
+import { blendHands, knobBar, rimBar, wrapHand } from './handPose.js';
 import { add, dot, length, normalize, scale, sub, vec } from '../util/vector.js';
 
 /** A two-bone limb (`a` then `b` long) from `root` reaching for `target`, its middle joint bending
@@ -14,11 +15,13 @@ export function twoBone(root, target, a, b, pole) {
     return { joint: add(add(root, scale(dir, along)), scale(bend, height)), end: add(root, scale(dir, dist)) };
 }
 
-/** The driver's limbs in car space. `rig` = { eye, grips: [left, right] (on the rim, turned with the
- *  wheel), knob }; `motion` is a DriverMotion. Pedals are clutch, brake, throttle from left to right in
- *  any car; the hand nearer the knob changes gear (the left one in a right-hand-drive car). */
+/** The driver's limbs in car space. `rig` = { eye, grips: [left, right] (on the rim's tube, turned with
+ *  the wheel), wheel: { hub, axis, up }, knob (its top) }; `motion` is a DriverMotion. Each hand closes
+ *  round the rim, the gear hand round the knob through a shift; the arms reach for the wrists. Pedals
+ *  are clutch, brake, throttle from left to right in any car; the hand nearer the knob changes gear
+ *  (the left one in a right-hand-drive car). */
 export function driverPose(rig, motion) {
-    const { eye, grips, knob } = rig;
+    const { eye, grips, knob, wheel } = rig;
     const at = (from, across, down, back) => {
         return vec(from.x + across, from.y - down, from.z + back);
     };
@@ -27,11 +30,12 @@ export function driverPose(rig, motion) {
     const p = DRIVER.pedals;
     const reachHand = knob.x > eye.x ? 1 : 0;
     const arms = [-1, 1].map((side, i) => {
-        const target = i === reachHand ? lerpVec(grips[i], knob, motion.reach) : grips[i];
-        const shoulder = leanTowards(at(eye, side * s.across, s.down, s.back), target);
+        const onRim = wrapHand(rimBar(grips[i], wheel));
+        const hand = i === reachHand && motion.reach > 0 ? blendHands(onRim, wrapHand(knobBar(knob, side)), motion.reach) : onRim;
+        const shoulder = leanTowards(at(eye, side * s.across, s.down, s.back), hand.wrist);
         const pole = vec(side * DRIVER.elbowPole[0], DRIVER.elbowPole[1], DRIVER.elbowPole[2]);
-        const { joint, end } = twoBone(shoulder, target, DRIVER.upperArm, DRIVER.forearm, pole);
-        return { shoulder, elbow: joint, hand: end };
+        const { joint, end } = twoBone(shoulder, hand.wrist, DRIVER.upperArm, DRIVER.forearm, pole);
+        return { shoulder, elbow: joint, wrist: end, hand };
     });
     const pedal = (across, pressed) => {
         return at(eye, across, p.down + pressed * p.travel * 0.3, -p.ahead - pressed * p.travel);

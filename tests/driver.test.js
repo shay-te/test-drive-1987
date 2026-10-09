@@ -3,12 +3,26 @@ import assert from 'node:assert/strict';
 import { CockpitState } from '../src/cockpit/CockpitState.js';
 import { DriverMotion } from '../src/cockpit/DriverMotion.js';
 import { driverPose, twoBone } from '../src/cockpit/driverPose.js';
+import { knobBar, rimBar } from '../src/cockpit/handPose.js';
 import { gatePosition } from '../src/cockpit/shiftGate.js';
 import { CARS } from '../src/data/cars.js';
 import { DRIVER } from '../src/data/driver.js';
-import { length, sub, vec } from '../src/util/vector.js';
+import { cross, length, normalize, sub, vec } from '../src/util/vector.js';
 
 const near = (a, b, tolerance = 1e-6) => { return length(sub(a, b)) < tolerance; };
+/** How far `p` is from the axis of `bar` (a rimBar or knobBar). */
+const fromAxis = (p, bar) => { return length(cross(sub(p, bar.centre), bar.along)); };
+
+/** Every joint of `hand` wraps `bar` at each digit's own radius, and every bone has its real length
+ *  (to within `tolerance` m: a hand still on its way is a hair off). */
+function holds(hand, bar, tolerance = 1e-9) {
+    const h = DRIVER.hand;
+    hand.fingers.forEach((joints, f) => {
+        for (const joint of joints) assert.ok(Math.abs(fromAxis(joint, bar) - (bar.radius + h.fingers[f].radius)) < tolerance, 'round the bar');
+        h.fingers[f].bones.forEach((bone, b) => { assert.ok(Math.abs(length(sub(joints[b + 1], joints[b])) - bone) < tolerance, 'a real bone'); });
+    });
+    for (const joint of hand.thumb.slice(1)) assert.ok(Math.abs(fromAxis(joint, bar) - (bar.radius + h.thumb.radius)) < tolerance, 'the thumb too');
+}
 
 test('a two-bone limb keeps its bone lengths, reaches what it can and points at what it cannot', () => {
     const root = vec(0, 0, 0);
@@ -21,15 +35,28 @@ test('a two-bone limb keeps its bone lengths, reaches what it can and points at 
     assert.ok(Math.abs(far.end.x - 0.6) < 1e-3 && Math.abs(far.end.y) < 1e-6, 'straight, pointing at it');
 });
 
+/** The Porsche's cockpit: the eye, the grips at quarter to three on a column tilted towards the driver,
+ *  the gear knob's top. */
+const wheel = { hub: vec(-0.36, 0.8, -0.45), axis: normalize(vec(0, 0.3, 1)), up: normalize(vec(0, 1, -0.3)) };
 const rig = {
     eye: vec(-0.36, 1.06, 0),
     grips: [vec(-0.55, 0.8, -0.45), vec(-0.17, 0.8, -0.45)],
+    wheel,
     knob: vec(0.02, 0.62, -0.42),
 };
 
-test('at rest both hands hold the rim and the feet sit on the throttle and the footrest', () => {
+test('at rest both gloved hands close round the rim, index finger uppermost, fingers over the front', () => {
     const pose = driverPose(rig, new DriverMotion());
-    assert.ok(near(pose.arms[0].hand, rig.grips[0], 1e-3) && near(pose.arms[1].hand, rig.grips[1], 1e-3));
+    pose.arms.forEach((arm, i) => {
+        holds(arm.hand, rimBar(rig.grips[i], wheel));
+        assert.ok(near(arm.wrist, arm.hand.wrist, 1e-6), 'the forearm ends at the wrist');
+        assert.ok(arm.hand.fingers[0][0].y > arm.hand.fingers[3][0].y, 'index finger above the little one');
+        for (const joints of arm.hand.fingers) assert.ok(joints.at(-1).z < joints[0].z, 'fingertips round the front of the rim');
+    });
+});
+
+test('at rest the feet sit on the throttle and the footrest', () => {
+    const pose = driverPose(rig, new DriverMotion());
     const p = DRIVER.pedals;
     assert.ok(Math.abs(pose.legs[1].ball.x - (rig.eye.x + p.throttle)) < 1e-9, 'right foot over the throttle');
     assert.ok(Math.abs(pose.legs[0].ball.x - (rig.eye.x + p.rest)) < 1e-9, 'left foot off the clutch');
@@ -40,17 +67,20 @@ test('through a shift the gear-side hand goes to the knob and the left foot to t
     const motion = new DriverMotion();
     for (let i = 0; i < 30; i++) motion.update(1 / 60, { shifting: true, throttle: 0, brake: 0 });
     let pose = driverPose(rig, motion);
-    assert.ok(near(pose.arms[1].hand, rig.knob, 0.02), 'right hand on the knob');
-    assert.ok(near(pose.arms[0].hand, rig.grips[0], 1e-3), 'left hand stays on the wheel');
+    assert.ok(motion.reach > 0.999);
+    holds(pose.arms[1].hand, knobBar(rig.knob, 1), 1e-3);
+    holds(pose.arms[0].hand, rimBar(rig.grips[0], wheel));
     assert.ok(Math.abs(pose.legs[0].ball.x - (rig.eye.x + DRIVER.pedals.clutch)) < 0.01, 'clutch down');
     for (let i = 0; i < 60; i++) motion.update(1 / 60, { shifting: false, throttle: 0, brake: 0 });
     pose = driverPose(rig, motion);
-    assert.ok(near(pose.arms[1].hand, rig.grips[1], 0.01), 'back on the rim');
+    assert.ok(near(pose.arms[1].hand.wrist, driverPose(rig, new DriverMotion()).arms[1].hand.wrist, 0.01), 'back on the rim');
     // Right-hand drive: the knob is on the driver's left, so the left hand changes gear.
-    const rhd = { eye: vec(0.37, 0.95, 0), grips: [vec(0.18, 0.75, -0.8), vec(0.56, 0.75, -0.8)], knob: vec(0, 0.62, -0.6) };
+    const rhdWheel = { ...wheel, hub: vec(0.37, 0.75, -0.8) };
+    const rhd = { eye: vec(0.37, 0.95, 0), grips: [vec(0.18, 0.75, -0.8), vec(0.56, 0.75, -0.8)], wheel: rhdWheel, knob: vec(0, 0.62, -0.6) };
     for (let i = 0; i < 30; i++) motion.update(1 / 60, { shifting: true, throttle: 0, brake: 0 });
     pose = driverPose(rhd, motion);
-    assert.ok(near(pose.arms[0].hand, rhd.knob, 0.02) && near(pose.arms[1].hand, rhd.grips[1], 1e-3));
+    holds(pose.arms[0].hand, knobBar(rhd.knob, -1), 1e-3);
+    holds(pose.arms[1].hand, rimBar(rhd.grips[1], rhdWheel));
 });
 
 test('braking moves the right foot over to the brake and presses it', () => {
@@ -63,10 +93,12 @@ test('braking moves the right foot over to the brake and presses it', () => {
 });
 
 test('an out-of-reach target leans the shoulder in, keeping the arm nearly straight', () => {
-    const deep = { ...rig, grips: [vec(-0.57, 0.71, -0.75), vec(-0.13, 0.71, -0.75)] };
+    const deepWheel = { ...wheel, hub: vec(-0.35, 0.71, -0.75) };
+    const deep = { ...rig, grips: [vec(-0.57, 0.71, -0.75), vec(-0.13, 0.71, -0.75)], wheel: deepWheel };
     const pose = driverPose(deep, new DriverMotion());
     for (const [i, arm] of pose.arms.entries()) {
-        assert.ok(near(arm.hand, deep.grips[i], 1e-3), 'the hand still holds the rim');
+        holds(arm.hand, rimBar(deep.grips[i], deepWheel));
+        assert.ok(near(arm.wrist, arm.hand.wrist, 1e-6), 'the arm still reaches the hand on the rim');
         assert.ok(arm.shoulder.z < rig.eye.z + DRIVER.shoulder.back, 'the shoulder came forward');
     }
 });

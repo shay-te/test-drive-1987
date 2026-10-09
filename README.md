@@ -67,8 +67,8 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   drop takes it; every hard hit cracks the windshield again, up to shattered. ENTER skips ahead.
 - Working door mirrors on every car (the Porsche has the driver's only, as the model does): each
   shows the lane behind, just past the car's flank.
-- A visible driver, as in Wing Commander (1990): gloved hands on the wheel at quarter to three,
-  turning with it; on every shift the gear-side hand goes to the knob (the left one in the
+- A visible driver, as in Wing Commander (1990): gloved hands on the wheel at quarter to three, every
+  finger and the thumb closed round the rim (and round the gear knob through a shift), turning with it; on every shift the gear-side hand goes to the knob (the left one in the
   right-hand-drive Lotus), the lever moves only once it is there, and the left foot works the
   clutch; the right foot moves between throttle and brake. From outside the whole driver shows.
 
@@ -81,8 +81,8 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
    with usable rights are found. Drop them in `assets/audio/engines/` (see its README).
 2. **Sea-to-Sky detail:** concrete barriers where the real road has them, the railway between
    road and shore, Lions Bay's houses, the islands across the sound. (The provincial road atlas and orthophotos are "access only", so they are not used.)
-3. **The driver's hands, as real as can be:** gloved hands with fingers wrapped round the rim and
-   the gear knob.
+3. **No repeating tiles anywhere:** the rock, cliff and ground photographs sampled without visible
+   repetition, every stage inspected section by section.
 4. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
