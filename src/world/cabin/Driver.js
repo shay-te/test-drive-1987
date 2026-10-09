@@ -32,7 +32,7 @@ export class Driver {
             return { bone: part(tube, material), joint: part(ball, material) };
         };
         this.arms = [0, 1].map(() => {
-            return { upper: limb('jacket'), fore: limb('jacket'), cuff: { ...limb('jacket'), end: part(ball, 'jacket') } };
+            return { upper: limb('jacket'), fore: limb('jacket'), cuff: limb('jacket') };
         });
         this.hands = [hands.left, hands.right].map((model) => { return this._hand(model); });
         this.legs = [0, 1].map(() => {
@@ -54,20 +54,17 @@ export class Driver {
         pose.arms.forEach((arm, i) => {
             const parts = this.arms[i];
             this._limb(parts.upper, arm.shoulder, arm.elbow, r.upperArm);
-            this._limb(parts.fore, arm.elbow, arm.wrist, r.forearm);
             for (const { name, position, x, y, z } of handJoints(arm.hand)) {
                 const bone = this.hands[i][name];
                 bone.position.set(position.x, position.y, position.z);
                 bone.quaternion.setFromRotationMatrix(this.basis.makeBasis(this.axes[0].copy(x), this.axes[1].copy(y), this.axes[2].copy(z)));
             }
-            // The cuff runs back from the wrist along the hand (its +z), rounded at both ends where it
-            // meets the sleeve however far the wrist bends.
+            // The sleeve bends to follow the hand over its last stretch (its cuff runs back from the wrist
+            // along the hand's +z), so it covers the glove's cut-off wrist however the wrist bends.
             const wrist = this.hands[i].wrist;
-            this.from.copy(wrist.position);
             this.to.set(0, 0, DRIVER.cuff).applyQuaternion(wrist.quaternion).add(wrist.position);
-            this._limb(parts.cuff, this.from, this.to, r.forearm);
-            parts.cuff.end.position.copy(this.to);
-            parts.cuff.end.scale.setScalar(r.forearm);
+            this._limb(parts.fore, arm.elbow, this.to, r.forearm);
+            this._limb(parts.cuff, this.to, wrist.position, r.forearm);
         });
         pose.legs.forEach((leg, i) => {
             const parts = this.legs[i];

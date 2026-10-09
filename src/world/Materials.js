@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ROAD } from '../config.js';
-import { LAND_DETAIL, SCENERY_TEXTURES } from '../data/scenery.js';
+import { LAND_DETAIL, RAILWAY, SCENERY_TEXTURES } from '../data/scenery.js';
 import { SPECIES } from '../data/forest.js';
 import { withoutTiling } from './noTiling.js';
 import { TRI_START, triplanarFragment, triplanarRock, triplanarVertex } from './triplanar.js';
@@ -31,6 +31,8 @@ const SILHOUETTE_BLOBS = 160;
 /** Foliage alpha is raised this much per mip level, keeping thin leaves' cover at a distance. */
 const MIP_COVERAGE = 0.25;
 const GALVANISED_SIZE = 256;
+/** The track bed's picture: across the bed's top, along one tie spacing (px). */
+const TRACK_BED_SIZE = [256, 48];
 
 /** Road texture covers both lanes and one 12 m dash period of the centre line. */
 export const ROAD_TEXTURE_LENGTH = 12;
@@ -68,6 +70,15 @@ export class WorldMaterials {
             side: THREE.DoubleSide,
         });
         this.timber = new THREE.MeshStandardMaterial({ color: '#6e604f', roughness: 0.95 });
+        // The railway: its ballast, the creosoted ties on it, and rusted steel (the rails' sides, the
+        // bridges' girders).
+        this.ballast = new THREE.MeshStandardMaterial({ color: '#6c6862', roughness: 1, side: THREE.DoubleSide });
+        this.trackBed = new THREE.MeshStandardMaterial({
+            map: this._texture('track-bed', TRACK_BED_SIZE[0], TRACK_BED_SIZE[1], drawTrackBed),
+            roughness: 1,
+            side: THREE.DoubleSide,
+        });
+        this.rust = new THREE.MeshStandardMaterial({ color: '#5b4535', roughness: 0.55, metalness: 0.5, side: THREE.DoubleSide });
         // Smooth enough to throw the low sun back as a glint.
         // Two-sided, so from under the water its surface closes the view above.
         this.water = new THREE.MeshStandardMaterial({ color: '#1f3d48', roughness: 0.14, metalness: 0.05, side: THREE.DoubleSide });
@@ -282,6 +293,21 @@ function drawGalvanised(ctx, w, h) {
         ]);
         ctx.fillRect(x, h * rng.range(0.2, 0.6), rng.range(2, 8), h);
     }
+}
+
+/** One tie spacing of the track bed seen from above (across, along): grey ballast, and a creosoted
+ *  tie across the middle of it as long as RAILWAY.tie against the bed's width. */
+function drawTrackBed(ctx, w, h) {
+    ctx.fillStyle = '#77726b';
+    ctx.fillRect(0, 0, w, h);
+    speckle(ctx, w, h, { count: 900, alpha: 0.35, size: 2.2, seed: 21, dark: 1 });
+    speckle(ctx, w, h, { count: 500, alpha: 0.25, size: 1.8, seed: 22 });
+    const [length, width] = RAILWAY.tie;
+    const across = (w * length) / RAILWAY.bed.top;
+    const along = (h * width) / RAILWAY.tieSpacing;
+    ctx.fillStyle = '#3a2c22';
+    ctx.fillRect((w - across) / 2, (h - along) / 2, across, along);
+    speckle(ctx, w, h, { count: 120, alpha: 0.2, size: 1.5, seed: 23, dark: 1 });
 }
 
 /** Needles along a twig from (x, y) heading `angle`, `length` px, `needle` px long: shaded inside,

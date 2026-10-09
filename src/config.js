@@ -200,8 +200,12 @@ export const LOOK = Object.freeze({
 
 /** A crash on the road, played out: the two cars thrown apart by the impact. */
 export const CRASH = Object.freeze({
-    /** Share of the closing speed the cars spring apart with (crumpling steel bounces little). */
-    restitution: 0.25,
+    /** Share of the closing speed the cars spring apart with: up to `nudge` at a touch, falling by e for
+     *  every `fade` m/s of closing speed to `hard`, as the crumpling steel soaks up a hard hit
+     *  (restitution falls with impact speed: SAE 1999-01-0097, from NHTSA crash tests); and the
+     *  friction of their steel as they scrape past each other in a glancing hit. */
+    restitution: { nudge: 0.4, hard: 0.05, fade: 8 },
+    friction: 0.6,
     /** Upward speed per m/s of closing speed as the cars ride up over each other, lighter one most. */
     rideUp: 0.12,
     /** Spin per m/s of closing speed: about the vertical for an off-centre hit (per metre off centre),
