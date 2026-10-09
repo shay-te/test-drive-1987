@@ -8,6 +8,7 @@ import { LOOK } from '../src/config.js';
 import { SURFACES, sideMirrorNodes, validateCabinNodes } from '../src/world/cabin/cabinAsset.js';
 import { rotate } from '../src/util/quaternion.js';
 import { leverAngles, radarLights, wheelAngle } from '../src/world/cabin/cabinAnimation.js';
+import { GATES, gatePosition } from '../src/cockpit/shiftGate.js';
 import { profileFrame } from '../src/world/profileFrame.js';
 
 const AUTHORED = CARS.filter((car) => { return car.cockpit.model; });
@@ -151,6 +152,32 @@ test('shared wheel, lever, and radar animation handles neutral, limits, and blin
     assert.deepEqual(radarLights(0, 0, 6), Array(6).fill(false));
     assert.deepEqual(radarLights(1, 0, 6), Array(6).fill(true));
     assert.deepEqual(radarLights(1, 0.2, 6), Array(6).fill(false));
+});
+
+/** Where the knob goes for each gear in the real cars: the 930's four-speed H, the dog-leg first of the
+ *  Testarossa, Countach and Esprit, and the Corvette's 4+3 (overdrive fourth is fourth's slot). */
+const REAL_GATES = {
+    porsche4: { 1: 'left forward', 2: 'left back', 3: 'right forward', 4: 'right back' },
+    dogleg5: { 1: 'left back', 2: 'centre forward', 3: 'centre back', 4: 'right forward', 5: 'right back' },
+    overdrive: { 1: 'left forward', 2: 'left back', 3: 'right forward', 4: 'right back', 5: 'right back' },
+};
+
+test('each cabin\'s lever leans its knob to where the real car keeps each gear', () => {
+    const word = (value, [less, more]) => {
+        return Math.abs(value) < 1e-9 ? 'centre' : value < 0 ? less : more;
+    };
+    for (const car of AUTHORED) {
+        const model = assets.get(car.id);
+        const lever = model.nodes.find((node) => { return node.name === 'gear_lever'; });
+        assert.equal(lever.rotation, undefined, `${car.id}: the lever stands in the car's own frame`);
+        const pattern = car.cockpit.shifter.pattern;
+        for (const [gear, place] of Object.entries(REAL_GATES[pattern])) {
+            const { x, z } = leverAngles(gatePosition(GATES[pattern], Number(gear)));
+            // Three's XYZ Euler turns the lever's up axis by z, then x.
+            const knob = [-Math.sin(z), Math.cos(z) * Math.sin(x)];
+            assert.equal(`${word(knob[0], ['left', 'right'])} ${word(knob[1], ['forward', 'back'])}`, place, `${car.id} gear ${gear}`);
+        }
+    }
 });
 
 test('door mirrors: the Porsche has the driver\'s, every other car both, each looking back and out', () => {
