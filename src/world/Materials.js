@@ -46,6 +46,7 @@ export class WorldMaterials {
             roughness: 0.6,
         });
         this.wood = new THREE.MeshStandardMaterial({ color: '#6b5236', roughness: 0.9 });
+        this.building = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 });
         this.foliage = new THREE.MeshStandardMaterial({
             color: '#2e4a24',
             roughness: 0.95,

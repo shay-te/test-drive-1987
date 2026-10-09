@@ -8,7 +8,9 @@ import { Terrain } from './Terrain.js';
 import { buildTrees } from './Props.js';
 import { VehicleModels } from './VehicleModels.js';
 import { AuthoredModels } from './AuthoredModels.js';
-import { LAND_DETAIL, SCENERY_MODELS, SCENERY_TEXTURES } from '../data/scenery.js';
+import { buildBuildings } from './buildingMesh.js';
+import { clearOfBuildings, layOutBuildings } from './buildingLayout.js';
+import { LAND_DETAIL, ROUTE_BUILDINGS, SCENERY_MODELS, SCENERY_TEXTURES } from '../data/scenery.js';
 import { GLTFLoader } from '../../vendor/three/GLTFLoader.js';
 import { AssetCabin } from './cabin/AssetCabin.js';
 import { SIDE_MIRRORS, SURFACES, validateCabinNodes } from './cabin/cabinAsset.js';
@@ -124,13 +126,18 @@ export class WorldView {
     }
 
     /** Loads everything the world shows of `stage`, whatever the car: the road users' and the scenery
-     *  models, the rock photographs, and the land around its route (heights and Landsat picture). */
+     *  models, the rock photographs, and the land around its route (heights, Landsat picture, buildings). */
     prepareStage(stage) {
         const { heights, image } = stage.route.surroundings;
         const photos = Object.values(SCENERY_TEXTURES).flatMap(({ map, normal }) => {
             return [this.resources.image(map), this.resources.image(normal)];
         });
-        const land = [this.resources.binary(heights), this.resources.image(image), this.resources.image(LAND_DETAIL.map)];
+        const land = [
+            this.resources.binary(heights),
+            this.resources.image(image),
+            this.resources.image(LAND_DETAIL.map),
+            this.resources.json(ROUTE_BUILDINGS),
+        ];
         return Promise.all([this.authored.prepare(), ...photos, ...land]);
     }
 
@@ -177,8 +184,10 @@ export class WorldView {
         const terrain = new Terrain(landscape, stage, materials);
         const heights = new Int16Array(this.resources.get(`binary:${stage.route.surroundings.heights}`));
         const surroundings = new Surroundings(track, landscape, heights, materials.land);
-        scene.add(builder.build(track), terrain.mesh, surroundings.mesh, terrain.sea);
-        scene.add(buildTrees([...builder.treePlacements(track), ...terrain.treePlacements()], materials));
+        const buildings = layOutBuildings(this.resources.get(`json:${ROUTE_BUILDINGS}`), track, landscape);
+        scene.add(builder.build(track), terrain.mesh, surroundings.mesh, terrain.sea, buildBuildings(buildings, materials.building));
+        const trees = clearOfBuildings([...builder.treePlacements(track), ...terrain.treePlacements()], buildings);
+        scene.add(buildTrees(trees, materials));
         scene.fog = new THREE.FogExp2(stage.fog.color, stage.fog.density);
         this.underwater = new Underwater(scene, landscape.waterLevel);
         this._installCabin(scene, stage, car, cabinAsset, track.bearing);

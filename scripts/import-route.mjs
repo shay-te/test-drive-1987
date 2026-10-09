@@ -5,22 +5,14 @@
  *  terrain tiles, which carry Natural Resources Canada's CDEM here (Open Government Licence - Canada).
  *  Usage: node scripts/import-route.mjs (downloads, about 600 MB, are cached in tmp/route-cache) */
 import { Buffer } from 'node:buffer';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { fromFile } from 'geotiff';
 import sharp from 'sharp';
 import { ROAD } from '../src/config.js';
 import { SURROUNDINGS, SURROUNDINGS_HEIGHTS, SURROUNDINGS_IMAGE, toUtm } from './geo.mjs';
+import { CACHE, ROUTE_BOX, HIGHWAY, download, overpass } from './sources.mjs';
 
-const CACHE = 'tmp/route-cache';
 const OUTPUT = 'src/data/seaToSky.js';
-const OVERPASS = [
-    'https://overpass-api.de/api/interpreter',
-    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-];
-const USER_AGENT = 'test-drive-1987-route-import/1.0 (https://github.com/shay-te/test-drive-1987)';
-/** South, west, north, east: Horseshoe Bay to past Squamish. */
-const BOX = [49.355, -123.32, 49.77, -123.08];
 /** The northbound on-ramp at the Horseshoe Bay interchange (lat, lon). */
 const START = [49.3680405, -123.271019];
 const EARTH = 6371000;
@@ -70,35 +62,9 @@ const SECTION_OFFSETS = [-2400, -1700, -1200, -850, -600, -420, -300, -210, -150
 
 const seg = ROAD.segment;
 
-/** `url`'s body, cached in `file`; `check` throws on a body that must not be kept (a server's error page). */
-async function download(url, file, options = {}, check = () => {}) {
-    const path = `${CACHE}/${file}`;
-    if (existsSync(path)) return readFileSync(path);
-    const response = await fetch(url, { ...options, headers: { 'User-Agent': USER_AGENT, ...options.headers } });
-    if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
-    const bytes = Buffer.from(await response.arrayBuffer());
-    check(bytes);
-    writeFileSync(path, bytes);
-    return bytes;
-}
-
-/** BC 99's carriageways from OpenStreetMap, trying each Overpass server in turn. */
-async function highwayWays() {
-    const [s, w, n, e] = BOX;
-    const query = `[out:json][timeout:120];way["ref"="BC 99"]["highway"~"^(motorway|trunk)$"](${s},${w},${n},${e});out geom tags;`;
-    for (const server of OVERPASS) {
-        try {
-            const bytes = await download(server, 'bc99.json', {
-                method: 'POST',
-                headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `data=${encodeURIComponent(query)}`,
-            }, (body) => { JSON.parse(body.toString('utf8')); });
-            return JSON.parse(bytes.toString('utf8')).elements;
-        } catch (error) {
-            console.warn(`[route] ${server} failed (${error.message}); trying the next server`);
-        }
-    }
-    throw new Error('No Overpass server answered');
+/** BC 99's carriageways from OpenStreetMap. */
+function highwayWays() {
+    return overpass(`[out:json][timeout:120];${HIGHWAY}.hwy out geom tags;`, 'bc99.json');
 }
 
 /** The shortest legal drive north from START through the directed carriageways: its points as
@@ -378,12 +344,11 @@ function packed(values, width = 112) {
     return lines.join('\n');
 }
 
-mkdirSync(CACHE, { recursive: true });
 const route = northbound(await highwayWays());
 const projected = route.points.map(project);
 const line = resample(smooth(resample(projected, seg), LINE_SIGMA / seg), seg);
 const { heading, curvature } = curvatureOf(line);
-const terrainAt = await terrain(BOX, TILE_ZOOM);
+const terrainAt = await terrain(ROUTE_BOX, TILE_ZOOM);
 const lidarAt = await lidar();
 let fromLidar = 0;
 let samples = 0;

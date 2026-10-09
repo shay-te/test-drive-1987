@@ -43,6 +43,16 @@ export const ROAD = Object.freeze({
     eyeHeight: 1.08,
 });
 
+/** Where the route's real buildings may stand (src/world/buildingLayout.js). */
+export const BUILDINGS = Object.freeze({
+    /** Clear of the road's edge by this much (m) on the valley side. */
+    clearance: 2,
+    /** Walls start this far (m) below the lowest corner's ground, so no slope shows under them. */
+    sink: 1,
+    /** Ground under water deeper than this (m) is the sea: nothing is built there. */
+    dryAbove: 0.3,
+});
+
 export const PHYS = Object.freeze({
     g: 9.81,
     airDensity: 1.2,
