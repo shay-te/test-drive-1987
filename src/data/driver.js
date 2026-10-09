@@ -5,8 +5,10 @@ export const DRIVER = {
     // The seat's hip (H-)point.
     hip: { across: 0.1, down: 0.72, back: 0.16 },
     upperArm: 0.32,
-    // Elbow to wrist.
+    // Elbow to wrist; the jacket's cuff follows the hand this far back from the wrist, over the glove's
+    // own (cut-off) wrist however the hand bends.
     forearm: 0.27,
+    cuff: 0.045,
     // An arm reaches this share of its length before the shoulder leans in after the target.
     straightArm: 0.97,
     thigh: 0.47,
