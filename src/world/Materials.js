@@ -19,9 +19,9 @@ const SILHOUETTE_GREYS = ['#a8a8a8', '#c0c0c0', '#d8d8d8', '#f0f0f0'];
 const NEEDLE_SEED = 41;
 /** Leaves bigger than this (share of the cluster) are lobed, like a maple's. */
 const LOBED_LEAF = 0.12;
-const LEAVES_PER_CLUSTER = 260;
+const LEAVES_PER_CLUSTER = 420;
 /** A leaf's length in the cluster picture, per unit of the species' `leaf` and of the picture's width. */
-const LEAF_SCALE = 0.7;
+const LEAF_SCALE = 0.45;
 /** A conifer silhouette's crown starts this share of the way down; a broadleaf one is so many blobs. */
 const SILHOUETTE_CROWN = 0.8;
 const SILHOUETTE_BLOBS = 160;
@@ -303,29 +303,40 @@ function drawSpray(ctx, w, h, species) {
     }
 }
 
-/** A cluster of the species' leaves on its twigs: alder's oval and toothed, maple's broad and lobed. */
+/** A cluster of the species' leaves on its twigs (alder's oval and toothed, maple's broad and lobed),
+ *  each shaded from its base to its tip with a darker midrib, the heart of the cluster in shade. */
 function drawLeafCluster(ctx, w, h, species) {
     const rng = createRng(NEEDLE_SEED + 2);
     ctx.clearRect(0, 0, w, h);
     const size = species.leaf * w * LEAF_SCALE;
     const lobes = species.leaf > LOBED_LEAF ? 5 : 1;
+    const colors = species.foliage;
     for (let k = 0; k < LEAVES_PER_CLUSTER; k++) {
         const angle = rng() * Math.PI * 2;
         const out = rng() ** 0.6;
-        const r = out * (w / 2 - size / 2);
+        const r = out * (w / 2 - size);
         const [x, y] = [w / 2 + Math.cos(angle) * r, h / 2 + Math.sin(angle) * r];
-        // Shaded towards the heart of the cluster, fresh at its rim.
-        const shade = Math.min(species.foliage.length - 1, Math.floor(out * species.foliage.length * rng.range(0.7, 1.2)));
-        ctx.fillStyle = species.foliage[shade];
+        const shade = Math.min(colors.length - 2, Math.floor(out * (colors.length - 1) * rng.range(0.7, 1.2)));
+        const leaf = size * rng.range(0.75, 1.15);
         ctx.save();
         ctx.translate(x, y);
-        ctx.rotate(rng() * Math.PI * 2);
+        ctx.rotate(angle + Math.PI / 2 + rng.range(-0.6, 0.6));
+        const fill = ctx.createLinearGradient(0, leaf * 0.5, 0, -leaf * 0.5);
+        fill.addColorStop(0, colors[shade]);
+        fill.addColorStop(1, colors[shade + 1]);
+        ctx.fillStyle = fill;
         ctx.beginPath();
         for (let lobe = 0; lobe < lobes; lobe++) {
             ctx.rotate((Math.PI * 2) / lobes);
-            ctx.ellipse(0, -size * (lobes > 1 ? 0.25 : 0), size * (lobes > 1 ? 0.28 : 0.32), size * 0.5, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, -leaf * (lobes > 1 ? 0.25 : 0), leaf * (lobes > 1 ? 0.28 : 0.3), leaf * 0.5, 0, 0, Math.PI * 2);
         }
         ctx.fill();
+        ctx.strokeStyle = colors[0];
+        ctx.lineWidth = Math.max(1, leaf * 0.05);
+        ctx.beginPath();
+        ctx.moveTo(0, leaf * 0.5);
+        ctx.lineTo(0, -leaf * 0.45);
+        ctx.stroke();
         ctx.restore();
     }
 }

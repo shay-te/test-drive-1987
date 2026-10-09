@@ -20,7 +20,9 @@ const NORMAL_LIFT = 0.45;
  *  through the crown (share of its radius), each this share of the crown's width. */
 const LIMB_RADIUS = 0.006;
 const SHELL = [0.55, 1];
-const CLUSTER = 0.42;
+const CLUSTER = 0.2;
+/** How far a leaf cluster's facing strays from straight out of the crown. */
+const CLUSTER_TILT = 0.8;
 const SILHOUETTE_CARDS = 3;
 
 /** One tree of `species` (src/data/forest.js) of unit height standing on its origin, its shape from
@@ -109,16 +111,17 @@ function addLeaves(parts, species, rng) {
         limb(parts, new THREE.Vector3(0, species.crownBase + height * 0.15, 0), tip, LIMB_RADIUS);
     }
     for (let c = 0; c < species.clusters; c++) {
-        const direction = new THREE.Vector3(rng() * 2 - 1, rng() * 2 - 1, rng() * 2 - 1).normalize();
-        const at = centre.clone().add(new THREE.Vector3(direction.x * width, direction.y * height / 2, direction.z * width).multiplyScalar(rng.range(...SHELL)));
+        const out = new THREE.Vector3(rng() * 2 - 1, rng() * 2 - 1, rng() * 2 - 1).normalize();
+        const at = centre.clone().add(new THREE.Vector3(out.x * width, (out.y * height) / 2, out.z * width).multiplyScalar(rng.range(...SHELL)));
         const size = width * 2 * CLUSTER * rng.range(0.8, 1.2);
-        const turn = rng() * TAU;
-        const across = new THREE.Vector3(Math.cos(turn), 0, Math.sin(turn));
-        for (const tilt of [-CARD_ROLL, CARD_ROLL]) {
-            const along = new THREE.Vector3(-Math.sin(turn), 0, Math.cos(turn)).applyAxisAngle(across, tilt);
-            const start = at.clone().addScaledVector(along, -size / 2);
-            bentCard(parts, [start, at, at.clone().addScaledVector(along, size / 2)], across.clone().multiplyScalar(size * species.spray), centre);
-        }
+        // Each cluster faces out of the crown (tilted a little at random), so none shows only its edge.
+        const facing = out.clone().add(new THREE.Vector3(rng() - 0.5, rng() - 0.5, rng() - 0.5).multiplyScalar(CLUSTER_TILT)).normalize();
+        const along = new THREE.Vector3(0, 1, 0).cross(facing);
+        if (along.lengthSq() < 1e-6) along.set(1, 0, 0);
+        along.normalize().applyAxisAngle(facing, rng() * TAU);
+        const across = facing.clone().cross(along);
+        const path = [at.clone().addScaledVector(along, -size / 2), at, at.clone().addScaledVector(along, size / 2)];
+        bentCard(parts, path, across.multiplyScalar(size * species.spray), centre);
     }
 }
 

@@ -28,11 +28,11 @@ export const SPECIES = {
         spray: 0.7, foliage: ['#142c1b', '#1c3a23', '#26482b', '#335834'], bark: '#87877f', needle: 0.06,
     },
     redAlder: {
-        kind: 'broadleaf', clusters: 34, limbs: 4, crownBase: 0.35, crown: [0.26, 0.55], spray: 1, flare: 0.2,
+        kind: 'broadleaf', clusters: 70, limbs: 4, crownBase: 0.35, crown: [0.26, 0.55], spray: 1, flare: 0.2,
         foliage: ['#355423', '#46682b', '#577c33', '#6d913c'], bark: '#b4b1a8', leaf: 0.09,
     },
     bigleafMaple: {
-        kind: 'broadleaf', clusters: 38, limbs: 5, crownBase: 0.28, crown: [0.36, 0.6], spray: 1, flare: 0.35,
+        kind: 'broadleaf', clusters: 85, limbs: 5, crownBase: 0.28, crown: [0.36, 0.6], spray: 1, flare: 0.35,
         foliage: ['#3c5a22', '#50722a', '#668732', '#8a9e42'], bark: '#5b6743', leaf: 0.16,
     },
 };
@@ -53,10 +53,10 @@ export const FOREST = {
     /** Stands are patches about this wide (m); by the road (disturbed, sunny) alder stands are this
      *  many times as common. */
     standSize: 180,
-    roadsideAlder: 2.5,
+    roadsideAlder: 1.5,
     /** The canopy trees drawn a hectare (of a stand's stems): within `roadsideReach` m of the road, and
      *  beyond it up to each distance from the road (m). With crowns of these sizes they close the canopy. */
-    density: { roadside: 180, roadsideReach: 60, land: [[300, 70], [1200, 14]] },
+    density: { roadside: 90, roadsideReach: 60, land: [[300, 45], [1200, 10]] },
     /** No trees grow above this height (m) or on ground steeper than LAND_DETAIL.bareRock allows. */
     treeLine: 1500,
     /** Within `near` m of the car trees are drawn branch by branch, beyond as crossed silhouette cards;
