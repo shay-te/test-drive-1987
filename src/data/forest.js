@@ -74,7 +74,7 @@ export const FOREST = {
     roadsideAlder: 1.5,
     /** The canopy trees drawn a hectare (of a stand's stems): within `roadsideReach` m of the road, and
      *  beyond it up to each distance from the road (m). With crowns of these sizes they close the canopy. */
-    density: { roadside: 90, roadsideReach: 60, land: [[300, 45], [1200, 10]] },
+    density: { roadside: 50, roadsideReach: 60, land: [[300, 25], [1200, 8]] },
     /** No trees grow above this height (m) or on ground steeper than LAND_DETAIL.bareRock allows. */
     treeLine: 1500,
     /** Within `near` m of the car trees are drawn branch by branch, beyond as crossed silhouette cards;
