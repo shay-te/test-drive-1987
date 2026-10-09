@@ -10,8 +10,11 @@
  *  broadleaf crown fills an ellipsoid `crown` [width, height] (shares of the tree's height) above
  *  `crownBase`: `limbs` main limbs fork from the trunk there, each with `branches` branches out to the
  *  crown's edge carrying `sprays` leafy sprays `reach` of the crown's width long, drooping `droop`
- *  (rad) at the tips, with leaves `leaf` of a spray's length. `spray` is a spray's width (share of its
- *  length); colours run from the shaded inside of the foliage to its fresh tips. */
+ *  (rad) at the tips, with leaves `leaf` of a spray's length; a shrub grows the same way from stems
+ *  near the ground. A fern is a clump of `fronds` rising `rise` (rad) from the ground and arching over
+ *  by `droop`, its leaflets `leaf` of a frond's length. `spray` is a spray's or frond's width (share of
+ *  its length); colours run from the shaded inside of the foliage to its fresh tips. Shrubs and ferns
+ *  stand `heights` (m) tall, `clumps` of them in a patch within `patch` heights of its centre. */
 export const SPECIES = {
     douglasFir: {
         kind: 'conifer', whorls: 15, branches: 6, crownBase: 0.42, spread: 0.13, taper: 0.85, droop: 0.12, upturn: 0.35, leader: 0, flare: 0.25,
@@ -33,6 +36,14 @@ export const SPECIES = {
         kind: 'broadleaf', limbs: 4, branches: 8, sprays: 5, crownBase: 0.35, crown: [0.26, 0.55], reach: 0.36, droop: 0.5, spray: 0.75, flare: 0.2,
         foliage: ['#304d20', '#41622a', '#527733', '#6a8d3d'], bark: '#9a988f', leaf: 0.1,
     },
+    swordFern: {
+        kind: 'fern', clumps: 5, patch: 1.4, fronds: 9, rise: [0.6, 1.2], droop: 1.0, spray: 0.3, heights: [0.9, 1.5],
+        foliage: ['#1c381d', '#284b25', '#365f2e', '#48743a'], bark: '#3b3226', leaf: 0.11,
+    },
+    salal: {
+        kind: 'shrub', clumps: 4, patch: 1.2, limbs: 4, branches: 3, sprays: 2, crownBase: 0.08, crown: [0.75, 0.8], reach: 0.5, droop: 0.35, spray: 0.8, heights: [0.5, 1.5],
+        foliage: ['#223e1e', '#2f5229', '#3d6733', '#527c3d'], bark: '#5a4632', leaf: 0.12,
+    },
     bigleafMaple: {
         kind: 'broadleaf', limbs: 5, branches: 8, sprays: 5, crownBase: 0.28, crown: [0.36, 0.6], reach: 0.33, droop: 0.6, spray: 0.8, flare: 0.35,
         foliage: ['#38561f', '#4b6d28', '#618230', '#7f973c'], bark: '#5b6743', leaf: 0.17,
@@ -47,6 +58,11 @@ export const STANDS = [
     { name: 'alder', share: 0.15, heights: [15, 25], stems: 800, species: { redAlder: 0.85, bigleafMaple: 0.1, westernRedcedar: 0.05 } },
     { name: 'mixed', share: 0.12, heights: [20, 35], stems: 700, species: { douglasFir: 0.3, westernRedcedar: 0.3, redAlder: 0.25, bigleafMaple: 0.15 } },
 ];
+
+/** The undergrowth of the coastal forest floor by the road (the plan's understory: salal and sword
+ *  fern), so many patches a hectare of the road-side ground within `reach` m of the road's centre, in
+ *  this mix; drawn within `near` m of the car only. */
+export const UNDERGROWTH = { perHectare: 1100, reach: 40, species: { swordFern: 0.6, salal: 0.4 }, near: 120 };
 
 /** Above `above` m the forest is the wetter montane one: amabilis fir and hemlock, shorter. */
 export const HIGHLAND = { above: 900, heights: [15, 30], species: { amabilisFir: 0.6, westernHemlock: 0.4 } };
@@ -64,7 +80,7 @@ export const FOREST = {
     /** Within `near` m of the car trees are drawn branch by branch, beyond as crossed silhouette cards;
      *  the near set is gathered again whenever the car crosses into another `cell` m square. */
     near: 260,
-    cell: 100,
+    cell: 50,
     /** Each tree's colour is brightened or darkened by up to this share. */
     variation: 0.16,
     /** A trunk's radius at its foot, per metre of the tree's height: as drawn, and as a car meets it. */

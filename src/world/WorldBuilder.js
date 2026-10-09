@@ -8,7 +8,7 @@ import { buildRibbon } from './Ribbon.js';
 import { ROAD_TEXTURE_LENGTH, shadeVertex } from './Materials.js';
 import { buildProps } from './Props.js';
 import { buildGuardRails } from './guardRail.js';
-import { roadsideTrees } from './forestLayout.js';
+import { roadsideTrees, roadsideUndergrowth } from './forestLayout.js';
 
 /** The cut's mesh: rows up its height, and rows along the road for each track node. */
 const FACE_ROWS = 32;
@@ -178,10 +178,21 @@ export class WorldBuilder {
 
     /** Where the forest stands on the mountainside above the face and down the drop below the road. */
     treePlacements(track) {
+        return roadsideTrees(track, this._roadsideSections(track), this.stage.seed + 3);
+    }
+
+    /** Where its ferns and shrubs grow, on the same ground by the road. */
+    undergrowthPlacements(track) {
+        return roadsideUndergrowth(track, this._roadsideSections(track), this.stage.seed + 5);
+    }
+
+    /** The ground beside the road that grows things, for each node: the mountainside above the face and
+     *  the drop below the road, with the span of each the plants may take. */
+    _roadsideSections(track) {
         const drops = this.landscape.dropSections;
-        return roadsideTrees(track, (i) => {
+        return (i) => {
             return [[this._slopeSection(track, i), 1, SLOPE_ROWS], [drops[i], 0, drops[i].length - 5]];
-        }, this.stage.seed + 3);
+        };
     }
 
     /** Lays the picture of the route's surroundings on a ribbon by its world position. */

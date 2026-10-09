@@ -1,4 +1,4 @@
-import { CRASH, FALL } from '../config.js';
+import { CRASH, FALL, ROAD } from '../config.js';
 import { TRAFFIC_TYPES } from '../data/traffic.js';
 import { rotate } from '../util/quaternion.js';
 import { add, cross, dot, normalize, scale, sub, vec } from '../util/vector.js';
@@ -106,8 +106,12 @@ export class RoadCrash {
         return hits;
     }
 
+    /** Played out once every car rests; on the road after CRASH.maxSeconds at most, but a car thrown
+     *  over the edge goes on down the drop as long as a fall does. */
     get done() {
-        return this.still >= FALL.restSeconds || this.time >= CRASH.maxSeconds;
+        const { x, z } = this.body.position;
+        const overTheEdge = this.track.project(x, z, 0).u < ROAD.edgeOffset;
+        return this.still >= FALL.restSeconds || this.time >= (overTheEdge ? FALL.maxSeconds : CRASH.maxSeconds);
     }
 
     /** The player's car is under the sea's surface, deep enough to watch from beneath it. */
@@ -187,6 +191,9 @@ function rockFaceRamp(track, landscape) {
         },
         normalAt(x, z) {
             return groundNormal(ground, x, z);
+        },
+        frictionAt(x, z, n) {
+            return landscape.frictionAt(x, z, n);
         },
     };
     return ground;

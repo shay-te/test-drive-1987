@@ -113,6 +113,8 @@ export const CARS = [
             shifter: { type: 'boot', pattern: 'porsche4', knob: '#1a1a1a' },
         },
         body: {
+            // Licence plate mounts in car space, measured on the model: centre, facing out, size (m).
+            plates: [{ at: [0, 0.436, 1.884], facing: [0, 0, 1], size: [0.267, 0.109] }, { at: [0, 0.258, -2.268], facing: [0, 0, -1], size: [0.266, 0.112] }],
             length: 4.29,
             width: 1.775,
             // The driver's eye, metres back from the front bumper.
@@ -273,6 +275,8 @@ export const CARS = [
             shifter: { type: 'gate', pattern: 'dogleg5', knob: '#111111' },
         },
         body: {
+            // Licence plate mounts in car space, measured on the model: centre, facing out, size (m).
+            plates: [{ at: [0, 0.44, 1.985], facing: [0.006, -0.211, 0.977], size: [0.305, 0.152] }],
             length: 4.485,
             width: 1.976,
             // The driver's eye, metres back from the front bumper.
@@ -397,6 +401,8 @@ export const CARS = [
             shifter: { type: 'gate', pattern: 'dogleg5', knob: '#cfcfd4' },
         },
         body: {
+            // Licence plate mounts in car space, measured on the model: centre, facing out, size (m).
+            plates: [{ at: [0, 0.422, 1.839], facing: [0, 0, 1], size: [0.52, 0.11] }, { at: [0, 0.325, -2.147], facing: [0, 0, -1], size: [0.45, 0.095] }],
             length: 4.14,
             width: 2.0,
             // The driver's eye, metres back from the front bumper.
@@ -532,6 +538,8 @@ export const CARS = [
             shifter: { type: 'boot', pattern: 'h5', knob: '#141414' },
         },
         body: {
+            // Licence plate mounts in car space, measured on the model: centre, facing out, size (m).
+            plates: [{ at: [0, 0.65, 1.823], facing: [0, 0.342, 0.94], size: [0.49, 0.145] }],
             length: 4.19,
             width: 1.86,
             // The driver's eye, metres back from the front bumper.
@@ -654,6 +662,8 @@ export const CARS = [
             shifter: { type: 'boot', pattern: 'overdrive', knob: '#1b1b1b' },
         },
         body: {
+            // Licence plate mounts in car space, measured on the model: centre, facing out, size (m).
+            plates: [{ at: [0, 0.592, 1.495], facing: [0, 0.168, 0.986], size: [0.305, 0.152] }],
             length: 4.48,
             width: 1.806,
             // The driver's eye, metres back from the front bumper.

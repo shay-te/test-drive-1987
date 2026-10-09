@@ -9,6 +9,7 @@ import { leverAngles, radarLights, wheelAngle } from './cabinAnimation.js';
 import { CABIN } from './cabinLayout.js';
 import { sideMirrorNodes, validateCabinNodes } from './cabinAsset.js';
 import { onCabinLayer } from './cabinLayer.js';
+import { disposePlates, licencePlates } from './licencePlate.js';
 
 /** An authored cabin instance sharing cached geometry and owning its live display resources and driver. */
 export class AssetCabin {
@@ -28,6 +29,8 @@ export class AssetCabin {
         this.sideMirrors = sideMirrorNodes(nodes);
         for (const [side, mirror] of Object.entries(this.sideMirrors)) this._mirror(mirror.surface, sideTextures[side]);
         this._seatDriver(hands);
+        this.plates = onCabinLayer(licencePlates(car, resources));
+        this.root.add(this.plates);
     }
 
     /** The driver, and where the cabin puts their hands: the rim (measured from the wheel's own
@@ -147,6 +150,7 @@ export class AssetCabin {
         this.displays.dispose();
         this.windshield.dispose();
         this.driver.dispose();
+        disposePlates(this.plates);
         this.materials.clear();
     }
 }

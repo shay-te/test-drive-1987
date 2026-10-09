@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FOREST, SPECIES } from '../data/forest.js';
+import { FOREST, SPECIES, UNDERGROWTH } from '../data/forest.js';
 import { TAU, createRng } from '../util/math.js';
 import { silhouetteGeometry, treeGeometry } from './treeShapes.js';
 
@@ -7,9 +7,9 @@ const NAMES = Object.keys(SPECIES);
 /** A silhouette card's width, per metre of the tree's height, by kind of tree. */
 const SILHOUETTE_WIDTH = { conifer: 0.3, broadleaf: 0.62 };
 
-/** The forest: one instanced mesh a species for the trees near the car, drawn branch by branch, and
- *  one a kind of tree for the silhouettes of all the others; update() gathers the near trees again
- *  as the car moves on. */
+/** The forest: one instanced mesh a species for the trees (and the ferns and shrubs of the forest
+ *  floor) near the car, drawn branch by branch, and one a kind of tree for the silhouettes of all the
+ *  other trees; update() gathers the near ones again as the car moves on. */
 export class Forest {
     /** `placements`: [{ x, y, z, height, species }]; `seed` varies their shapes and colours. */
     constructor(placements, materials, seed) {
@@ -22,12 +22,15 @@ export class Forest {
             turn.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, rng() * TAU);
             const matrix = new THREE.Matrix4().compose(new THREE.Vector3(p.x, p.y, p.z), turn, new THREE.Vector3(p.height * girth, p.height, p.height * girth));
             const tint = 1 + (rng() * 2 - 1) * FOREST.variation;
-            return { x: p.x, z: p.z, index: NAMES.indexOf(p.species), kind: species.kind, matrix, tint, far: new THREE.Color(species.foliage[1]).multiplyScalar(tint) };
+            // The undergrowth is drawn near the car only, with no silhouette beyond.
+            const near = species.kind in SILHOUETTE_WIDTH ? FOREST.near : UNDERGROWTH.near;
+            return { x: p.x, z: p.z, index: NAMES.indexOf(p.species), kind: species.kind, near, matrix, tint, far: new THREE.Color(species.foliage[1]).multiplyScalar(tint) };
         });
         const count = (test) => { return Math.max(1, this.trees.filter(test).length); };
         this.near = NAMES.map((name, k) => {
             const material = [materials.trees[name].bark, materials.trees[name].foliage];
-            return this._mesh(treeGeometry(SPECIES[name], seed + k), material, count((tree) => { return tree.index === k; }), true);
+            // The forest floor's plants cast no shadow: their own leaves shade them enough.
+            return this._mesh(treeGeometry(SPECIES[name], seed + k), material, count((tree) => { return tree.index === k; }), SPECIES[name].kind in SILHOUETTE_WIDTH);
         });
         this.far = Object.fromEntries(Object.entries(SILHOUETTE_WIDTH).map(([kind, width]) => {
             return [kind, this._mesh(silhouetteGeometry(width), materials.silhouettes[kind], count((tree) => { return tree.kind === kind; }), false)];
@@ -70,7 +73,7 @@ export class Forest {
             for (let dz = -reach; dz <= reach; dz++) {
                 for (const i of this.cells.get(`${cx + dx},${cz + dz}`) ?? []) {
                     const tree = this.trees[i];
-                    if (Math.hypot(tree.x - position.x, tree.z - position.z) < FOREST.near) near.add(i);
+                    if (Math.hypot(tree.x - position.x, tree.z - position.z) < tree.near) near.add(i);
                 }
             }
         }
@@ -78,6 +81,7 @@ export class Forest {
         const color = new THREE.Color();
         this.trees.forEach((tree, i) => {
             const mesh = near.has(i) ? this.near[tree.index] : this.far[tree.kind];
+            if (!mesh) return;
             mesh.setMatrixAt(mesh.count, tree.matrix);
             mesh.setColorAt(mesh.count, near.has(i) ? color.setScalar(tree.tint) : tree.far);
             mesh.count++;
