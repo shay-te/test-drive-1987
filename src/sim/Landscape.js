@@ -1,5 +1,6 @@
 import { ROAD } from '../config.js';
 import { Noise, clamp, lerp } from '../util/math.js';
+import { roadsideAt, routeGround } from './routeTerrain.js';
 import { normalize } from '../util/vector.js';
 
 /** Terrain grid spacing and how far it reaches beyond the road (m). */
@@ -9,34 +10,25 @@ const SAMPLE_STEP = 4;
 /** Lateral zone covered by the detailed road-side ribbons; the heightfield ducks underneath. */
 export const MOUNTAIN_NEAR = 62;
 export const VALLEY_NEAR = 52;
-/** Beyond the rock face the mountain starts this far above its top and falls away to the real ground
- *  by SHOULDER_FALL per metre further out (the shoulder above a cutting). */
-const SHOULDER_RISE = 30;
-const SHOULDER_FALL = 0.25;
 /** Ground at or below the sea's surface is sea floor, this deep. */
 export const SEA_LEVEL = 0;
 export const SEA_DEPTH = 20;
+/** The sea floor shelves away from the shore this steeply (m down per m out), gently enough for a
+ *  sunk car to settle on; at the shoreline it lies SHORE_DEPTH under the surface. */
+const SEA_SHELF = 0.5;
+const SHORE_DEPTH = 0.5;
 /** The gravel shoulders fall away from the asphalt by this much at their outer edge. */
 export const SHOULDER_DROP = 0.06;
-/** Depth profile of the drop into the valley: [lateral offset beyond the edge, depth]. */
-const DROP_PROFILE = [
-    [0, 0.05],
-    [0.3, 0.6],
-    [0.9, 3],
-    [2.2, 9],
-    [4.5, 21],
-    [8.5, 40],
-    [16, 66],
-    [28, 96],
-    [44, 130],
-];
-/** The drop's cliff profile as a road cross-section, outermost point first. */
-const DROP_SECTION = [...DROP_PROFILE].reverse().map(([out, depth]) => {
-    return { u: ROAD.edgeOffset - out, h: -depth };
+/** Where the drop beyond the edge is sampled (m out), and how far its lip dips at the edge itself. */
+const DROP_OUT = [0, 1.5, 3, 4.5, 6, 7.5, 9, 12, 15, 18, 21, 24, 28, 32, 36, 40, 44];
+const LIP = 0.05;
+/** The drop as a road cross-section, outermost point first (its heights come from the route). */
+const DROP_SECTION = [...DROP_OUT].reverse().map((out) => {
+    return { u: ROAD.edgeOffset - out, h: -LIP };
 });
 /** Rock relief on the drop face: noise scale and how deep it carves. */
 const RELIEF_SCALE = 0.05;
-const RELIEF_DEPTH = 12;
+const RELIEF_DEPTH = 4;
 const RELIEF_AMOUNT = 0.35;
 const NORMAL_STEP = 0.25;
 
@@ -87,15 +79,20 @@ export class Landscape {
         return n * clamp(depth, 0, RELIEF_DEPTH) * RELIEF_AMOUNT;
     }
 
-    /** The drop at node `i`: the cliff profile, but never below the straight fall from the road's edge to
-     *  the real ground (or sea floor) at its foot, so it meets the land beyond or rises as a hillside. */
+    /** The drop at node `i`: the real ground beyond the edge down to the shore, then the sea floor
+     *  shelving away under the water; at the edge itself, the profile's lip. */
     _dropSection(i) {
         const t = this.track;
-        const foot = DROP_SECTION[0].u;
-        const fall = seaFloor(routeGround(t, i, foot)) - t.elevation[i];
-        return DROP_SECTION.map(({ u, h }) => {
-            return { u, h: Math.max(h, (fall * (ROAD.edgeOffset - u)) / (ROAD.edgeOffset - foot)) };
-        });
+        const road = t.elevation[i];
+        let shore = Infinity;
+        return [...DROP_SECTION].reverse().map(({ u, h }) => {
+            const out = ROAD.edgeOffset - u;
+            if (out === 0) return { u, h };
+            const ground = road + roadsideAt(t, i, -1, out);
+            if (ground <= SEA_LEVEL) shore = Math.min(shore, out);
+            const depth = Math.min(SEA_DEPTH, (out - shore) * SEA_SHELF);
+            return { u, h: (out < shore ? ground : SEA_LEVEL - depth) - road };
+        }).reverse();
     }
 
     /** The terrain mesh's surface: two triangles per grid cell, split like three.js's PlaneGeometry. */
@@ -190,6 +187,34 @@ export class Landscape {
                 this.heights[k] = this._height(best, u);
             }
         }
+        this._shelveSea();
+    }
+
+    /** Lays the sea floor under the water: deeper the further each vertex is from land (or from the
+     *  road-side ribbons), by a two-pass chamfer distance over the grid. */
+    _shelveSea() {
+        const { nx, nz, heights, sides } = this;
+        const sea = (k) => {
+            return heights[k] <= SEA_LEVEL && (sides[k] > MOUNTAIN_NEAR || -sides[k] > VALLEY_NEAR);
+        };
+        const distance = Float32Array.from(heights, (_, k) => { return sea(k) ? Infinity : 0; });
+        const straight = CELL;
+        const diagonal = CELL * Math.SQRT2;
+        const relax = (k, ix, iz, steps) => {
+            for (const [dx, dz, d] of steps) {
+                const x = ix + dx;
+                const z = iz + dz;
+                if (x >= 0 && x < nx && z >= 0 && z < nz) distance[k] = Math.min(distance[k], distance[z * nx + x] + d);
+            }
+        };
+        const back = [[-1, 0, straight], [0, -1, straight], [-1, -1, diagonal], [1, -1, diagonal]];
+        const ahead = [[1, 0, straight], [0, 1, straight], [1, 1, diagonal], [-1, 1, diagonal]];
+        for (let iz = 0; iz < nz; iz++) for (let ix = 0; ix < nx; ix++) relax(iz * nx + ix, ix, iz, back);
+        for (let iz = nz - 1; iz >= 0; iz--) for (let ix = nx - 1; ix >= 0; ix--) relax(iz * nx + ix, ix, iz, ahead);
+        for (let k = 0; k < heights.length; k++) {
+            // The shoreline runs through the cells next to land, a cell short of the first sea vertex.
+            if (sea(k)) heights[k] = SEA_LEVEL - clamp((distance[k] - CELL) * SEA_SHELF, SHORE_DEPTH, SEA_DEPTH);
+        }
     }
 
     /** Terrain at lateral offset `u` from road node `i`, under the road-side ribbons near the road. */
@@ -198,35 +223,11 @@ export class Landscape {
         const roadY = t.elevation[i];
         if (u > 0) {
             if (u < MOUNTAIN_NEAR) return roadY - 25;
-            const shoulder = roadY + t.wallHeight[i] + SHOULDER_RISE - (u - MOUNTAIN_NEAR) * SHOULDER_FALL;
-            return Math.max(seaFloor(routeGround(t, i, u)), shoulder);
+            return routeGround(t, i, u);
         }
         // Just under the drop's lowest point, so the ground beyond runs on from its foot.
         if (-u < VALLEY_NEAR) return roadY + Math.min(...this.dropSections[i].map((p) => { return p.h; })) - 1;
-        return seaFloor(routeGround(t, i, u));
+        return routeGround(t, i, u);
     }
 }
 
-/** Ground at or below the sea's surface is the sea floor. */
-function seaFloor(height) {
-    return height > SEA_LEVEL ? height : SEA_LEVEL - SEA_DEPTH;
-}
-
-/** The real ground across the route at track node `i`, lateral offset `u`: bilinear between the
- *  route's cross-sections, held at the nearest and furthest offsets on that side of the road. */
-function routeGround(track, i, u) {
-    const { sectionStep, sectionOffsets: offsets, sections } = track.stage.route;
-    const rows = sections.length / offsets.length;
-    const at = clamp((track.routeStart + i) / sectionStep, 0, rows - 1.0001);
-    const row = Math.floor(at);
-    const right = offsets.findIndex((offset) => { return offset > 0; });
-    const [first, last] = u < 0 ? [0, right - 1] : [right, offsets.length - 1];
-    const across = clamp(u, offsets[first], offsets[last]);
-    let c = first;
-    while (c < last - 1 && across > offsets[c + 1]) c++;
-    const f = (across - offsets[c]) / (offsets[c + 1] - offsets[c]);
-    const height = (r) => {
-        return lerp(sections[r * offsets.length + c], sections[r * offsets.length + c + 1], f);
-    };
-    return lerp(height(row), height(row + 1), at - row);
-}

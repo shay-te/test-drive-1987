@@ -1,6 +1,7 @@
 import { ROAD, PHYS } from '../config.js';
 import { DEG, clamp, createRng, Noise, smoothstep } from '../util/math.js';
 import { Track } from './Track.js';
+import { roadsideAt } from './routeTerrain.js';
 
 const MILE = 1609.34;
 /** Segments of road kept behind the start line so the mirror has something to show. */
@@ -11,6 +12,11 @@ const TAIL = 260;
 const STRAIGHT_RADIUS = 1100;
 const SHARP_RADIUS = 260;
 const MEDIUM_RADIUS = 450;
+/** The real cut beside the road: its foot up to `setback` m back from the road, its face climbing at
+ *  least `steep` m per m for at most `reach` m; where there is none the wall is a `lowest` m bank. */
+const CUT = { setback: 9, steep: 0.8, reach: 40, lowest: 1.2 };
+/** The cut's foot is eased along the road over this many nodes either side, so it never jumps. */
+const FOOT_EASE = 5;
 
 /** Lays out a stage on its leg of the route: rock face, pull-outs, rails, signs, traps and gas
  *  station. Deterministic for a given stage seed. */
@@ -32,6 +38,8 @@ class TrackBuilder {
         this.elevation = new Float32Array(this.count);
         this.wallOffset = new Float32Array(this.count);
         this.wallHeight = new Float32Array(this.count);
+        this.wallTop = new Float32Array(this.count);
+        this.wallSetback = new Float32Array(this.count);
         this.rail = new Uint8Array(this.count);
         this.pieces = [];
         this.props = [];
@@ -51,6 +59,8 @@ class TrackBuilder {
             elevation: this.elevation,
             wallOffset: this.wallOffset,
             wallHeight: this.wallHeight,
+            wallTop: this.wallTop,
+            wallSetback: this.wallSetback,
             rail: this.rail,
             props: this.props,
             traps: this.traps,
@@ -99,14 +109,29 @@ class TrackBuilder {
 
     // ------------------------------------------------------------------ rock face
 
+    /** The rock face on the right: the real cut, its foot where the ground starts to climb steeply (a
+     *  verge in front where it stands back), its height and top where the climb ends. */
     _layoutRockFace() {
-        const { noise, stage } = this;
+        const { noise } = this;
+        const step = this.stage.route.nearSpacing;
+        const steepAt = (i, out) => { return roadsideAt(this, i, 1, out + step) - roadsideAt(this, i, 1, out) >= CUT.steep * step; };
+        const feet = Array.from({ length: this.count }, (_, i) => {
+            let foot = 0;
+            while (foot + step <= CUT.setback && !steepAt(i, foot)) foot += step;
+            return steepAt(i, foot) ? foot : 0;
+        });
         for (let i = 0; i < this.count; i++) {
             const s = i * this.seg;
-            this.wallOffset[i] = ROAD.wallOffset + 0.45 * (noise.noise2(s / 70, 4.1) + 0.6);
-            let h = 17 + 28 * (0.5 + 0.5 * noise.fbm2(s / 260, 9.7, 3));
-            if (stage.summit) h *= 1 - 0.93 * smoothstep(this.finishIndex - 380, this.finishIndex - 60, i);
-            this.wallHeight[i] = h;
+            const rise = (out) => { return roadsideAt(this, i, 1, out); };
+            const steep = (out) => { return steepAt(i, out); };
+            const near = feet.slice(Math.max(0, i - FOOT_EASE), i + FOOT_EASE + 1);
+            const foot = near.reduce((sum, f) => { return sum + f; }, 0) / near.length;
+            let top = foot;
+            while (top + step <= foot + CUT.reach && steep(top)) top += step;
+            this.wallOffset[i] = ROAD.wallOffset + 0.45 * (noise.noise2(s / 70, 4.1) + 0.6) + foot;
+            this.wallSetback[i] = foot;
+            this.wallHeight[i] = Math.max(CUT.lowest, rise(top));
+            this.wallTop[i] = top - foot;
         }
     }
 
