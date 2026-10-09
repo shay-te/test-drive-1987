@@ -12,6 +12,8 @@ const silentAudio = { unlock() { return Promise.resolve(); }, play() {} };
 const pendingImages = { image() { return new Promise(() => {}); } };
 /** Photographing models needs WebGL, so the menus get a world with no photos to offer. */
 const offscreenWorld = { clear() {}, profile() { return null; } };
+/** Laying stages out is the StageLoader's business (tests/stageLoader.test.js); the menus only ask. */
+const askedStages = { asked: [], prepare(index) { this.asked.push(index); } };
 
 /** Locks the real `carId` for one test by taking its model away (every car has one now). */
 function lockForTest(t, carId) {
@@ -31,6 +33,7 @@ function openMenu(Screen, params, world = offscreenWorld) {
         resources: pendingImages,
         input,
         world,
+        stages: askedStages,
     });
     screen.enter(params);
     const press = (code) => {

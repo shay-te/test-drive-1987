@@ -8,21 +8,37 @@ import { DriveScreen } from '../src/ui/screens/DriveScreen.js';
 import { STAGES } from '../src/data/stages.js';
 import { Landscape } from '../src/sim/Landscape.js';
 import { buildTrack } from '../src/sim/TrackBuilder.js';
+import { StageLoader, stageLayout } from '../src/core/StageLoader.js';
 import { keyboardInput } from './helpers/keyboard.js';
 import { aimedOffTheEdge, findPlunge } from './helpers/plunge.js';
 
 const FRAME = 1 / 60;
 /** The 3D world needs WebGL, so the drive screen gets one that only accepts calls. */
-const offscreenWorld = { prepare() { return null; }, load() {}, render() {}, clear() {} };
+const offscreenWorld = {
+    prepareCabin() { return null; },
+    prepareStage() { return Promise.resolve(); },
+    load() {},
+    warmUp() { return Promise.resolve(); },
+    render() {},
+    clear() {},
+};
 
-/** A real drive screen on a real stage, played through a real InputManager. */
-function startStage(carId = 'porsche', world = offscreenWorld) {
+/** Lets the stage being prepared in the background (and anything waiting on it) finish. */
+async function settle(screen) {
+    await screen.stages.prepare(screen.session.stageIndex);
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+}
+
+/** A real drive screen on a real stage, laid out by a real StageLoader, played through a real
+ *  InputManager; resolves once the stage is ready (or waiting on the cabin). */
+async function startStage(carId = 'porsche', world = offscreenWorld) {
     const { input, key } = keyboardInput();
     const screen = new DriveScreen({
         game: { go() {} },
         audio: new AudioManager(new ResourceManager()),
         input,
         world,
+        stages: new StageLoader(world, stageLayout(null)),
     });
     screen.enter({ session: new Session(carById(carId)) });
     const run = (seconds) => {
@@ -40,11 +56,13 @@ function startStage(carId = 'porsche', world = offscreenWorld) {
         key('keyup', code);
     };
     run(FRAME * 2);
+    await settle(screen);
+    run(FRAME);
     return { screen, key, run, tap };
 }
 
-test('holding the throttle in neutral pulls away in first gear', () => {
-    const { screen, key, run } = startStage();
+test('holding the throttle in neutral pulls away in first gear', async () => {
+    const { screen, key, run } = await startStage();
     assert.equal(screen.vehicle.engine.gear, 0);
     key('keydown', 'ArrowUp');
     run(3);
@@ -52,8 +70,8 @@ test('holding the throttle in neutral pulls away in first gear', () => {
     assert.ok(screen.vehicle.speedMph > 15, `only ${screen.vehicle.speedMph.toFixed(1)} mph`);
 });
 
-test('rolling in neutral, the throttle only revs the engine', () => {
-    const { screen, key, run, tap } = startStage();
+test('rolling in neutral, the throttle only revs the engine', async () => {
+    const { screen, key, run, tap } = await startStage();
     key('keydown', 'ArrowUp');
     run(2);
     tap('KeyZ');
@@ -61,8 +79,8 @@ test('rolling in neutral, the throttle only revs the engine', () => {
     assert.equal(screen.vehicle.engine.gear, 0);
 });
 
-test('near the redline below top gear the driver is told to shift up, and the hint clears after A', () => {
-    const { screen, key, run, tap } = startStage();
+test('near the redline below top gear the driver is told to shift up, and the hint clears after A', async () => {
+    const { screen, key, run, tap } = await startStage();
     key('keydown', 'ArrowUp');
     run(0.5);
     let waited = 0;
@@ -82,9 +100,9 @@ test('driving waits for model preparation and advances only after the asset is r
     let complete;
     let calls = 0;
     const preparation = new Promise((resolve) => { complete = resolve; });
-    const { screen, run } = startStage('porsche', {
+    const { screen, run } = await startStage('porsche', {
         ...offscreenWorld,
-        prepare() { calls++; return preparation; },
+        prepareCabin() { calls++; return preparation; },
     });
     run(1);
     assert.equal(calls, 1);
@@ -92,6 +110,7 @@ test('driving waits for model preparation and advances only after the asset is r
     assert.equal(screen.session.stageTime, 0);
     complete(null);
     await preparation;
+    await settle(screen);
     assert.equal(screen.state, 'driving');
     run(1);
     assert.ok(screen.session.stageTime > 0);
@@ -100,29 +119,30 @@ test('driving waits for model preparation and advances only after the asset is r
 test('leaving during preparation does not build a late cabin or resurrect the drive', async () => {
     let complete;
     const preparation = new Promise((resolve) => { complete = resolve; });
-    const { screen } = startStage('porsche', { ...offscreenWorld, prepare() { return preparation; } });
+    const { screen } = await startStage('porsche', { ...offscreenWorld, prepareCabin() { return preparation; } });
     screen.exit();
     complete(null);
     await preparation;
+    await settle(screen);
     assert.equal(screen.vehicle, undefined);
     assert.equal(screen.input.lookEnabled, false);
 });
 
-test('V switches between the driver seat and the outside view, which the next stage keeps', () => {
-    const { screen, tap } = startStage();
+test('V switches between the driver seat and the outside view, which the next stage keeps', async () => {
+    const { screen, tap } = await startStage();
     assert.equal(screen.view.outside, false);
     tap('KeyV');
     assert.equal(screen.view.outside, true);
     tap('KeyV');
     assert.equal(screen.view.outside, false);
     const visits = [];
-    const next = new DriveScreen({ game: { go(name, params) { visits.push([name, params]); } }, audio: screen.audio, input: screen.input, world: screen.world });
+    const next = new DriveScreen({ game: { go(name, params) { visits.push([name, params]); } }, audio: screen.audio, input: screen.input, world: screen.world, stages: screen.stages });
     next.enter({ session: new Session(carById('porsche')), outside: true });
     assert.equal(next.outside, true);
 });
 
-test('hitting a car plays the crash out, watched from outside, before the notice; then the wreck is cleared', () => {
-    const { screen, run, tap } = startStage();
+test('hitting a car plays the crash out, watched from outside, before the notice; then the wreck is cleared', async () => {
+    const { screen, run, tap } = await startStage();
     const { vehicle } = screen;
     const truck = screen.traffic.add('truck', { s: vehicle.s + 12, u: vehicle.u, dir: -1, speed: 0, scripted: true });
     vehicle.vx = 30;
@@ -140,8 +160,8 @@ test('hitting a car plays the crash out, watched from outside, before the notice
     assert.deepEqual(screen.cracks, [], 'a fresh windshield');
 });
 
-test('over the edge into Howe Sound: a splash, the camera follows the car under, and the notice says how deep it sank', () => {
-    const { screen, run, tap } = startStage();
+test('over the edge into Howe Sound: a splash, the camera follows the car under, and the notice says how deep it sank', async () => {
+    const { screen, run, tap } = await startStage();
     const track = buildTrack(STAGES[0]);
     const { node } = findPlunge(track, new Landscape(track, STAGES[0]), 1);
     const played = [];
@@ -168,4 +188,12 @@ test('over the edge into Howe Sound: a splash, the camera follows the car under,
     assert.equal(screen.state, 'driving');
     assert.equal(screen.view.underwater, false, 'back on the road');
     assert.equal(screen.water.drops.length + screen.water.bubbles.length, 0, 'the sea is calm again');
+});
+
+test('while a stage is driven, the next one is prepared in the background', async () => {
+    const { screen } = await startStage();
+    assert.equal(screen.state, 'driving');
+    assert.deepEqual([...screen.stages.jobs.keys()].sort(), [0, 1]);
+    const next = await screen.stages.prepare(1);
+    assert.equal(next.stage.name, 'LIONS BAY');
 });

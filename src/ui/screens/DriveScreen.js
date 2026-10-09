@@ -8,11 +8,9 @@ import { gearLabel } from '../../data/cars.js';
 import { STAGES } from '../../data/stages.js';
 import { inputKey, t } from '../../i18n/i18n.js';
 import { POLICE_EVENT, PoliceManager } from '../../sim/Police.js';
-import { Landscape } from '../../sim/Landscape.js';
 import { OverTheEdge } from '../../sim/OverTheEdge.js';
 import { RoadCrash } from '../../sim/RoadCrash.js';
 import { CRASH_CAUSE } from '../../sim/Session.js';
-import { buildTrack } from '../../sim/TrackBuilder.js';
 import { LANE, ONCOMING, TrafficManager } from '../../sim/Traffic.js';
 import { VehicleDynamics } from '../../sim/VehicleDynamics.js';
 import { WaterParticles } from '../../sim/WaterParticles.js';
@@ -48,8 +46,8 @@ const BODY_RATE = 6;
 
 /** One stage of driving: physics, traffic, police and the rules, seen from the driver's seat. */
 export class DriveScreen {
-    constructor({ game, audio, input, world }) {
-        Object.assign(this, { game, audio, input, world });
+    constructor({ game, audio, input, world, stages }) {
+        Object.assign(this, { game, audio, input, world, stages });
         this.state = 'loading';
         this.loadingShown = false;
         this.loadingStarted = false;
@@ -79,27 +77,24 @@ export class DriveScreen {
         this.soundscape = null;
     }
 
-    /** Builds the stage (heavy) one frame after the loading notice has been shown. */
+    /** Once the loading notice shows: waits for the stage the loader has been preparing in the
+     *  background (since the title screen, or the stage before) and for the car's cabin. */
     _load() {
         if (this.loadingStarted) return;
         this.loadingStarted = true;
-        const preparation = this.world.prepare(this.car, this.session.stage);
-        if (!preparation) {
-            this._build();
-            return;
-        }
-        preparation.then((asset) => {
-            if (!this.exited) this._build(asset);
+        Promise.all([this.stages.prepare(this.session.stageIndex), this.world.prepareCabin(this.car)]).then(([stage, cabin]) => {
+            if (!this.exited) this._build(stage, cabin);
         }).catch((error) => {
-            console.error('[world] Cabin preparation failed', error);
+            console.error('[world] Stage preparation failed', error);
             if (!this.exited) this.loadError = true;
         });
     }
 
-    _build(cabinAsset = null) {
+    /** Puts the prepared stage (its laid-out `track` and `landscape`) and the car's cabin together. */
+    _build({ track, landscape }, cabinAsset) {
         const { car, session } = this;
-        this.track = buildTrack(session.stage);
-        this.landscape = new Landscape(this.track, session.stage);
+        this.track = track;
+        this.landscape = landscape;
         this.water = new WaterParticles(this.landscape.waterLevel, session.stage.seed);
         this.sunk = false;
         this.world.load(this.track, session.stage, car, this.landscape, cabinAsset);
@@ -123,7 +118,15 @@ export class DriveScreen {
                 this.soundscape = new DriveSoundscape(this.audio, engine);
             });
         }
-        this.state = 'driving';
+        // The next stage gets ready in the background while this one is driven.
+        const next = session.stageIndex + 1;
+        this.stages.keep(session.stageIndex, next);
+        if (next < STAGES.length) this.stages.prepare(next);
+        this.world.warmUp().catch((error) => {
+            console.warn('[world] Shaders could not be compiled ahead; the first frames will', error);
+        }).then(() => {
+            if (!this.exited) this.state = 'driving';
+        });
     }
 
     update(dt) {

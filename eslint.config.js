@@ -37,6 +37,9 @@ const browserGlobals = [
     'getComputedStyle',
     'location',
     'atob',
+    'self',
+    'Worker',
+    'structuredClone',
 ];
 
 export default [

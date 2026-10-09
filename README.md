@@ -34,6 +34,10 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   (Poly Haven, CC0). The view reaches 45 km through a thin coastal haze.
 - The cut is blasted granite: blocks a couple of metres across, each set back by its own amount,
   dark joints between them, at about a metre's detail.
+- Stages load in the background: from the moment the title screen shows, a worker lays out the
+  first stage's road and ground while its models and pictures download, and each stage prepares
+  the next while it is driven. Starting a stage only waits for that work, then compiles the stage's
+  shaders ahead (in parallel where the browser can) so the first frame does not stall.
 - Sea-to-Sky light: the late-afternoon sun stands at its real compass position in the west, on
   the left as you drive north, sinking stage by stage and glinting off the water as the road turns.
 - Over the edge into Howe Sound: the car splashes in, floats while the water pours in, then sinks
@@ -77,9 +81,8 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
    with usable rights are found. Drop them in `assets/audio/engines/` (see its README).
 2. **Sea-to-Sky detail:** concrete barriers where the real road has them, the railway between
    road and shore, Lions Bay's houses, the islands across the sound. (The provincial road atlas and orthophotos are "access only", so they are not used.)
-3. **Load the road in the background from the moment the page opens** (a worker builds the stage,
-   assets stream in idle time, the title screen keeps its frame rate); starting a stage only waits
-   for that job.
+3. **The driver's hands, as real as can be:** gloved hands with fingers wrapped round the rim and
+   the gear knob.
 4. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it

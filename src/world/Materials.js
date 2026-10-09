@@ -68,7 +68,7 @@ export class WorldMaterials {
         return texture;
     }
 
-    /** A texture of the photograph at `path` (loaded by WorldView.prepare), tiled when `repeat`. */
+    /** A texture of the photograph at `path` (loaded by WorldView.prepareStage), tiled when `repeat`. */
     _photo(path, color, repeat = true) {
         const map = new THREE.Texture(this.resources.get(`image:${path}`));
         map.anisotropy = this.anisotropy;

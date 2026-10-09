@@ -43,7 +43,8 @@ export function groundNormal(ground, x, z) {
  *  route beyond (the sea floor under the water). The renderer builds its meshes from it and a car
  *  going over the edge lands on it. */
 export class Landscape {
-    constructor(track, stage) {
+    /** `prepared`: what another Landscape of this track worked out (its `prepared`), not worked out again. */
+    constructor(track, stage, prepared = null) {
         this.track = track;
         this.noise = new Noise(stage.seed + 17);
         this.reliefNoise = new Noise(stage.seed + 99);
@@ -54,11 +55,20 @@ export class Landscape {
         this.z0 = b.minZ - MARGIN;
         this.nx = Math.ceil((b.maxX - b.minX + 2 * MARGIN) / CELL) + 1;
         this.nz = Math.ceil((b.maxZ - b.minZ + 2 * MARGIN) / CELL) + 1;
+        this.hint = 0;
+        if (prepared) {
+            Object.assign(this, prepared);
+            return;
+        }
         this.heights = new Float32Array(this.nx * this.nz);
         this.sides = new Float32Array(this.nx * this.nz);
         this.dropSections = Array.from({ length: track.count }, (_, i) => { return this._dropSection(i); });
-        this.hint = 0;
         this._computeHeights();
+    }
+
+    /** What building this landscape worked out, to build it again elsewhere (on another thread). */
+    get prepared() {
+        return { heights: this.heights, sides: this.sides, dropSections: this.dropSections };
     }
 
     /** Ground height under world point (x, z): whichever surface is on top, as it is drawn. */

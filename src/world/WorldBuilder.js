@@ -84,6 +84,7 @@ export class WorldBuilder {
 
     /** The vertical cut through the mountain on the right, with relief carved in by noise. */
     _rockFace(track) {
+        let blocks = null;
         return buildRibbon(
             track,
             this.materials.rock,
@@ -94,15 +95,17 @@ export class WorldBuilder {
                 alongTile: SCENERY_TEXTURES.rock.metres,
                 acrossTile: SCENERY_TEXTURES.rock.metres,
                 steps: ROWS_PER_NODE,
+                // The blocks under each vertex, worked out once for its relief and its shade.
                 displace: (world, _p, c, i) => {
+                    blocks = this._blocks(world);
                     if (c === 0) return;
                     // Relief only recedes into the mountain so the rock never pokes past the collision line.
-                    const depth = this._granite(world);
+                    const depth = this._granite(world, blocks);
                     world.x += Math.cos(track.heading[i]) * depth;
                     world.z += Math.sin(track.heading[i]) * depth;
                 },
-                color: (p, _c, _i, world) => {
-                    const { joint, recess } = this._blocks(world);
+                color: (p) => {
+                    const { joint, recess } = blocks;
                     const shade = GRANITE.shade;
                     return shadeVertex('#ffffff', clamp(0.55 + p.h / 18, 0.55, 1) * (1 - shade.crack * joint) * (1 - shade.recess * recess));
                 },
@@ -119,10 +122,9 @@ export class WorldBuilder {
     }
 
     /** How far blasted granite recedes from a flat face at world point `p` (m, never negative): its
-     *  blocks stepped back, the joints between them, broad bulges and fine grain. */
-    _granite(p) {
+     *  `blocks` (from _blocks) stepped back, the joints between them, broad bulges and fine grain. */
+    _granite(p, { joint, recess }) {
         const n = this.noise;
-        const { joint, recess } = this._blocks(p);
         const [bulge, broad] = GRANITE.bulge;
         const [grain, fine] = GRANITE.grain;
         return (

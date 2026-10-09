@@ -1,6 +1,9 @@
 import { ROAD } from '../config.js';
 import { clamp } from '../util/math.js';
 
+/** What a Track works out for itself from its data (and the stage it is given). */
+const WORKED_OUT = new Set(['stage', 'segment', 'count', 'length', 'heading', 'px', 'pz', 'bounds']);
+
 /** A stage of road sampled every `ROAD.segment` m. Road coords: s along, u lateral (+ towards the
  *  wall), h up. World coords are three.js: x right, y up, -z forward at heading 0. */
 export class Track {
@@ -15,6 +18,11 @@ export class Track {
         this.count = data.curvature.length;
         this.length = (this.count - 1) * this.segment;
         this._integrate();
+    }
+
+    /** The data this track was built from, without its stage: enough to build it again elsewhere. */
+    get prepared() {
+        return Object.fromEntries(Object.entries(this).filter(([key]) => { return !WORKED_OUT.has(key); }));
     }
 
     _integrate() {
