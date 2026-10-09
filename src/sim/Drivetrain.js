@@ -1,5 +1,6 @@
 import { GAME, PHYS, ROAD_TEST } from '../config.js';
 import { bisect, clamp, lerp, smoothstep } from '../util/math.js';
+import { driveGrip } from './axleLoads.js';
 
 const RPM_TO_RADS = (2 * Math.PI) / 60;
 /** The gear below neutral. */
@@ -187,17 +188,6 @@ export class Drivetrain {
         }
     }
 
-    /** Tractive force limit of the driven axle (N). */
-    tractionLimit(longAccel = 0) {
-        const c = this.chassis;
-        const rearShare = 1 - c.frontWeight;
-        // Weight transfers to the rear under acceleration.
-        const transfer = (c.cgHeight / c.wheelbase) * (longAccel / PHYS.g);
-        const share = c.driven === 'rear' ? rearShare + transfer : c.frontWeight - transfer;
-        // Longitudinal grip of the tyre exceeds the skid-pad (lateral) figure.
-        return c.grip * 1.25 * c.massKg * PHYS.g * clamp(share, 0.2, 0.85);
-    }
-
     /** Aerodynamic + rolling resistance (N) at speed `v`, against the way the car rolls. */
     resistance(v) {
         const roll = Math.abs(v) > 0.05 ? PHYS.rollingResistance * this.chassis.massKg * PHYS.g : 0;
@@ -270,7 +260,8 @@ export class Drivetrain {
                 shifts.push({ from: s.gear, to: s.gear + 1, t: clock, v });
                 this.shift(s, 1);
             }
-            const force = Math.min(this.update(s, v, 1, dt), this.tractionLimit(accel));
+            // The same tyres as on the road (src/sim/axleLoads.js): the car fitted is the car driven.
+            const force = Math.min(this.update(s, v, 1, dt), driveGrip(this.chassis, accel));
             accel = (force - this.resistance(v)) / this.effectiveMass(s.gear);
             v = Math.max(0, v + accel * dt);
             x += v * dt;

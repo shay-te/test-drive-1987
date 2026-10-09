@@ -1,5 +1,6 @@
-import { GAME, PHYS, RAIL, ROAD } from '../config.js';
+import { GAME, PHYS, RAIL, ROAD, TYRES } from '../config.js';
 import { approach, clamp, moveTowards, wrapAngle } from '../util/math.js';
+import { axleLoads } from './axleLoads.js';
 import { Drivetrain } from './Drivetrain.js';
 
 const HALF_CAR_WIDTH = 0.9;
@@ -7,11 +8,6 @@ const SUBSTEP = 1 / 240;
 const COUNTER_STEER = 0.8;
 /** Full pedal travel per second. */
 const PEDAL_RATE = 4;
-/** Peak grip of each axle relative to the car's: the front lets go first (stable limit understeer). */
-const FRONT_GRIP = 0.9;
-const REAR_GRIP = 1.08;
-/** Share of rigid-body pitch transfer that reaches the tyres (suspension compliance). */
-const TRANSFER_SCALE = 0.55;
 const GRAVEL_GRIP = 0.8;
 /** Body slip angle of normal cornering, below which the counter-steer assist stays out. */
 const SLIDE_DEADZONE = 0.07;
@@ -20,7 +16,7 @@ const TYRE_SHAPE = 1.2;
 
 /** Longitudinal force an axle can take: `demand`, limited to the grip its lateral force leaves. */
 function gripBudget(demand, grip, lateral) {
-    const left = Math.sqrt(Math.max(0, grip * grip - lateral * lateral)) * 0.95;
+    const left = Math.sqrt(Math.max(0, grip * grip - lateral * lateral)) * TYRES.longitudinal * TYRES.budget;
     const limit = Math.max(grip * 0.15, left);
     return clamp(demand, -limit, limit);
 }
@@ -36,7 +32,7 @@ export class VehicleDynamics {
         this.a = c.wheelbase * (1 - c.frontWeight); // CG to front axle
         this.b = c.wheelbase * c.frontWeight; // CG to rear axle
         this.inertia = this.mass * this.a * this.b * 1.05;
-        this.mu = c.grip * 1.1;
+        this.mu = c.grip * TYRES.peak;
         // Cornering stiffness per radian, normalised by axle load. The rear axle is stiffer
         // (wider tyres), which gives the stable understeer balance of a road car.
         this.stiffFront = 21;
@@ -114,16 +110,7 @@ export class VehicleDynamics {
         // Loads with longitudinal weight transfer.
         const m = this.mass;
         const L = this.a + this.b;
-        const staticFront = (m * PHYS.g * this.b) / L;
-        const staticRear = (m * PHYS.g * this.a) / L;
-        const accel = clamp(this.longAccel, -1.2 * PHYS.g, 1.2 * PHYS.g);
-        const transfer = clamp(
-            (TRANSFER_SCALE * m * this.car.chassis.cgHeight * accel) / L,
-            -staticRear * 0.8,
-            staticFront * 0.8,
-        );
-        const fzFront = staticFront - transfer;
-        const fzRear = staticRear + transfer;
+        const { front: fzFront, rear: fzRear } = axleLoads(this.car.chassis, this.longAccel);
 
         // Pedals travel instead of switching. Brakes are load-proportioned and each axle's
         // drive/brake force is held to the grip left after cornering (ABS / feathered throttle).
@@ -132,8 +119,8 @@ export class VehicleDynamics {
         const drive = this.drivetrain.update(dtState, v, this.throttle, dt);
         const brakeTotal = Math.abs(v) > 0.05 ? Math.sign(v) * this.brake * mu * m * PHYS.g : 0;
         const frontShare = fzFront / (fzFront + fzRear);
-        const muFront = mu * FRONT_GRIP;
-        const muRear = mu * REAR_GRIP;
+        const muFront = mu * TYRES.front;
+        const muRear = mu * TYRES.rear;
         const frontLong = gripBudget(-brakeTotal * frontShare, muFront * fzFront, this.fyFront);
         const rearDemand = drive - brakeTotal * (1 - frontShare);
         const rearLong = gripBudget(rearDemand, muRear * fzRear, this.fyRear);
@@ -202,9 +189,10 @@ export class VehicleDynamics {
         return this._contacts(track, uDot);
     }
 
-    /** Axle lateral force: Pacejka-like curve on full load, clipped by the grip `long` leaves over. */
+    /** Axle lateral force: Pacejka-like curve on full load, clipped by the grip `long` leaves over (the
+     *  friction ellipse: the tyre grips harder lengthways, TYRES.longitudinal). */
     _tyre(alpha, load, long, mu, stiffness) {
-        const cap = Math.sqrt(Math.max(0, (mu * load) ** 2 - long ** 2));
+        const cap = Math.sqrt(Math.max(0, (mu * load) ** 2 - (long / TYRES.longitudinal) ** 2));
         const B = stiffness / (TYRE_SHAPE * mu);
         const force = -mu * load * Math.sin(TYRE_SHAPE * Math.atan(B * alpha));
         return clamp(force, -cap, cap);

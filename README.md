@@ -154,6 +154,7 @@ Any static web server works; no build step. three.js 0.180.0 is loaded from jsDe
 | ← → | steer |
 | ↑ / ↓ | accelerate / brake |
 | A / Z | shift up / down (you start in neutral; down from neutral at a standstill is reverse) |
+| ↓ + ↑ at a standstill | launch as road testers did: the brake holds the car while the revs and the boost build against the clutch; let go of ↓ |
 | Drag or Q / E | look left / right (view stays where you leave it) |
 | R / F | look up / down |
 | C | return to forward view |
@@ -174,7 +175,10 @@ Porsche 911 Turbo, Ferrari Testarossa, Lamborghini Countach 5000 QV, Lotus Espri
 Chevrolet Corvette. Each uses its real gear ratios, final drive, tyre size, weight and torque
 curve; the simulation fits itself to the brochure's road test as US magazines ran it (clock
 started after a one-foot rollout, the tester's quickest launch revs, shifts at the redline): 0-60,
-0-100, the quarter mile and its trap speed, and the top speed. The acceleration graph in the
+0-100, the quarter mile and its trap speed, and the top speed. The fit runs on the same tyres the car
+drives on (`TYRES` in `src/config.js`), so a launch like the tester's does the brochure's times;
+floored from idle a turbo car first waits for its boost, and the first stage starts up the hill out
+of Horseshoe Bay. The acceleration graph in the
 brochure is that simulated run.
 Choose with ◀ ▶ on the title screen or in the brochure. The title shows a car with an authored
 model as a side-on photo of that model; cars without one are marked LOCKED and cannot be driven yet.

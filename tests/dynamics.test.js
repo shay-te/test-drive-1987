@@ -5,6 +5,7 @@ import { STAGES } from '../src/data/stages.js';
 import { PHYS } from '../src/config.js';
 import { buildTrack } from '../src/sim/TrackBuilder.js';
 import { VehicleDynamics } from '../src/sim/VehicleDynamics.js';
+import { driveGrip } from '../src/sim/axleLoads.js';
 import { runStage } from './helpers/autopilot.js';
 
 const tracks = STAGES.map(buildTrack);
@@ -64,4 +65,26 @@ test('flat out into a hairpin ends in a crash', () => {
         );
     }
     assert.ok(event && event.type === 'crash');
+});
+
+test('the car on the road pulls away with the force its road test was fitted with: the engine\'s, up to the tyres\' grip', () => {
+    const road = tracks[0];
+    for (const car of CARS) {
+        const vehicle = new VehicleDynamics(car);
+        vehicle.reset(road.startS + 400, 1.8);
+        const { drivetrain, engine } = vehicle;
+        drivetrain.shift(engine, 1, 0);
+        Object.assign(engine, { rpm: drivetrain.launchRpm, boost: drivetrain.boostCeiling(drivetrain.launchRpm), shiftTimer: 0 });
+        vehicle.throttle = 1;
+        vehicle.vx = 3;
+        let pushed = 0;
+        for (let i = 0; i < 60; i++) {
+            const v = vehicle.vx;
+            vehicle.step(1 / 120, { steer: 0, throttle: 1, brake: 0 }, road);
+            const resist = drivetrain.resistance(vehicle.vx) + car.chassis.massKg * PHYS.g * road.gradeAt(vehicle.s);
+            pushed = (vehicle.vx - v) * 120 * drivetrain.effectiveMass(engine.gear) + resist;
+        }
+        const fitted = Math.min(drivetrain.update({ ...engine }, vehicle.vx, 1, 0), driveGrip(car.chassis, vehicle.longAccel));
+        assert.ok(Math.abs(pushed / fitted - 1) < 0.03, `${car.id}: ${pushed.toFixed(0)} N on the road, ${fitted.toFixed(0)} N in its road test`);
+    }
 });

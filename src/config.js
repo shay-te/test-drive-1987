@@ -90,6 +90,14 @@ export const PHYS = Object.freeze({
     hectare: 10000,
 });
 
+/** The tyres on dry asphalt: their peak friction over the skid-pad figure (they grip harder than at
+ *  the limit of a skid-pad circle), each axle's share of it (the front lets go first: stable limit
+ *  understeer), how much harder they grip driving or braking than sideways (`longitudinal`), the share
+ *  of rigid-body pitch transfer that reaches them (suspension compliance), at most `maxTransfer` of an
+ *  axle's static load moving off it, and how much of an axle's grip is left to drive or brake with.
+ *  The car on the road and its road-test calibration share them. */
+export const TYRES = Object.freeze({ peak: 1.1, front: 0.9, rear: 1.08, longitudinal: 1.15, transfer: 0.55, maxTransfer: 0.8, budget: 0.95 });
+
 /** How the brochure's figures were measured, and how the drivetrain is fitted to them. */
 export const ROAD_TEST = Object.freeze({
     /** US magazines start the clock after the car has rolled one foot (m). */
