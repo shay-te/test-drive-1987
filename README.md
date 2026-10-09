@@ -17,9 +17,14 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   scoring. Tested.
 - The Sea-to-Sky Highway (BC 99): the five stages are consecutive 8.6 km legs of the real road
   northbound, Horseshoe Bay, Lions Bay, Porteau Cove, Britannia Beach and Squamish, with its real
-  bends, gradients and terrain (Howe Sound on the left, the Coast Mountains on the right). The drop
-  falls to the real shore or sea floor under the water. `scripts/import-route.mjs` builds
-  `src/data/seaToSky.js` from OpenStreetMap and Natural Resources Canada elevation data.
+  bends, gradients and terrain (Howe Sound on the left, the Coast Mountains on the right).
+  `scripts/import-route.mjs` builds `src/data/seaToSky.js` from OpenStreetMap and British
+  Columbia's 1 m LiDAR survey (LidarBC), with Natural Resources Canada's elevation model beyond it.
+- The roadside as it is: the road's rise and fall from the 1 m LiDAR, carried straight over the 21
+  mapped bridges; the rock face is the real blasted cut (tall where the mountain was cut away, a low
+  bank where the side is flat) with the real mountainside above it, and the drop is the real slope
+  down to the shore. Today's highway is a divided four-lane road; the game keeps the old two-lane
+  road and hangs the real slopes off its edges. The sea floor shelves away from the shore.
 - Sea-to-Sky light: the late-afternoon sun stands at its real compass position in the west, on
   the left as you drive north, sinking stage by stage and glinting off the water as the road turns.
 - Over the edge into Howe Sound: the car splashes in, floats while the water pours in, then sinks
@@ -61,10 +66,9 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
    five exact cars exist (only stand-ins: a 911 of unknown year, a Murcielago V12, a Saab turbo
    four, a Corvette of unknown generation), so the engines stay synthesised until recordings
    with usable rights are found. Drop them in `assets/audio/engines/` (see its README).
-2. **Sea-to-Sky polish:** the road as it is, from BC's 1 m LiDAR elevation (LidarBC) and the
-   provincial Digital Road Atlas: the real blasted granite cuts and cliffs, concrete barriers, the
-   railway between road and shore, Lions Bay, the islands across the sound; one polished 500 m
-   section first, rock assets from Poly Haven (CC0).
+2. **Sea-to-Sky detail:** granite rock textures (Poly Haven, CC0), concrete barriers where the
+   real road has them, the railway between road and shore, Lions Bay's houses, the islands across
+   the sound. (The provincial road atlas and orthophotos are "access only", so they are not used.)
 3. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
@@ -130,6 +134,7 @@ A non-commercial tribute to *Test Drive* by Distinctive Software, published by A
 Car names are trademarks of their respective owners; this project is not affiliated with them.
 
 The road: © OpenStreetMap contributors. `src/data/seaToSky.js` is derived from OpenStreetMap
-and is available under the Open Database License (ODbL). Heights: the Canadian Digital Elevation
-Model, Natural Resources Canada (Open Government Licence – Canada), via the Mapzen/AWS Terrain
-Tiles.
+and is available under the Open Database License (ODbL). Heights: contains information licensed
+under the Open Government Licence – British Columbia (LidarBC); and the Canadian Digital
+Elevation Model, Natural Resources Canada (Open Government Licence – Canada), via the Mapzen/AWS
+Terrain Tiles.

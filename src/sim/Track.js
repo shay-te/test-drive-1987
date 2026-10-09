@@ -4,7 +4,9 @@ import { clamp } from '../util/math.js';
 /** A stage of road sampled every `ROAD.segment` m. Road coords: s along, u lateral (+ towards the
  *  wall), h up. World coords are three.js: x right, y up, -z forward at heading 0. */
 export class Track {
-    /** `data` holds per-node arrays (curvature, elevation, wall*, rail) plus props, traps, finishS, and
+    /** `data` holds per-node arrays (curvature, elevation, wallOffset, wallHeight, wallTop (how far out
+     *  beyond its foot the cut's top is), wallSetback (how far its foot stands back from where the real
+     *  roadside starts), rail) plus props, traps, finishS, and
      *  where the stage lies on its route: `routeStart` (its node 0) and `bearing` (compass deg at node 0). */
     constructor(data) {
         Object.assign(this, data);

@@ -83,7 +83,7 @@ command, so a later install does not prune the others), plus Playwright's browse
 
 ```sh
 npm i --no-save --no-package-lock @gltf-transform/core@4 @gltf-transform/functions@4 \
-    @gltf-transform/extensions@4 meshoptimizer@0 sharp@0 playwright@1.56.1
+    @gltf-transform/extensions@4 meshoptimizer@0 sharp@0 playwright@1.56.1 geotiff@2.1.3
 npx playwright install chromium firefox
 ```
 

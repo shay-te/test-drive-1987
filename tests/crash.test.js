@@ -43,11 +43,11 @@ function energy(body) {
     return 0.5 * body.mass * body.speed * body.speed + spinning + body.mass * PHYS.g * body.position.y;
 }
 
-/** Plays a crash to the end; how high each car got above the road, how far into the rock, and the
- *  most the crash's energy ever exceeded what the impact left it with (J). */
+/** Plays a crash to the end; how high each car got off the ground under it, how far into the rock,
+ *  and the most the crash's energy ever exceeded what the impact left it with (J). */
 function playOut(crash) {
     const above = ({ position }) => {
-        return position.y - track.elevationAt(track.project(position.x, position.z, 0).s);
+        return position.y - crash.ground.heightAt(position.x, position.z);
     };
     let playerTop = 0;
     let otherTop = 0;

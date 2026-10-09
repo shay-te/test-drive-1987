@@ -1,10 +1,12 @@
 /** Imports the real Sea-to-Sky Highway (BC 99) northbound, from the Horseshoe Bay interchange to
  *  Squamish, into src/data/seaToSky.js: the road's curvature and elevation every ROAD.segment metres,
- *  and the terrain across it. Road: OpenStreetMap (ODbL); heights: Mapzen/AWS terrain tiles, which
- *  carry Natural Resources Canada's CDEM here (Open Government Licence - Canada).
- *  Usage: node scripts/import-route.mjs (downloads are cached in tmp/route-cache) */
+ *  the roadside in fine cross-sections and the terrain across it. Road: OpenStreetMap (ODbL); heights:
+ *  LidarBC's 1 m bare earth (Open Government Licence - British Columbia), and beyond it the Mapzen/AWS
+ *  terrain tiles, which carry Natural Resources Canada's CDEM here (Open Government Licence - Canada).
+ *  Usage: node scripts/import-route.mjs (downloads, about 600 MB, are cached in tmp/route-cache) */
 import { Buffer } from 'node:buffer';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { fromFile } from 'geotiff';
 import sharp from 'sharp';
 import { ROAD } from '../src/config.js';
 
@@ -26,11 +28,37 @@ const TILE_SIZE = 256;
 const TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium';
 /** Smoothing of the mapped centreline and of the road's height (m, Gaussian sigma). */
 const LINE_SIGMA = 24;
-const GRADE_SIGMA = 36;
-/** The terrain heights straddle the road's cut and fill: a median over this many nodes ignores them;
- *  bridges and cuttings beyond that are levelled to the steepest grade the highway has. */
-const GRADE_MEDIAN = 51;
+const GRADE_SIGMA = 8;
+/** A median over this many nodes drops a stray height (the mapped line crossing the road's edge), and
+ *  nothing is left steeper than the steepest grade the highway has. */
+const GRADE_MEDIAN = 7;
 const MAX_GRADE = 0.09;
+/** LidarBC's 1 m bare-earth tiles along the route (BCGS sheets of 092G), the newest survey first. */
+const LIDAR = 'https://nrs.objectstore.gov.bc.ca/gdwuts/092/092g';
+const LIDAR_TILES = [
+    '2019/dem/bc_092g034_xl1m_utm10_2019.tif',
+    '2019/dem/bc_092g044_xl1m_utm10_2019.tif',
+    '2019/dem/bc_092g054_xl1m_utm10_2019.tif',
+    '2019/dem/bc_092g064_xl1m_utm10_2019.tif',
+    '2019/dem/bc_092g065_xl1m_utm10_2019.tif',
+    '2016/dem/bc_092g034_xl1m_utm10_170713.tif',
+    '2016/dem/bc_092g065_xl1m_utm10_170601.tif',
+    '2016/dem/bc_092g075_xl1m_utm10_170601.tif',
+];
+const LIDAR_BLOCK = 512;
+const LIDAR_BLOCKS_KEPT = 64;
+/** Bare earth has no bridge decks: the road is carried straight across, from this far before to this
+ *  far after each mapped bridge (m). */
+const BRIDGE_MARGIN = 12;
+/** The roadside in fine cross-sections every NEAR_STEP nodes: from the edge of the real road's flat
+ *  platform (today four lanes, where the game's road has two) out NEAR_REACH m on each side, NEAR_SPACING
+ *  m apart, in decimetres above (or below) the road. The platform ends where the ground strays more than
+ *  PLATFORM_RISE m from the road, sought 1 m at a time out to PLATFORM_REACH m. */
+const NEAR_STEP = 3;
+const NEAR_SPACING = 3;
+const NEAR_REACH = 57;
+const PLATFORM_RISE = 1.5;
+const PLATFORM_REACH = 40;
 /** Terrain across the road every SECTION_STEP nodes, at these lateral offsets (m, + right). */
 const SECTION_STEP = 10;
 const SECTION_OFFSETS = [-2400, -1700, -1200, -850, -600, -420, -300, -210, -150, -105, -75,
@@ -69,11 +97,13 @@ async function highwayWays() {
     throw new Error('No Overpass server answered');
 }
 
-/** The shortest legal drive north from START through the directed carriageways, as [lat, lon]. */
+/** The shortest legal drive north from START through the directed carriageways: its points as
+ *  [lat, lon], and for each step between them whether it is on a bridge. */
 function northbound(ways) {
     const id = ({ lat, lon }) => { return `${lat.toFixed(7)},${lon.toFixed(7)}`; };
     const points = new Map();
     const next = new Map();
+    const bridges = new Set();
     const link = (a, b) => {
         if (!next.has(a)) next.set(a, []);
         next.get(a).push(b);
@@ -84,9 +114,11 @@ function northbound(ways) {
             return id(p);
         });
         const oneway = way.tags.oneway === 'yes' || way.tags.highway === 'motorway';
+        const bridge = Boolean(way.tags.bridge) && way.tags.bridge !== 'no';
         for (let i = 1; i < ids.length; i++) {
             link(ids[i - 1], ids[i]);
             if (!oneway) link(ids[i], ids[i - 1]);
+            if (bridge) bridges.add(`${ids[i - 1]}>${ids[i]}`).add(`${ids[i]}>${ids[i - 1]}`);
         }
     }
     const start = id({ lat: START[0], lon: START[1] });
@@ -111,7 +143,103 @@ function northbound(ways) {
     for (const node of cost.keys()) if (points.get(node)[0] > points.get(end)[0]) end = node;
     const path = [end];
     while (path.at(-1) !== start) path.push(previous.get(path.at(-1)));
-    return path.reverse().map((node) => { return points.get(node); });
+    path.reverse();
+    return {
+        points: path.map((node) => { return points.get(node); }),
+        bridge: path.slice(1).map((node, i) => { return bridges.has(`${path[i]}>${node}`); }),
+    };
+}
+
+/** Where the bridges are along `route` (from northbound), as [from, to] metres along it. */
+function bridgeSpans(route) {
+    const spans = [];
+    let along = 0;
+    route.bridge.forEach((onBridge, i) => {
+        const length = metres(route.points[i], route.points[i + 1]);
+        if (onBridge) {
+            const last = spans.at(-1);
+            if (last && last[1] === along) last[1] += length;
+            else spans.push([along, along + length]);
+        }
+        along += length;
+    });
+    return spans;
+}
+
+/** Heights every `seg` m with each bridge `span` (m along) bridged: straight from one end to the other. */
+function bridged(heights, spans) {
+    const out = [...heights];
+    for (const [from, to] of spans) {
+        const a = Math.max(0, Math.floor((from - BRIDGE_MARGIN) / seg));
+        const b = Math.min(out.length - 1, Math.ceil((to + BRIDGE_MARGIN) / seg));
+        for (let i = a + 1; i < b; i++) out[i] = out[a] + ((out[b] - out[a]) * (i - a)) / (b - a);
+    }
+    return out;
+}
+
+/** [easting, northing] in UTM zone 10 (GRS80) of [lat, lon]. */
+function toUtm([lat, lon]) {
+    const k = Math.PI / 180;
+    const a = 6378137;
+    const f = 1 / 298.257222101;
+    const k0 = 0.9996;
+    const e2 = f * (2 - f);
+    const ep2 = e2 / (1 - e2);
+    const phi = lat * k;
+    const N = a / Math.sqrt(1 - e2 * Math.sin(phi) ** 2);
+    const T = Math.tan(phi) ** 2;
+    const C = ep2 * Math.cos(phi) ** 2;
+    const A = Math.cos(phi) * (lon + 123) * k;
+    const M = a * ((1 - e2 / 4 - (3 * e2 * e2) / 64 - (5 * e2 ** 3) / 256) * phi
+        - ((3 * e2) / 8 + (3 * e2 * e2) / 32 + (45 * e2 ** 3) / 1024) * Math.sin(2 * phi)
+        + ((15 * e2 * e2) / 256 + (45 * e2 ** 3) / 1024) * Math.sin(4 * phi)
+        - ((35 * e2 ** 3) / 3072) * Math.sin(6 * phi));
+    const east = k0 * N * (A + ((1 - T + C) * A ** 3) / 6 + ((5 - 18 * T + T * T + 72 * C - 58 * ep2) * A ** 5) / 120) + 500000;
+    const north = k0 * (M + N * Math.tan(phi) * ((A * A) / 2 + ((5 - T + 9 * C + 4 * C * C) * A ** 4) / 24
+        + ((61 - 58 * T + T * T + 600 * C - 330 * ep2) * A ** 6) / 720));
+    return [east, north];
+}
+
+/** LidarBC's bare earth at [lat, lon] (m above the sea), bilinear between its 1 m pixels, read block by
+ *  block from the cached tiles; null where no tile has data. */
+async function lidar() {
+    const tiles = [];
+    for (const path of LIDAR_TILES) {
+        const file = path.split('/').at(-1);
+        await download(`${LIDAR}/${path}`, file);
+        const image = await (await fromFile(`${CACHE}/${file}`)).getImage();
+        const [x0, y0] = image.getOrigin();
+        const [rx, ry] = image.getResolution();
+        tiles.push({ image, x0, y0, rx, ry, width: image.getWidth(), height: image.getHeight(), blocks: new Map() });
+    }
+    const pixel = async (tile, px, py) => {
+        if (px < 0 || py < 0 || px >= tile.width || py >= tile.height) return null;
+        const [bx, by] = [Math.floor(px / LIDAR_BLOCK), Math.floor(py / LIDAR_BLOCK)];
+        const key = `${bx},${by}`;
+        if (!tile.blocks.has(key)) {
+            const window = [bx * LIDAR_BLOCK, by * LIDAR_BLOCK, Math.min(tile.width, (bx + 1) * LIDAR_BLOCK), Math.min(tile.height, (by + 1) * LIDAR_BLOCK)];
+            const [data] = await tile.image.readRasters({ window });
+            tile.blocks.set(key, { data, width: window[2] - window[0] });
+            if (tile.blocks.size > LIDAR_BLOCKS_KEPT) tile.blocks.delete(tile.blocks.keys().next().value);
+        }
+        const block = tile.blocks.get(key);
+        const value = block.data[(py % LIDAR_BLOCK) * block.width + (px % LIDAR_BLOCK)];
+        // Both nodata markers (-9999, -32767) lie far below any ground here.
+        return value < -1000 ? null : value;
+    };
+    return async (point) => {
+        const [east, north] = toUtm(point);
+        for (const tile of tiles) {
+            const px = (east - tile.x0) / tile.rx - 0.5;
+            const py = (north - tile.y0) / tile.ry - 0.5;
+            const [ix, iy] = [Math.floor(px), Math.floor(py)];
+            const [fx, fy] = [px - ix, py - iy];
+            const q = [await pixel(tile, ix, iy), await pixel(tile, ix + 1, iy), await pixel(tile, ix, iy + 1), await pixel(tile, ix + 1, iy + 1)];
+            if (q.includes(null)) continue;
+            return (q[0] * (1 - fx) + q[1] * fx) * (1 - fy) + (q[2] * (1 - fx) + q[3] * fx) * fy;
+        }
+        return null;
+    };
 }
 
 /** Local metres east and north of START. */
@@ -260,27 +388,70 @@ function list(values, digits) {
     return lines.join('\n');
 }
 
+/** `values` as base64 of little-endian 16-bit integers, in lines of `width` characters. */
+function packed(values, width = 112) {
+    const text = Buffer.from(Int16Array.from(values).buffer).toString('base64');
+    const lines = [];
+    for (let i = 0; i < text.length; i += width) lines.push(`        '${text.slice(i, i + width)}',`);
+    return lines.join('\n');
+}
+
 mkdirSync(CACHE, { recursive: true });
 const route = northbound(await highwayWays());
-const line = resample(smooth(resample(route.map(project), seg), LINE_SIGMA / seg), seg);
+const projected = route.points.map(project);
+const line = resample(smooth(resample(projected, seg), LINE_SIGMA / seg), seg);
 const { heading, curvature } = curvatureOf(line);
-const heightAt = await terrain();
-const ground = line.map((p) => { return heightAt(unproject(p)); });
-const elevation = smooth(limitGrade(median(ground, GRADE_MEDIAN), MAX_GRADE), GRADE_SIGMA / seg);
-const sections = [];
-for (let i = 0; i < line.length; i += SECTION_STEP) {
+const terrainAt = await terrain();
+const lidarAt = await lidar();
+let fromLidar = 0;
+let samples = 0;
+/** The ground at a local point [east, north]: LiDAR where it has it, else the terrain tiles. */
+const groundAt = async (p) => {
+    const point = unproject(p);
+    const fine = await lidarAt(point);
+    samples++;
+    if (fine === null) return terrainAt(point);
+    fromLidar++;
+    return fine;
+};
+const mapped = projected.slice(1).reduce((sum, p, i) => { return sum + Math.hypot(p[0] - projected[i][0], p[1] - projected[i][1]); }, 0);
+const spans = bridgeSpans(route).map(([from, to]) => { return [(from * (line.length - 1) * seg) / mapped, (to * (line.length - 1) * seg) / mapped]; });
+const ground = [];
+for (const p of line) ground.push(await groundAt(p));
+const elevation = smooth(limitGrade(median(bridged(ground, spans), GRADE_MEDIAN), MAX_GRADE), GRADE_SIGMA / seg);
+const at = (i, u) => {
     const right = [Math.cos(heading[i]), -Math.sin(heading[i])];
-    for (const u of SECTION_OFFSETS) sections.push(heightAt(unproject([line[i][0] + right[0] * u, line[i][1] + right[1] * u])));
+    return groundAt([line[i][0] + right[0] * u, line[i][1] + right[1] * u]);
+};
+const sections = [];
+for (let i = 0; i < line.length; i += SECTION_STEP) for (const u of SECTION_OFFSETS) sections.push(await at(i, u));
+const roadside = [];
+const platform = [];
+for (let i = 0; i < line.length; i += NEAR_STEP) {
+    const rise = async (u) => { return (await at(i, u)) - elevation[i]; };
+    for (const side of [-1, 1]) {
+        let edge = 0;
+        while (edge < PLATFORM_REACH && Math.abs(await rise(side * (edge + 1))) < PLATFORM_RISE) edge++;
+        edge = Math.max(edge, ROAD.halfWidth);
+        platform.push(edge);
+        for (let out = 0; out <= NEAR_REACH; out += NEAR_SPACING) roadside.push(Math.round((await rise(side * (edge + out))) * 10));
+    }
 }
 const length = (line.length - 1) * seg;
-console.info(`[route] ${route.length} mapped points, ${(length / 1000).toFixed(2)} km, ${line.length} nodes; `
-    + `integration drift ${drift(line, heading, curvature).toFixed(2)} m; road ${Math.min(...elevation).toFixed(0)}`
-    + `..${Math.max(...elevation).toFixed(0)} m above the sea`);
+console.info(`[route] ${route.points.length} mapped points, ${(length / 1000).toFixed(2)} km, ${line.length} nodes, `
+    + `${spans.length} bridges; integration drift ${drift(line, heading, curvature).toFixed(2)} m; road `
+    + `${Math.min(...elevation).toFixed(0)}..${Math.max(...elevation).toFixed(0)} m above the sea; `
+    + `${((100 * fromLidar) / samples).toFixed(1)}% of heights from LiDAR; the real road's flat reaches typically `
+    + `${[...platform].sort((x, y) => { return x - y; })[platform.length >> 1]} m to either side of the line`);
 writeFileSync(OUTPUT, `/** The Sea-to-Sky Highway (BC 99) northbound, from the Horseshoe Bay interchange to Squamish, every
- *  ROAD.segment m: curvature (rad/m, + right) and height above the sea (m), and the terrain across the road
- *  every \`sectionStep\` nodes at \`sectionOffsets\` (m, + right). \`bearingDeg\`: the start's compass heading.
- *  Generated by scripts/import-route.mjs. Road: (c) OpenStreetMap contributors (ODbL); heights: Natural
- *  Resources Canada CDEM (Open Government Licence - Canada) via the Mapzen/AWS terrain tiles. */
+ *  ROAD.segment m: curvature (rad/m, + right) and height above the sea (m); the roadside every \`nearStep\`
+ *  nodes, left then right, from the edge of the real road out \`nearReach\` m every \`nearSpacing\` m, as
+ *  base64 16-bit decimetres above the road; and the terrain across the road every \`sectionStep\` nodes at
+ *  \`sectionOffsets\` (m above the sea). \`bearingDeg\`: the start's compass heading. Generated by
+ *  scripts/import-route.mjs.
+ *  Road: (c) OpenStreetMap contributors (ODbL). Heights: contains information licensed under the Open
+ *  Government Licence - British Columbia (LidarBC); Natural Resources Canada CDEM (Open Government
+ *  Licence - Canada) via the Mapzen/AWS terrain tiles. */
 export const SEA_TO_SKY = {
     bearingDeg: ${((heading[0] * 180) / Math.PI).toFixed(2)},
     curvature: [
@@ -289,6 +460,12 @@ ${list(curvature, 6)}
     elevation: [
 ${list(elevation, 2)}
     ],
+    nearStep: ${NEAR_STEP},
+    nearSpacing: ${NEAR_SPACING},
+    nearReach: ${NEAR_REACH},
+    roadside: [
+${packed(roadside)}
+    ].join(''),
     sectionStep: ${SECTION_STEP},
     sectionOffsets: [${SECTION_OFFSETS.join(', ')}],
     sections: [

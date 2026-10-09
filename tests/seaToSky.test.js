@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SEA_TO_SKY } from '../src/data/seaToSky.js';
 import { STAGES } from '../src/data/stages.js';
-import { SEA_LEVEL } from '../src/sim/Landscape.js';
+import { ROAD } from '../src/config.js';
+import { Landscape, SEA_DEPTH, SEA_LEVEL } from '../src/sim/Landscape.js';
+import { roadsideAt } from '../src/sim/routeTerrain.js';
 import { buildTrack } from '../src/sim/TrackBuilder.js';
 import { sunDirection } from '../src/world/sunDirection.js';
 
@@ -65,4 +67,51 @@ test('the late-afternoon sun stands in the west, on the left as each stage sets 
         assert.ok(sun.x < 0, `stage ${i + 1}: the sun is on the left`);
         if (i > 0) assert.ok(stage.sun.elevation < STAGES[i - 1].sun.elevation, 'lower each stage');
     });
+});
+
+test('the rock face is the real cut: tall where the mountain was blasted, a low bank where the side is flat', () => {
+    const track = tracks[2];
+    const bank = Math.fround(1.2);
+    const heights = Array.from(track.wallHeight.subarray(track.startS / track.segment, track.finishS / track.segment));
+    assert.ok(Math.max(...heights) > 25, `tallest cut ${Math.max(...heights).toFixed(0)} m`);
+    assert.ok(Math.min(...heights) === bank, 'a bank where nothing rises beside the road');
+    for (let i = 0; i < track.count; i += 97) {
+        if (track.wallHeight[i] > bank) {
+            const top = roadsideAt(track, i, 1, track.wallSetback[i] + track.wallTop[i]);
+            assert.ok(Math.abs(track.wallHeight[i] - top) < 1e-3, 'up to the real top of the cut');
+            assert.ok(track.wallSetback[i] <= 9, 'its foot not far from the road');
+        }
+    }
+});
+
+test('the drop beyond the edge is the real ground, down to the shore', () => {
+    const track = tracks[2];
+    const landscape = new Landscape(track, STAGES[2]);
+    let checked = 0;
+    for (let i = 0; i < track.count; i += 53) {
+        const section = landscape.dropSections[i];
+        for (const { u, h } of section.slice(0, -1)) {
+            const real = roadsideAt(track, i, -1, ROAD.edgeOffset - u);
+            if (track.elevation[i] + real > SEA_LEVEL) {
+                assert.ok(Math.abs(h - real) < 1e-6, `node ${i}, ${u} m`);
+                checked++;
+            }
+        }
+    }
+    assert.ok(checked > 100);
+});
+
+test('the sea floor shelves gently away from the shore, never deeper than the sound is drawn', () => {
+    const landscape = new Landscape(tracks[0], STAGES[0]);
+    const { heights, nx, cell } = landscape;
+    let sea = 0;
+    let steepest = 0;
+    for (let k = 0; k < heights.length - nx - 1; k++) {
+        if (heights[k] > SEA_LEVEL) continue;
+        sea++;
+        assert.ok(heights[k] >= SEA_LEVEL - SEA_DEPTH - 1e-6);
+        for (const n of [k + 1, k + nx]) if (heights[n] <= SEA_LEVEL) steepest = Math.max(steepest, Math.abs(heights[n] - heights[k]) / cell);
+    }
+    assert.ok(sea > 1000, 'Howe Sound is there');
+    assert.ok(steepest <= 0.5 + 1e-6, `a sunk car could not settle on ${steepest.toFixed(2)}`);
 });

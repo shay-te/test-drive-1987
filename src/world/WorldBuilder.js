@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ROAD } from '../config.js';
 import { SEA_LEVEL, SHOULDER_DROP } from '../sim/Landscape.js';
+import { roadsideAt } from '../sim/routeTerrain.js';
 import { Noise, clamp, createRng, lerp, smoothstep } from '../util/math.js';
 import { mixRgb } from '../util/color.js';
 import { buildRibbon } from './Ribbon.js';
@@ -9,7 +10,12 @@ import { buildProps } from './Props.js';
 import { TREE_LINE_LOW } from './Terrain.js';
 
 const FACE_ROWS = 12;
-const SLOPE_ROWS = 6;
+/** The mountainside above the face, in rows reaching SLOPE_REACH m out from its top. */
+const SLOPE_ROWS = 12;
+const SLOPE_REACH = 48;
+/** Rounding over from the face into the slope (m out), and the scrub's roughness on it (m). */
+const FACE_ROUNDING = 5;
+const SLOPE_ROUGHNESS = 1.5;
 /** Builds the static scenery of a stage: road, shoulders, the rock face, the drop, rails and props. */
 export class WorldBuilder {
     constructor(materials, stage, landscape, authored) {
@@ -93,15 +99,16 @@ export class WorldBuilder {
         );
     }
 
+    /** The cut: from its foot up to the real cut's height, leaning back a little. */
     _faceSection(track, i) {
-        const height = track.wallHeight[i] * (1 + 0.12 * this.noise.noise1(i * 0.31));
+        const height = track.wallHeight[i];
         const foot = track.wallOffset[i];
         const points = [];
         for (let k = 0; k <= FACE_ROWS; k++) {
             const f = k / FACE_ROWS;
             const h = -0.4 + f * (height + 0.4);
             // Cut faces lean back slightly and round over into the slope at the top.
-            points.push({ u: foot + h * 0.1 + smoothstep(0.82, 1, f) * 5, h });
+            points.push({ u: foot + h * 0.1 + smoothstep(0.82, 1, f) * FACE_ROUNDING, h });
         }
         return points;
     }
@@ -119,7 +126,7 @@ export class WorldBuilder {
                 alongTile: 14,
                 acrossTile: 14,
                 displace: (world) => {
-                    world.y += this.noise.fbm3(world.x * 0.02, 3.3, world.z * 0.02, 3) * 7;
+                    world.y += this.noise.fbm3(world.x * 0.02, 3.3, world.z * 0.02, 3) * SLOPE_ROUGHNESS;
                 },
                 color: (p, c) => {
                     const rockiness = clamp(1 - c / SLOPE_ROWS, 0, 1) * 0.6;
@@ -129,12 +136,14 @@ export class WorldBuilder {
         );
     }
 
+    /** The real mountainside from the top of the cut outwards. */
     _slopeSection(track, i) {
         const top = this._faceSection(track, i).at(-1);
-        const points = [];
-        for (let k = 0; k <= SLOPE_ROWS; k++) {
-            const f = k / SLOPE_ROWS;
-            points.push({ u: top.u + f * 48, h: top.h + f * f * 22 + f * 18 });
+        const roadside = track.wallOffset[i] - track.wallSetback[i];
+        const points = [top];
+        for (let k = 1; k <= SLOPE_ROWS; k++) {
+            const u = top.u + (k / SLOPE_ROWS) * SLOPE_REACH;
+            points.push({ u, h: roadsideAt(track, i, 1, u - roadside) });
         }
         return points;
     }

@@ -68,9 +68,11 @@ export function airLost(body, flooded) {
     return (body.flooded - flooded) * body.volume * WATER.airShare;
 }
 
-/** `body` is under the surface at `sea`, deep enough to watch from beneath it. */
+/** `body` is going down for good under the surface at `sea`: too full of water to float, and deep
+ *  enough to watch from beneath it (a car diving in at speed comes back up first). */
 export function underwater(body, sea) {
-    return body.position.y < sea - WATER.underwater;
+    const floats = body.volume * WATER.airShare * (1 - body.flooded) + body.mass / WATER.steel;
+    return floats * WATER.density < body.mass && body.position.y < sea - WATER.underwater;
 }
 
 /** Principal moments of a solid box (body frame: x across, y up, z along). */

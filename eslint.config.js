@@ -36,6 +36,7 @@ const browserGlobals = [
     'EventTarget',
     'getComputedStyle',
     'location',
+    'atob',
 ];
 
 export default [

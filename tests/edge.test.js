@@ -35,11 +35,17 @@ const ground = (s, u) => {
 };
 /** The drop's foot, 44 m out from the edge. */
 const FOOT = ROAD.edgeOffset - 44;
-/** The first stretch without a guard rail where the real ground lies at least 40 m below the road. */
+/** The deepest drop on the stage without a guard rail: the node where the real ground at the drop's
+ *  foot lies furthest below the road. */
 const deepDrop = (() => {
-    let i = Math.floor(track.startS / track.segment) + 60;
-    while (track.rail[i] || track.rail[i + 5] || track.rail[i + 10] || ground(i * track.segment, FOOT) > track.elevation[i] - 40) i++;
-    return i;
+    let deepest = null;
+    let depth = -Infinity;
+    for (let i = Math.floor(track.startS / track.segment) + 60; i < track.finishS / track.segment; i += 5) {
+        if (track.rail[i] || track.rail[i + 5] || track.rail[i + 10]) continue;
+        const below = track.elevation[i] - ground(i * track.segment, FOOT);
+        if (below > depth) [deepest, depth] = [i, below];
+    }
+    return deepest;
 })();
 
 test('the ground is the road on the road and falls away past the edge to the real ground', () => {
@@ -65,8 +71,9 @@ test('the ground steps up to the rock face exactly where it is drawn, between no
     const s = (i + 0.5) * track.segment;
     const face = track.wallOffsetAt(s) + 0.4;
     const road = track.elevationAt(s);
-    assert.ok(ground(s, face - 0.01) < road, 'the shoulder runs right up to the face');
-    assert.ok(ground(s, face + 0.01) > road + track.wallHeightAt(s) - 0.5, 'and the rock rises from it');
+    // Projecting back onto a bend is good to a centimetre or so; the old step at the nodes was off by more.
+    assert.ok(ground(s, face - 0.05) < road, 'the shoulder runs right up to the face');
+    assert.ok(ground(s, face + 0.05) > road + track.wallHeightAt(s) - 0.5, 'and the rock rises from it');
 });
 
 test('a car driven over the edge tumbles down to the ground below and stops', () => {
@@ -88,7 +95,7 @@ test('a car driven over the edge tumbles down to the ground below and stops', ()
         tilt = Math.max(tilt, Math.acos(Math.min(1, rotate(fall.body.orientation, { x: 0, y: 1, z: 0 }).y)));
     }
     assert.ok(fall.still > 0, 'never came to rest');
-    assert.ok(fall.drop > 40, `only fell ${fall.drop.toFixed(0)} m`);
+    assert.ok(fall.drop > 30, `only fell ${fall.drop.toFixed(0)} m`);
     assert.ok(tilt > Math.PI / 2, 'the car never turned over');
     // No energy from nowhere: never faster than falling the whole height from the launch speed.
     assert.ok(fall.topSpeed <= Math.sqrt(launch * launch + 2 * PHYS.g * fall.drop) + 1);

@@ -22,6 +22,8 @@ export class RoadCrash {
             this.otherBody = hit.body;
             this.otherCentre = hit.centre;
             collide(this.body, this.otherBody, vehicle.car.body.length, other.length);
+            // The driver hit stamps on the brakes: its wheels lock.
+            this.otherBody.rollingShare = 1;
         } else {
             this.otherBody = null;
             bounce(this.body, track, vehicle);
