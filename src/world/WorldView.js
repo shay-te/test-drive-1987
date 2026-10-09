@@ -17,11 +17,12 @@ import { CABIN_LAYER } from './cabin/cabinLayer.js';
 import { photographProfile } from './profilePhoto.js';
 import { photographStation } from './stationPhoto.js';
 import { chasePose, diverPose, followYaw, spectatorPose } from './chaseView.js';
+import { Surroundings } from './Surroundings.js';
 import { Underwater } from './Underwater.js';
 import { sunDirection } from './sunDirection.js';
 
-const FAR = 24000;
-const SKY_SCALE = 18000;
+const FAR = 45000;
+const SKY_SCALE = 40000;
 const SHADOW_EXTENT = 70;
 const SHADOW_AHEAD = 35;
 const MIRROR_VFOV = 13;
@@ -54,6 +55,8 @@ export class WorldView {
             canvas: display.glCanvas,
             antialias: true,
             powerPreference: 'high-performance',
+            // The mountains 40 km off and the ground under the car share one depth buffer.
+            logarithmicDepthBuffer: true,
         });
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -121,12 +124,15 @@ export class WorldView {
     }
 
     /** Loads everything a stage with `car` needs before scene construction: its cabin (resolved, null
-     *  without one), the road users' and the scenery models, and the rock photographs. */
-    prepare(car) {
+     *  without one), the road users' and the scenery models, the rock photographs, and the land around
+     *  the `stage`'s route (its heights and its Landsat picture). */
+    prepare(car, stage) {
+        const { heights, image } = stage.route.surroundings;
         const photos = Object.values(SCENERY_TEXTURES).flatMap(({ map, normal }) => {
             return [this.resources.image(map), this.resources.image(normal)];
         });
-        return Promise.all([this.prepareCabin(car), this.authored.prepare(), ...photos]).then(([cabin]) => { return cabin; });
+        const land = [this.resources.binary(heights), this.resources.image(image)];
+        return Promise.all([this.prepareCabin(car), this.authored.prepare(), ...photos, ...land]).then(([cabin]) => { return cabin; });
     }
 
     /** Loads and validates the car's cached cabin asset (null for a car without one). */
@@ -170,7 +176,9 @@ export class WorldView {
         const materials = new WorldMaterials(this.resources, this.renderer, stage);
         const builder = new WorldBuilder(materials, stage, landscape, this.authored);
         const terrain = new Terrain(landscape, stage, materials);
-        scene.add(builder.build(track), terrain.mesh, terrain.ring, terrain.sea);
+        const heights = new Int16Array(this.resources.get(`binary:${stage.route.surroundings.heights}`));
+        const surroundings = new Surroundings(track, landscape, heights, materials.land);
+        scene.add(builder.build(track), terrain.mesh, surroundings.mesh, terrain.sea);
         scene.add(buildTrees([...builder.treePlacements(track), ...terrain.treePlacements()], materials));
         scene.fog = new THREE.FogExp2(stage.fog.color, stage.fog.density);
         this.underwater = new Underwater(scene, landscape.waterLevel);
@@ -251,6 +259,9 @@ export class WorldView {
         this.sunDirection = new THREE.Vector3(sun.x, sun.y, sun.z);
         this.sky = new Sky();
         this.sky.scale.setScalar(SKY_SCALE);
+        // The sky writes no depth of its own: drawn first, it stays behind everything.
+        this.sky.material.depthTest = false;
+        this.sky.renderOrder = -1;
         const u = this.sky.material.uniforms;
         u.turbidity.value = stage.sky.turbidity;
         u.rayleigh.value = stage.sky.rayleigh;

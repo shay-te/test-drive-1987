@@ -67,6 +67,7 @@ class TrackBuilder {
             startS: this.startIndex * this.seg,
             finishS: this.finishIndex * this.seg,
             routeStart: this.routeStart,
+            routeOrigin: this.routeOrigin,
             bearing: this.bearing,
         });
     }
@@ -81,8 +82,17 @@ class TrackBuilder {
             throw new Error(`Stage ${this.stage.name} runs off its route`);
         this.curvature.set(route.curvature.slice(this.routeStart, this.routeStart + this.count));
         this.elevation.set(route.elevation.slice(this.routeStart, this.routeStart + this.count));
-        const turned = route.curvature.slice(0, this.routeStart).reduce((sum, k) => { return sum + k * this.seg; }, 0);
-        this.bearing = route.bearingDeg + turned / DEG;
+        // Along the route to the stage's first node, as Track lays its nodes: where it lies, which way it points.
+        let psi = route.bearingDeg * DEG;
+        let [east, north] = route.start;
+        for (let i = 0; i < this.routeStart; i++) {
+            const mid = psi + (route.curvature[i] * this.seg) / 2;
+            east += Math.sin(mid) * this.seg;
+            north += Math.cos(mid) * this.seg;
+            psi += route.curvature[i] * this.seg;
+        }
+        this.bearing = psi / DEG;
+        this.routeOrigin = [east, north];
         this._findPieces();
     }
 

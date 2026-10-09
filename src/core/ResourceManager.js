@@ -95,6 +95,13 @@ export class ResourceManager {
         });
     }
 
+    /** The raw bytes of a file, as an ArrayBuffer. */
+    binary(path) {
+        return this._load(`binary:${path}`, async () => {
+            return (await this._fetch(path)).arrayBuffer();
+        });
+    }
+
     audioBuffer(context, path) {
         return this._load(`audio:${path}`, async () => {
             return context.decodeAudioData(await (await this._fetch(path)).arrayBuffer());

@@ -9,6 +9,19 @@
  *  Licence - Canada) via the Mapzen/AWS terrain tiles. */
 export const SEA_TO_SKY = {
     bearingDeg: 32.10,
+    // Where the route lies on the map: local metres east and north of `origin` (lat, lon), with
+    // `metresPerDegree` of longitude and latitude; `start` is its first node there.
+    origin: [49.3680405, -123.271019],
+    metresPerDegree: [72409.873, 111194.927],
+    start: [5.15, 7.96],
+    // The land around it to the horizon: heights every few hundred metres, north row first (16-bit metres
+    // above the sea), and its colour as Landsat 5 saw it on 5 September 1987, both over the same box.
+    surroundings: {
+        south: 49.25, north: 49.9, west: -123.7, east: -122.8,
+        rows: 403, columns: 363,
+        heights: 'assets/terrain/sea-to-sky/heights.bin',
+        image: 'assets/terrain/sea-to-sky/landsat-1987-09-05.jpg',
+    },
     curvature: [
         -0.001023, -0.002118, -0.002232, -0.002454, -0.002839, -0.003074, -0.003243, -0.00352, -0.003784, -0.004027, -0.004238, -0.004411, -0.004541, -0.004626, -0.004658, -0.004647,
         -0.0046, -0.004508, -0.004381, -0.00424, -0.004092, -0.003947, -0.003809, -0.003681, -0.003563, -0.003455, -0.00335, -0.003249, -0.003153, -0.003053, -0.002941, -0.002816,

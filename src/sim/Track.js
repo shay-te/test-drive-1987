@@ -6,8 +6,9 @@ import { clamp } from '../util/math.js';
 export class Track {
     /** `data` holds per-node arrays (curvature, elevation, wallOffset, wallHeight, wallTop (how far out
      *  beyond its foot the cut's top is), wallSetback (how far its foot stands back from where the real
-     *  roadside starts), rail) plus props, traps, finishS, and
-     *  where the stage lies on its route: `routeStart` (its node 0) and `bearing` (compass deg at node 0). */
+     *  roadside starts), rail) plus props, traps, finishS, and where the stage lies on its route:
+     *  `routeStart` (its node 0), `routeOrigin` (node 0 in the route's map metres, east and north) and
+     *  `bearing` (compass deg at node 0). */
     constructor(data) {
         Object.assign(this, data);
         this.segment = ROAD.segment;

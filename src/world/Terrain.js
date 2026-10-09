@@ -1,24 +1,21 @@
 import * as THREE from 'three';
-import { createRng, lerp, smoothstep } from '../util/math.js';
+import { createRng } from '../util/math.js';
 import { MOUNTAIN_NEAR, SEA_LEVEL, VALLEY_NEAR } from '../sim/Landscape.js';
-import { shadeVertex } from './Materials.js';
-import { mixRgb } from '../util/color.js';
+import { latLonOf } from './routeFrame.js';
 
 const FOREST_TREES = 5500;
-const RING_INNER = 5200;
-const RING_OUTER = 15000;
-/** Trees grow from this height above the sea; below SHORE m the ground is bare shore rock. */
+/** Trees grow from this height above the sea. */
 export const TREE_LINE_LOW = 3;
-const SHORE = 6;
+/** The sea reaches this far from the stage (m), past the land drawn around it. */
+const SEA_REACH = 60000;
 
-/** The land around the road, the sea along it and the ranges on the horizon. */
+/** The ground near the road in the colours Landsat saw, and the sea along it. */
 export class Terrain {
     constructor(landscape, stage, materials) {
         this.landscape = landscape;
         this.stage = stage;
         this.noise = landscape.noise;
-        this.mesh = this._buildMesh(materials.terrain);
-        this.ring = this._buildRing(materials.terrain);
+        this.mesh = this._buildMesh(materials.land);
         this.sea = this._buildSea(materials.water);
     }
 
@@ -44,6 +41,7 @@ export class Terrain {
 
     _buildMesh(material) {
         const l = this.landscape;
+        const { south, north, west, east } = this.stage.route.surroundings;
         const geometry = new THREE.PlaneGeometry(
             (l.nx - 1) * l.cell,
             (l.nz - 1) * l.cell,
@@ -56,72 +54,21 @@ export class Terrain {
         for (let k = 0; k < pos.count; k++) {
             const ix = k % l.nx;
             const iz = Math.floor(k / l.nx);
-            pos.setXYZ(k, l.x0 + ix * l.cell, l.heights[iz * l.nx + ix], l.z0 + iz * l.cell);
-            uv.setXY(k, ix * 0.6, iz * 0.6);
+            const [x, z] = [l.x0 + ix * l.cell, l.z0 + iz * l.cell];
+            pos.setXYZ(k, x, l.heights[iz * l.nx + ix], z);
+            const [lat, lon] = latLonOf(l.track, x, z);
+            uv.setXY(k, (lon - west) / (east - west), (lat - south) / (north - south));
         }
         geometry.computeVertexNormals();
-        this._paint(geometry, (k) => {
-            return l.sides[k] < 0;
-        });
         const mesh = new THREE.Mesh(geometry, material);
         mesh.receiveShadow = true;
         return mesh;
     }
 
-    /** Vertex colours: rock on steep faces, scrub and forest below the tree line, snow up high. */
-    _paint(geometry, isValley) {
-        const s = this.stage;
-        const rock = shadeVertex(s.rock, 0.85);
-        const forest = shadeVertex(s.vegetation, 0.7);
-        const field = shadeVertex(s.vegetation, 1.15);
-        const snow = [0.93, 0.95, 0.98];
-        const pos = geometry.attributes.position;
-        const normal = geometry.attributes.normal;
-        const colors = new Float32Array(pos.count * 3);
-        for (let k = 0; k < pos.count; k++) {
-            const y = pos.getY(k);
-            const flat = normal.getY(k);
-            const patch = this.noise.noise2(pos.getX(k) * 0.004, pos.getZ(k) * 0.004);
-            let c = isValley(k) && patch > 0.15 ? field : forest;
-            c = mixRgb(rock, c, smoothstep(0.62, 0.85, flat) * smoothstep(SEA_LEVEL, SEA_LEVEL + SHORE, y));
-            c = mixRgb(c, snow, smoothstep(SEA_LEVEL + 1500, SEA_LEVEL + 1900, y + patch * 120) * smoothstep(0.5, 0.75, flat));
-            colors.set(c, k * 3);
-        }
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    }
-
-    /** Distant ranges all around, fading into the haze. */
-    _buildRing(material) {
-        const radial = 14;
-        const around = 160;
-        const geometry = new THREE.PlaneGeometry(1, 1, around, radial);
-        const pos = geometry.attributes.position;
-        const b = this.landscape.track.bounds;
-        const cx = (b.minX + b.maxX) / 2;
-        const cz = (b.minZ + b.maxZ) / 2;
-        for (let k = 0; k < pos.count; k++) {
-            const a = ((k % (around + 1)) / around) * Math.PI * 2;
-            const f = Math.floor(k / (around + 1)) / radial;
-            const r = lerp(RING_INNER, RING_OUTER, f);
-            const x = cx + Math.cos(a) * r;
-            const z = cz + Math.sin(a) * r;
-            const ridge = this.noise.ridged2(Math.cos(a) * 3 + f * 2, Math.sin(a) * 3 + f * 2);
-            const y = SEA_LEVEL + 150 + ridge * 1500 * Math.sin(f * Math.PI) + f * 300;
-            pos.setXYZ(k, x, y, z);
-        }
-        geometry.computeVertexNormals();
-        this._paint(geometry, () => {
-            return false;
-        });
-        const ringMaterial = material.clone();
-        ringMaterial.side = THREE.DoubleSide;
-        return new THREE.Mesh(geometry, ringMaterial);
-    }
-
     /** The sea's surface out to the far ranges. */
     _buildSea(material) {
         const b = this.landscape.track.bounds;
-        const geometry = new THREE.PlaneGeometry(RING_OUTER * 2, RING_OUTER * 2);
+        const geometry = new THREE.PlaneGeometry(SEA_REACH * 2, SEA_REACH * 2);
         geometry.rotateX(-Math.PI / 2);
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.set((b.minX + b.maxX) / 2, SEA_LEVEL, (b.minZ + b.maxZ) / 2);
