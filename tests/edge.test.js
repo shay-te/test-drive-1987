@@ -35,13 +35,12 @@ const ground = (s, u) => {
 };
 /** The drop's foot, 44 m out from the edge. */
 const FOOT = ROAD.edgeOffset - 44;
-/** The deepest drop on the stage without a guard rail: the node where the real ground at the drop's
- *  foot lies furthest below the road. */
+/** The deepest drop on the stage (a guard rail there gives way to a car aimed off the edge): the node
+ *  where the real ground at the drop's foot lies furthest below the road. */
 const deepDrop = (() => {
     let deepest = null;
     let depth = -Infinity;
     for (let i = Math.floor(track.startS / track.segment) + 60; i < track.finishS / track.segment; i += 5) {
-        if (track.rail[i] || track.rail[i + 5] || track.rail[i + 10]) continue;
         const below = track.elevation[i] - ground(i * track.segment, FOOT);
         if (below > depth) [deepest, depth] = [i, below];
     }
@@ -80,7 +79,8 @@ test('a car driven over the edge tumbles down to the ground below and stops', ()
     const vehicle = new VehicleDynamics(carById('porsche'));
     vehicle.reset(deepDrop * track.segment, -3);
     vehicle.engine.gear = 3;
-    vehicle.vx = 25;
+    // Fast and wide enough to break through a guard rail on the way.
+    vehicle.vx = 40;
     vehicle.theta = -0.25;
     let event = null;
     for (let k = 0; k < 1200 && !event; k++)
@@ -100,4 +100,28 @@ test('a car driven over the edge tumbles down to the ground below and stops', ()
     // No energy from nowhere: never faster than falling the whole height from the launch speed.
     assert.ok(fall.topSpeed <= Math.sqrt(launch * launch + 2 * PHYS.g * fall.drop) + 1);
     assert.ok(fall.deepestCrush < 1.5, `sank ${fall.deepestCrush.toFixed(2)} m into the ground`);
+});
+
+test('a guard rail holds a car that brushes or glances off it and gives way to a hard hit', () => {
+    // A straight stretch railed all the way along the 1.5 s either car is watched for.
+    const seconds = 1.5;
+    const span = Math.ceil((40 * seconds) / track.segment);
+    let i = Math.floor(track.startS / track.segment) + 60;
+    while (!(track.rail.slice(i, i + span).every(Boolean) && Math.abs(track.curvature[i]) < 0.002)) i++;
+    const into = (speed, angle) => {
+        const vehicle = new VehicleDynamics(carById('porsche'));
+        vehicle.reset(i * track.segment, -3);
+        vehicle.engine.gear = 3;
+        Object.assign(vehicle, { vx: speed, theta: -angle });
+        let event = null;
+        for (let k = 0; k < seconds * 120 && !event; k++) event = vehicle.step(1 / 120, { steer: 0, throttle: 0, brake: 0 }, track);
+        return { event, u: vehicle.u };
+    };
+    const brush = into(15, 0.05);
+    assert.equal(brush.event, null, 'a brush scrapes along it');
+    assert.ok(brush.u > ROAD.edgeOffset, 'still on the road');
+    const glancing = into(20, 0.08);
+    assert.equal(glancing.event?.cause, 'rail', 'a glancing hit wrecks the car against it');
+    assert.ok(glancing.u > ROAD.edgeOffset, 'on the road side');
+    assert.equal(into(40, 0.3).event?.cause, 'edge', 'a hard one goes through it and over the edge');
 });

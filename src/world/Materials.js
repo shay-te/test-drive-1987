@@ -13,6 +13,7 @@ import { createRng } from '../util/math.js';
 const NEEDLES_SIZE = [256, 128];
 const SILHOUETTE_SIZE = [128, 256];
 const NEEDLE_SEED = 41;
+const GALVANISED_SIZE = 256;
 
 /** Road texture covers both lanes and one 12 m dash period of the centre line. */
 export const ROAD_TEXTURE_LENGTH = 12;
@@ -42,6 +43,14 @@ export class WorldMaterials {
         this.land = new THREE.MeshStandardMaterial({ map: this._photo(stage.route.surroundings.image, true, false), roughness: 1 });
         this._landShader(this.land, this._photo(LAND_DETAIL.map, false), LAND_DETAIL.metres);
         this.steel = new THREE.MeshStandardMaterial({ color: '#c3c8ce', roughness: 0.42, metalness: 0.7 });
+        // Hot-dip galvanised rail, dulled and streaked by years of road spray; weathered timber posts.
+        this.galvanised = new THREE.MeshStandardMaterial({
+            map: this._texture('galvanised', GALVANISED_SIZE, GALVANISED_SIZE, drawGalvanised),
+            roughness: 0.6,
+            metalness: 0.25,
+            side: THREE.DoubleSide,
+        });
+        this.timber = new THREE.MeshStandardMaterial({ color: '#6e604f', roughness: 0.95 });
         // Smooth enough to throw the low sun back as a glint.
         // Two-sided, so from under the water its surface closes the view above.
         this.water = new THREE.MeshStandardMaterial({ color: '#1f3d48', roughness: 0.14, metalness: 0.05, side: THREE.DoubleSide });
@@ -217,6 +226,23 @@ function drawDelineator(ctx, w, h) {
     ctx.fillRect(0, 0, w, h * 0.22);
     ctx.fillStyle = '#ffb21e';
     ctx.fillRect(w * 0.25, h * 0.06, w * 0.5, h * 0.1);
+}
+
+/** Galvanised steel: a grey spangle of zinc crystals, darker streaks of dirt washed down the rail. */
+function drawGalvanised(ctx, w, h) {
+    ctx.fillStyle = '#c9cccd';
+    ctx.fillRect(0, 0, w, h);
+    speckle(ctx, w, h, { count: 2600, alpha: 0.12, size: 7, seed: 12 });
+    speckle(ctx, w, h, { count: 9000, alpha: 0.18, size: 1.4, seed: 13, dark: 1 });
+    const rng = createRng(14);
+    for (let k = 0; k < 40; k++) {
+        const x = rng() * w;
+        ctx.fillStyle = linearGradient(ctx, 0, 0, 0, h, [
+            [0, 'rgba(70,64,56,0)'],
+            [1, `rgba(70,64,56,${rng.range(0.08, 0.22).toFixed(2)})`],
+        ]);
+        ctx.fillRect(x, h * rng.range(0.2, 0.6), rng.range(2, 8), h);
+    }
 }
 
 /** Needles along a twig from (x, y) heading `angle`, `length` px: dark inside, fresher green outside. */

@@ -7,6 +7,7 @@ import { Noise, clamp, smoothstep } from '../util/math.js';
 import { buildRibbon } from './Ribbon.js';
 import { ROAD_TEXTURE_LENGTH, shadeVertex } from './Materials.js';
 import { buildProps } from './Props.js';
+import { buildGuardRails } from './guardRail.js';
 import { roadsideTrees } from './forestLayout.js';
 
 /** The cut's mesh: rows up its height, and rows along the road for each track node. */
@@ -76,7 +77,7 @@ export class WorldBuilder {
         group.add(setShadows(this._rockFace(track), true, true));
         group.add(setShadows(this._upperSlope(track), true, true));
         group.add(setShadows(this._drop(track), false, true));
-        group.add(this._rails(track));
+        group.add(buildGuardRails(track, m));
         group.add(buildProps(track, m, this.stage, this.authored));
         return group;
     }
@@ -205,33 +206,6 @@ export class WorldBuilder {
                 uvAt: this._landUv(track),
             },
         );
-    }
-
-    /** Steel guard rail along the valley side where the track says so. */
-    _rails(track) {
-        const group = new THREE.Group();
-        let start = -1;
-        for (let i = 0; i <= track.count; i++) {
-            const on = i < track.count && track.rail[i] === 1;
-            if (on && start < 0) start = i;
-            if (!on && start >= 0) {
-                const rail = buildRibbon(
-                    track,
-                    this.materials.steel,
-                    () => {
-                        return [
-                            { u: ROAD.postOffset - 0.05, h: 0.82 },
-                            { u: ROAD.postOffset, h: 0.78 },
-                            { u: ROAD.postOffset, h: 0.46 },
-                        ];
-                    },
-                    { from: start, to: Math.min(i, track.count - 1) },
-                );
-                group.add(setShadows(rail, true, false));
-                start = -1;
-            }
-        }
-        return group;
     }
 }
 

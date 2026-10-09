@@ -1,4 +1,4 @@
-import { PHYS, ROAD } from '../config.js';
+import { PHYS, RAIL, ROAD } from '../config.js';
 import { approach, clamp, moveTowards } from '../util/math.js';
 import { Drivetrain } from './Drivetrain.js';
 
@@ -216,6 +216,8 @@ export class VehicleDynamics {
 
         if (track.railAt(this.s) && this.u - HALF_CAR_WIDTH < ROAD.postOffset) {
             const impact = Math.max(-uDot, 0);
+            // Hit hard enough the rail gives way, and the car goes through it and over the edge.
+            if (impact > RAIL.breach) return { type: 'crash', cause: 'edge', impact: speed };
             if (speed > 9 && (impact > 1.2 || speed > 22)) {
                 return { type: 'crash', cause: 'rail', impact: speed };
             }

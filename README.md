@@ -44,6 +44,11 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   tree line or inside a building. Each tree is a trunk and whorls of drooping branch sprays painted
   needle by needle; beyond 450 m it becomes three crossed cards of its silhouette. Close to the road
   the ground is the floor of a coastal pine forest (Poly Haven, CC0).
+- Guard rail as engineers place it: wherever the real ground 6 m beyond the edge lies 3 m or more
+  below the road (from the LiDAR), runs joined across short gaps and carried on into turned-down
+  ends. It is a 1980s galvanised W-beam, its two corrugations 0.69 m up, on timber posts with
+  blockouts every 1.905 m. A car brushing it scrapes along, a glancing hit wrecks against it, and
+  a hard one goes through it and over the edge.
 - The cut is blasted granite: blocks a couple of metres across, each set back by its own amount,
   dark joints between them, at about a metre's detail.
 - Stages load in the background: from the moment the title screen shows, a worker lays out the
@@ -89,13 +94,16 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
 
 ### Next (queued, in order)
 
-1. **Guard rails as the real road has them:** a W-beam on posts with blockouts and turned-down
-   ends, wherever the real ground falls away steeply beyond the edge.
-2. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, concrete barriers where
+1. **Crashes that sound real:** an impact sound only when the car actually hits something, never
+   repeating while it slides or settles.
+2. **The real forest's species and density:** Douglas-fir, western hemlock and redcedar, with red
+   alder and bigleaf maple by the road and creeks and Sitka spruce at Furry Creek, each drawn as it
+   grows and mixed as surveyed along the route.
+3. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, concrete barriers where
    the real road has them, the railway between road and shore. (The provincial road atlas
    and orthophotos are "access only", so they are not used.)
-3. **Every stage inspected section by section** for anything that does not look real.
-4. Frame rates on real phones (the cabin pass, the mirrors, shadows).
+4. **Every stage inspected section by section** for anything that does not look real.
+5. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
 

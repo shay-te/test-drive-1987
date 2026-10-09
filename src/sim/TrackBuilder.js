@@ -1,4 +1,4 @@
-import { ROAD, PHYS } from '../config.js';
+import { PHYS, RAIL, ROAD } from '../config.js';
 import { DEG, clamp, createRng, Noise, smoothstep } from '../util/math.js';
 import { Track } from './Track.js';
 import { roadsideAt } from './routeTerrain.js';
@@ -207,19 +207,20 @@ class TrackBuilder {
 
     // ------------------------------------------------------------------ guard rails
 
+    /** Guard rail where the real ground falls away steeply beyond the edge (RAIL). */
     _layoutRails() {
-        const sharp = 1 / 380;
-        const marks = new Uint8Array(this.count);
+        const node = (metres) => { return Math.round(metres / this.seg); };
+        const runs = [];
         for (let i = 0; i < this.count; i++) {
-            if (Math.abs(this.curvature[i]) > sharp) {
-                for (let j = Math.max(0, i - 14); j < Math.min(this.count, i + 14); j++) marks[j] = 1;
-            }
+            if (roadsideAt(this, i, -1, RAIL.reach) > -RAIL.depth) continue;
+            const last = runs.at(-1);
+            if (last && i - last[1] <= node(RAIL.gap)) last[1] = i;
+            else runs.push([i, i]);
         }
-        // Some extra stretches of rail on straights.
-        for (let b = this.startIndex; b < this.count; b += 60) {
-            if (this.rng() < 0.18) for (let j = b; j < Math.min(this.count, b + 45); j++) marks[j] = 1;
+        for (const [from, to] of runs) {
+            if (to - from < node(RAIL.shortest)) continue;
+            this.rail.fill(1, Math.max(0, from - node(RAIL.flare)), Math.min(this.count, to + node(RAIL.flare) + 1));
         }
-        this.rail.set(marks);
     }
 
     // ------------------------------------------------------------------ signs

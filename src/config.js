@@ -43,6 +43,20 @@ export const ROAD = Object.freeze({
     eyeHeight: 1.08,
 });
 
+/** Guard rail, a steel W-beam on posts (src/sim/TrackBuilder.js lays it, src/world/guardRail.js
+ *  draws it). It stands where the real ground `reach` m beyond the edge lies `depth` m or more below
+ *  the road, as an embankment that steep warrants a barrier; runs closer than `gap` m join, runs
+ *  shorter than `shortest` m are left out, and each carries on `flare` m into its turned-down ends.
+ *  Hit faster than `breach` m/s sideways it gives way and the car goes over the edge. */
+export const RAIL = Object.freeze({
+    reach: 6,
+    depth: 3,
+    gap: 40,
+    shortest: 30,
+    flare: 8,
+    breach: 9,
+});
+
 /** Where the route's real buildings may stand (src/world/buildingLayout.js). */
 export const BUILDINGS = Object.freeze({
     /** Clear of the road's edge by this much (m) on the valley side. */

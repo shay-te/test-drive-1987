@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { STAGES } from '../src/data/stages.js';
-import { ROAD } from '../src/config.js';
+import { RAIL, ROAD } from '../src/config.js';
+import { roadsideAt } from '../src/sim/routeTerrain.js';
 import { buildTrack } from '../src/sim/TrackBuilder.js';
 
 /** Road this far apart along the stage must stay this far apart on the ground (m), so the scenery of one
@@ -59,4 +60,21 @@ test('toWorld follows the heading of the road', () => {
     const forward = [Math.sin(here.heading), -Math.cos(here.heading)];
     const side = [right.x - here.x, right.z - here.z];
     assert.ok(Math.abs(forward[0] * side[0] + forward[1] * side[1]) < 1e-6, 'u must be perpendicular');
+});
+
+test('guard rail stands where the real ground falls away steeply beyond the edge, and only near there', () => {
+    const node = (metres) => { return Math.round(metres / ROAD.segment); };
+    for (const stage of STAGES) {
+        const track = buildTrack(stage);
+        const warranted = Array.from({ length: track.count }, (_, i) => { return roadsideAt(track, i, -1, RAIL.reach) <= -RAIL.depth; });
+        const steep = warranted.filter(Boolean).length;
+        const guarded = warranted.filter((w, i) => { return w && track.rail[i]; }).length;
+        assert.ok(guarded / steep > 0.95, `${stage.name}: ${guarded} of ${steep} steep nodes railed`);
+        const reach = node(RAIL.gap + RAIL.flare);
+        for (let i = 0; i < track.count; i++) {
+            if (!track.rail[i]) continue;
+            const near = warranted.slice(Math.max(0, i - reach), i + reach + 1).some(Boolean);
+            assert.ok(near, `${stage.name}: rail at node ${i} with no steep ground near`);
+        }
+    }
 });

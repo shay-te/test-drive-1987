@@ -28,10 +28,10 @@ export function fallFrom(track, landscape, i) {
     return { node: i, event, fall, log };
 }
 
-/** The first rail-free edge on a stage where a car going over at 90 mph ends up `deep` m under the sea. */
+/** The first edge on a stage where a car going over at 90 mph (through the guard rail, if there is
+ *  one) ends up `deep` m under the sea. */
 export function findPlunge(track, landscape, deep) {
     for (let i = Math.floor(track.startS / track.segment) + 60; i < track.count - 300; i += 5) {
-        if (track.rail[i] || track.rail[i + 5] || track.rail[i + 10]) continue;
         const run = fallFrom(track, landscape, i);
         if (run.log.splashAt !== null && run.fall.sank > deep) return run;
     }
