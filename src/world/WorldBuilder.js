@@ -2,10 +2,9 @@ import * as THREE from 'three';
 import { ROAD } from '../config.js';
 import { SEA_LEVEL, SHOULDER_DROP } from '../sim/Landscape.js';
 import { roadsideAt } from '../sim/routeTerrain.js';
-import { latLonOf } from './routeFrame.js';
+import { landUv } from './routeFrame.js';
 import { Noise, clamp, createRng, lerp, smoothstep } from '../util/math.js';
 import { buildRibbon } from './Ribbon.js';
-import { SCENERY_TEXTURES } from '../data/scenery.js';
 import { ROAD_TEXTURE_LENGTH, shadeVertex } from './Materials.js';
 import { buildProps } from './Props.js';
 import { TREE_LINE_LOW } from './Terrain.js';
@@ -92,8 +91,6 @@ export class WorldBuilder {
                 return this._faceSection(track, i);
             },
             {
-                alongTile: SCENERY_TEXTURES.rock.metres,
-                acrossTile: SCENERY_TEXTURES.rock.metres,
                 steps: ROWS_PER_NODE,
                 // The blocks under each vertex, worked out once for its relief and its shade.
                 displace: (world, _p, c, i) => {
@@ -150,7 +147,6 @@ export class WorldBuilder {
 
     /** The mountainside climbing away above the rock face, in the land's colours. */
     _upperSlope(track) {
-        const { south, north, west, east } = this.stage.route.surroundings;
         return buildRibbon(
             track,
             this.materials.land,
@@ -162,10 +158,7 @@ export class WorldBuilder {
                 displace: (world) => {
                     world.y += this.noise.fbm3(world.x * 0.02, 3.3, world.z * 0.02, 3) * SLOPE_ROUGHNESS;
                 },
-                uvAt: (world) => {
-                    const [lat, lon] = latLonOf(track, world.x, world.z);
-                    return [(lon - west) / (east - west), (lat - south) / (north - south)];
-                },
+                uvAt: this._landUv(track),
             },
         );
     }
@@ -202,23 +195,26 @@ export class WorldBuilder {
         return placements;
     }
 
-    /** The sheer drop into the valley on the left. */
+    /** Lays the picture of the route's surroundings on a ribbon by its world position. */
+    _landUv(track) {
+        return (world) => {
+            return landUv(track, world.x, world.z);
+        };
+    }
+
+    /** The ground falling away below the road on the left, in the land's colours. */
     _drop(track) {
         return buildRibbon(
             track,
-            this.materials.cliff,
+            this.materials.land,
             (i) => {
                 return this.landscape.dropSections[i];
             },
             {
-                alongTile: SCENERY_TEXTURES.cliff.metres,
-                acrossTile: SCENERY_TEXTURES.cliff.metres,
                 displace: (world, p) => {
                     world.y += this.landscape.relief(world.x, world.z, -p.h);
                 },
-                color: (p) => {
-                    return shadeVertex('#ffffff', clamp(1 + p.h / 160, 0.35, 1));
-                },
+                uvAt: this._landUv(track),
             },
         );
     }

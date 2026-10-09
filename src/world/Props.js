@@ -1,9 +1,12 @@
 import * as THREE from 'three';
 import { ROAD } from '../config.js';
 import { SCENERY_MODELS } from '../data/scenery.js';
-import { createRng } from '../util/math.js';
+import { Noise, createRng } from '../util/math.js';
 
 const POST_SPACING = 6;
+/** Broken rock: a sphere `radius` m across bumped out and in by up to `roughness` of it, squashed to
+ *  `squat` of its height; one shape per seed in `shapes`. */
+const BOULDER = { radius: 0.6, detail: 2, roughness: 0.32, frequency: 1.6, squat: 0.7, shapes: [11, 23, 37] };
 const SIGN_SIZE = 0.95;
 
 /** Roadside objects: posts, rail posts, boulders, signs, the gas station and the summit dealership. */
@@ -42,7 +45,11 @@ export function buildProps(track, materials, stage, authored) {
             true,
         ),
     );
-    group.add(instanced(new THREE.IcosahedronGeometry(0.6, 0), materials.boulder, boulders, true));
+    // A few shapes of broken rock, the boulders shared out among them.
+    BOULDER.shapes.forEach((seed, k) => {
+        const share = boulders.filter((_, i) => { return i % BOULDER.shapes.length === k; });
+        group.add(instanced(boulderGeometry(seed), materials.boulder, share, true));
+    });
 
     for (const prop of track.props) {
         if (prop.type === 'sign') group.add(buildSign(track, materials, prop));
@@ -75,6 +82,21 @@ export function buildTrees(placements, materials) {
         instanced(new THREE.CylinderGeometry(1, 1, 1, 5).translate(0, 0.5, 0), materials.bark, trunks, false),
     );
     return group;
+}
+
+/** An irregular lump of rock (flat-faced, as broken granite is) from noise seeded by `seed`. */
+function boulderGeometry(seed) {
+    const noise = new Noise(seed);
+    const geometry = new THREE.IcosahedronGeometry(BOULDER.radius, BOULDER.detail);
+    const pos = geometry.attributes.position;
+    const f = BOULDER.frequency / BOULDER.radius;
+    for (let k = 0; k < pos.count; k++) {
+        const [x, y, z] = [pos.getX(k), pos.getY(k), pos.getZ(k)];
+        const bump = 1 + BOULDER.roughness * noise.fbm3(x * f, y * f, z * f, 3);
+        pos.setXYZ(k, x * bump, y * bump * BOULDER.squat, z * bump);
+    }
+    geometry.computeVertexNormals();
+    return geometry;
 }
 
 /** Matrix placing an object at road coordinates, facing back down the road. */
