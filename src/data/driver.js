@@ -39,6 +39,8 @@ export const DRIVER = {
         ],
         thumb: { across: 0.045, root: 0.6, bones: [0.04, 0.032, 0.027], radius: 0.0105, start: 0.6 },
         metacarpal: 0.33,
+        /** The rigged hand's own build, slimmed: across each bone and through it (back to palm). */
+        girth: [0.84, 0.72],
         rimTilt: 0.8,
         knobTilt: 0.35,
         rim: 0.016,

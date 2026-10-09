@@ -84,8 +84,12 @@ export class Driver {
     _hand(model) {
         const hand = clone(model);
         const bones = {};
+        const [across, through] = DRIVER.hand.girth;
         hand.traverse((node) => {
-            if (node.isBone) bones[node.name] = node;
+            if (node.isBone) {
+                bones[node.name] = node;
+                node.scale.set(across, through, 1);
+            }
             if (node.isSkinnedMesh) {
                 node.material = this.materials.gloves;
                 node.castShadow = true;
