@@ -8,8 +8,9 @@ import { keyboardInput } from './helpers/keyboard.js';
 const FRAME = 1 / 60;
 /** Web Audio cannot run in Node, so menu clicks go nowhere. */
 const silentAudio = { unlock() { return Promise.resolve(); }, play() {} };
-/** Brochure renders are DOM images; in Node they simply never finish loading. */
-const pendingImages = { image() { return new Promise(() => {}); } };
+/** Brochure renders are DOM images; in Node they simply never finish loading (and there is no
+ *  cached page to throw away when a photo turns out not to come). */
+const pendingImages = { image() { return new Promise(() => {}); }, evict() {} };
 /** Photographing models needs WebGL, so the menus get a world with no photos to offer. */
 const offscreenWorld = { clear() {}, profile() { return null; } };
 /** Laying stages out is the StageLoader's business (tests/stageLoader.test.js); the menus only ask. */
@@ -107,4 +108,21 @@ test('leaving the brochure takes the chosen car back to the title', () => {
     const { visits, press } = openMenu(SelectScreen, { carId: 'ferrari' });
     press('Escape');
     assert.deepEqual(visits, [['title', { carId: 'ferrari' }]]);
+});
+
+test('the title waits for the car\'s photo, and shows the drawn car only when none can be taken', async () => {
+    const consoleError = console.error;
+    console.error = () => {};
+    let take;
+    const photo = { width: 4, height: 1 };
+    const pending = openMenu(TitleScreen, {}, { clear() {}, profile() { return new Promise((resolve) => { take = resolve; }); } }).screen;
+    assert.equal(pending.photos.has('porsche'), false, 'still being taken: the spinner turns');
+    take(photo);
+    await Promise.resolve();
+    assert.equal(pending.photos.get('porsche'), photo);
+    const failed = openMenu(TitleScreen, {}, { clear() {}, profile() { return Promise.reject(new Error('no WebGL')); } }).screen;
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+    assert.equal(failed.photos.get('porsche'), null, 'a failed photo falls back to the drawing');
+    assert.equal(openMenu(TitleScreen).screen.photos.get('porsche'), null, 'nothing to photograph: the drawing at once');
+    console.error = consoleError;
 });

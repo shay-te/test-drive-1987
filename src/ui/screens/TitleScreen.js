@@ -6,7 +6,7 @@ import { drawCarArt, drawGroundShadow } from '../CarArt.js';
 import { paintScenery } from '../scenery.js';
 import { COLORS } from '../theme.js';
 import { whenPhotographed } from '../photos.js';
-import { drawLogo, drawPrompt, drawStamp, drawText } from '../widgets.js';
+import { drawLogo, drawPrompt, drawSpinner, drawStamp, drawText } from '../widgets.js';
 
 const FADE_SECONDS = 0.25;
 const LOCKED_ALPHA = 0.35;
@@ -15,6 +15,9 @@ const ART_WIDTH = 560;
 /** The car's canvas: side padding, ground line and height, in logical pixels. */
 const ART = { pad: 20, ground: 230, height: 260 };
 const HORIZON = 470;
+/** Where the car's photo will stand, a spinner turns while it is taken. */
+const SPINNER_Y = 520;
+const SPINNER_RADIUS = 34;
 
 /** Title: sunset over the mountains, the chrome logo and the car chosen with the arrows, side-on. */
 export class TitleScreen {
@@ -83,6 +86,11 @@ export class TitleScreen {
 
         const car = this.car;
         const locked = isLocked(car);
+        if (!this.photos.has(car.id)) {
+            drawSpinner(ctx, VIEW.width / 2, SPINNER_Y, SPINNER_RADIUS, this.time);
+            this._prompts(ctx, locked);
+            return;
+        }
         const photo = this.photos.get(car.id);
         const art = this.resources.scaledCanvas(
             `${photo ? 'photo' : 'art'}:${car.id}:${ART_WIDTH}`,
@@ -111,7 +119,10 @@ export class TitleScreen {
             color: COLORS.white,
         });
         ctx.restore();
+        this._prompts(ctx, locked);
+    }
 
+    _prompts(ctx, locked) {
         const touch = this.input.touch;
         drawPrompt(ctx, t(locked ? 'select.locked' : inputKey('title.start', touch)), this.time, 700);
         drawText(ctx, t(inputKey('title.controls', touch)), VIEW.width / 2, 748, { size: 15, color: COLORS.chrome });
