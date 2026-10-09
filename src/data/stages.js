@@ -23,7 +23,7 @@ export const STAGES = [
         vegetation: '#3f5a2e',
         sun: { elevation: 40, azimuth: 245 },
         sky: { turbidity: 1.2, rayleigh: 0.7, mie: 0.003, exposure: 0.5 },
-        fog: { color: '#b9cde0', density: 0.00011 },
+        fog: { color: '#b9cde0', density: 0.000035 },
     },
     {
         name: 'LIONS BAY',
@@ -38,7 +38,7 @@ export const STAGES = [
         vegetation: '#405c2f',
         sun: { elevation: 35, azimuth: 252 },
         sky: { turbidity: 1.1, rayleigh: 0.6, mie: 0.003, exposure: 0.5 },
-        fog: { color: '#bfd3e6', density: 0.0001 },
+        fog: { color: '#bfd3e6', density: 0.000032 },
     },
     {
         name: 'PORTEAU COVE',
@@ -53,7 +53,7 @@ export const STAGES = [
         vegetation: '#3d582c',
         sun: { elevation: 30, azimuth: 258 },
         sky: { turbidity: 1.2, rayleigh: 0.6, mie: 0.003, exposure: 0.5 },
-        fog: { color: '#c3d4e4', density: 0.0001 },
+        fog: { color: '#c3d4e4', density: 0.00003 },
     },
     {
         name: 'BRITANNIA BEACH',
@@ -68,7 +68,7 @@ export const STAGES = [
         vegetation: '#425d30',
         sun: { elevation: 25, azimuth: 265 },
         sky: { turbidity: 1.8, rayleigh: 0.8, mie: 0.004, exposure: 0.5 },
-        fog: { color: '#c9cfd8', density: 0.00012 },
+        fog: { color: '#c9cfd8', density: 0.000035 },
     },
     {
         name: 'SQUAMISH',
@@ -83,7 +83,7 @@ export const STAGES = [
         vegetation: '#46602f',
         sun: { elevation: 20, azimuth: 271 },
         sky: { turbidity: 4.5, rayleigh: 2.6, mie: 0.006, exposure: 0.42 },
-        fog: { color: '#e2c7a6', density: 0.00013 },
+        fog: { color: '#e2c7a6', density: 0.00004 },
         summit: true,
     },
 ];

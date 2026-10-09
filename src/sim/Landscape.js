@@ -5,7 +5,7 @@ import { normalize } from '../util/vector.js';
 
 /** Terrain grid spacing and how far it reaches beyond the road (m). */
 const CELL = 40;
-const MARGIN = 2400;
+const MARGIN = 600;
 const SAMPLE_STEP = 4;
 /** Lateral zone covered by the detailed road-side ribbons; the heightfield ducks underneath. */
 export const MOUNTAIN_NEAR = 62;

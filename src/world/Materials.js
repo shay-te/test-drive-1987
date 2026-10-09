@@ -30,6 +30,8 @@ export class WorldMaterials {
         });
         this.rock = this._rockMaterial(SCENERY_TEXTURES.rock);
         this.cliff = this._rockMaterial(SCENERY_TEXTURES.cliff);
+        // The land as Landsat 5 saw it in September 1987, over the route's surroundings.
+        this.land = new THREE.MeshStandardMaterial({ map: this._photo(stage.route.surroundings.image, true, false), roughness: 1 });
         this.terrain = new THREE.MeshStandardMaterial({
             vertexColors: true,
             map: this._texture('scrub', 256, 256, (ctx, w, h) => {
@@ -71,19 +73,21 @@ export class WorldMaterials {
         return texture;
     }
 
-    /** Rock from a photograph (`photo` from SCENERY_TEXTURES, loaded by WorldView.prepare). */
+    /** A texture of the photograph at `path` (loaded by WorldView.prepare), tiled when `repeat`. */
+    _photo(path, color, repeat = true) {
+        const map = new THREE.Texture(this.resources.get(`image:${path}`));
+        map.anisotropy = this.anisotropy;
+        if (repeat) map.wrapS = map.wrapT = THREE.RepeatWrapping;
+        if (color) map.colorSpace = THREE.SRGBColorSpace;
+        map.needsUpdate = true;
+        return map;
+    }
+
+    /** Rock from a photograph (`photo` from SCENERY_TEXTURES). */
     _rockMaterial(photo) {
-        const texture = (path, color) => {
-            const map = new THREE.Texture(this.resources.get(`image:${path}`));
-            map.anisotropy = this.anisotropy;
-            map.wrapS = map.wrapT = THREE.RepeatWrapping;
-            if (color) map.colorSpace = THREE.SRGBColorSpace;
-            map.needsUpdate = true;
-            return map;
-        };
         return new THREE.MeshStandardMaterial({
-            map: texture(photo.map, true),
-            normalMap: texture(photo.normal, false),
+            map: this._photo(photo.map, true),
+            normalMap: this._photo(photo.normal, false),
             roughness: 0.96,
             vertexColors: true,
         });

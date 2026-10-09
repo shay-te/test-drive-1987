@@ -27,6 +27,10 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   road and hangs the real slopes off its edges. The sea floor shelves away from the shore. The
   rock is photographed (Poly Haven, CC0): cracked rock greyed to granite for the cuts, lichen-grown
   rock for the drop (`scripts/import-texture.mjs`).
+- All the land around, as it was in 1987: the real terrain out to about 35 km (Howe Sound's
+  islands, the ranges either side, the peaks and glaciers to the north) in the colours the Landsat 5
+  satellite saw on 5 September 1987 (`scripts/import-landsat.mjs`), with the same picture on the
+  ground beside the road. The view reaches 45 km through a thin coastal haze.
 - Sea-to-Sky light: the late-afternoon sun stands at its real compass position in the west, on
   the left as you drive north, sinking stage by stage and glinting off the water as the road turns.
 - Over the edge into Howe Sound: the car splashes in, floats while the water pours in, then sinks
@@ -138,5 +142,7 @@ The road: © OpenStreetMap contributors. `src/data/seaToSky.js` is derived from 
 and is available under the Open Database License (ODbL). Heights: contains information licensed
 under the Open Government Licence – British Columbia (LidarBC); and the Canadian Digital
 Elevation Model, Natural Resources Canada (Open Government Licence – Canada), via the Mapzen/AWS
-Terrain Tiles. Rock textures: Poly Haven (CC0) — Rock Face 03 by Dario Barresi and Rico Cilliers,
+Terrain Tiles. The land's colour: Landsat 5 imagery of 5 September and 10 July 1987, courtesy of
+the U.S. Geological Survey / NASA (public domain), read from Microsoft's Planetary Computer.
+Rock textures: Poly Haven (CC0) — Rock Face 03 by Dario Barresi and Rico Cilliers,
 Lichen Rock by Rico Cilliers.

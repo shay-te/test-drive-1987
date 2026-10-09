@@ -6,6 +6,7 @@ import { ROAD } from '../src/config.js';
 import { Landscape, SEA_DEPTH, SEA_LEVEL } from '../src/sim/Landscape.js';
 import { roadsideAt } from '../src/sim/routeTerrain.js';
 import { buildTrack } from '../src/sim/TrackBuilder.js';
+import { latLonOf, worldOf } from '../src/world/routeFrame.js';
 import { sunDirection } from '../src/world/sunDirection.js';
 
 const tracks = STAGES.map(buildTrack);
@@ -114,4 +115,29 @@ test('the sea floor shelves gently away from the shore, never deeper than the so
     }
     assert.ok(sea > 1000, 'Howe Sound is there');
     assert.ok(steepest <= 0.5 + 1e-6, `a sunk car could not settle on ${steepest.toFixed(2)}`);
+});
+
+test('each stage knows where it lies on the map: Horseshoe Bay at the start, Squamish at the finish', () => {
+    const first = tracks[0];
+    const start = first.toWorld(first.startS, 0);
+    const [lat0, lon0] = latLonOf(first, start.x, start.z);
+    assert.ok(Math.abs(lat0 - 49.369) < 0.003 && Math.abs(lon0 - -123.27) < 0.004, `starts at ${lat0.toFixed(4)}, ${lon0.toFixed(4)}`);
+    const last = tracks.at(-1);
+    const finish = last.toWorld(last.finishS, 0);
+    const [lat, lon] = latLonOf(last, finish.x, finish.z);
+    assert.ok(lat > 49.69 && lat < 49.72 && lon > -123.16 && lon < -123.13, `finishes at ${lat.toFixed(4)}, ${lon.toFixed(4)} (Squamish)`);
+    const back = worldOf(last, lat, lon);
+    assert.ok(Math.hypot(back.x - finish.x, back.z - finish.z) < 1e-6, 'map and world are each other\'s inverse');
+});
+
+test('where one stage ends and the next begins, both put the road on the same spot on the map', () => {
+    for (let i = 1; i < tracks.length; i++) {
+        const before = tracks[i - 1];
+        const after = tracks[i];
+        const end = before.toWorld(before.startS + STAGES[i - 1].segments * before.segment, 0);
+        const begin = after.toWorld(after.startS, 0);
+        const [a, b] = [latLonOf(before, end.x, end.z), latLonOf(after, begin.x, begin.z)];
+        const metres = Math.hypot((a[0] - b[0]) * 111195, (a[1] - b[1]) * 72410);
+        assert.ok(metres < 0.5, `stage ${i + 1} starts ${metres.toFixed(2)} m from where stage ${i} ended`);
+    }
 });

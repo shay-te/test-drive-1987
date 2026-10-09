@@ -83,7 +83,7 @@ export class DriveScreen {
     _load() {
         if (this.loadingStarted) return;
         this.loadingStarted = true;
-        const preparation = this.world.prepare(this.car);
+        const preparation = this.world.prepare(this.car, this.session.stage);
         if (!preparation) {
             this._build();
             return;

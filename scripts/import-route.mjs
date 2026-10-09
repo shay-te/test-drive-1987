@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fromFile } from 'geotiff';
 import sharp from 'sharp';
 import { ROAD } from '../src/config.js';
+import { SURROUNDINGS, SURROUNDINGS_HEIGHTS, SURROUNDINGS_IMAGE, toUtm } from './geo.mjs';
 
 const CACHE = 'tmp/route-cache';
 const OUTPUT = 'src/data/seaToSky.js';
@@ -24,6 +25,9 @@ const BOX = [49.355, -123.32, 49.77, -123.08];
 const START = [49.3680405, -123.271019];
 const EARTH = 6371000;
 const TILE_ZOOM = 13;
+/** The distant land is sampled every SURROUNDINGS_STEP m, from coarser tiles. */
+const SURROUNDINGS_ZOOM = 12;
+const SURROUNDINGS_STEP = 180;
 const TILE_SIZE = 256;
 const TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium';
 /** Smoothing of the mapped centreline and of the road's height (m, Gaussian sigma). */
@@ -177,29 +181,6 @@ function bridged(heights, spans) {
     return out;
 }
 
-/** [easting, northing] in UTM zone 10 (GRS80) of [lat, lon]. */
-function toUtm([lat, lon]) {
-    const k = Math.PI / 180;
-    const a = 6378137;
-    const f = 1 / 298.257222101;
-    const k0 = 0.9996;
-    const e2 = f * (2 - f);
-    const ep2 = e2 / (1 - e2);
-    const phi = lat * k;
-    const N = a / Math.sqrt(1 - e2 * Math.sin(phi) ** 2);
-    const T = Math.tan(phi) ** 2;
-    const C = ep2 * Math.cos(phi) ** 2;
-    const A = Math.cos(phi) * (lon + 123) * k;
-    const M = a * ((1 - e2 / 4 - (3 * e2 * e2) / 64 - (5 * e2 ** 3) / 256) * phi
-        - ((3 * e2) / 8 + (3 * e2 * e2) / 32 + (45 * e2 ** 3) / 1024) * Math.sin(2 * phi)
-        + ((15 * e2 * e2) / 256 + (45 * e2 ** 3) / 1024) * Math.sin(4 * phi)
-        - ((35 * e2 ** 3) / 3072) * Math.sin(6 * phi));
-    const east = k0 * N * (A + ((1 - T + C) * A ** 3) / 6 + ((5 - 18 * T + T * T + 72 * C - 58 * ep2) * A ** 5) / 120) + 500000;
-    const north = k0 * (M + N * Math.tan(phi) * ((A * A) / 2 + ((5 - T + 9 * C + 4 * C * C) * A ** 4) / 24
-        + ((61 - 58 * T + T * T + 600 * C - 330 * ep2) * A ** 6) / 720));
-    return [east, north];
-}
-
 /** LidarBC's bare earth at [lat, lon] (m above the sea), bilinear between its 1 m pixels, read block by
  *  block from the cached tiles; null where no tile has data. */
 async function lidar() {
@@ -316,20 +297,21 @@ function limitGrade(values, max) {
     return heights;
 }
 
-/** Terrain height (m above sea level) anywhere in BOX, bilinear between tile pixels. */
-async function terrain() {
-    const n = 2 ** TILE_ZOOM;
+/** Terrain height (m above sea level) anywhere in `box` ([south, west, north, east]), bilinear between
+ *  the pixels of the tiles at `zoom`. */
+async function terrain(box, zoom) {
+    const n = 2 ** zoom;
     const toPixel = ([lat, lon]) => {
         const k = Math.PI / 180;
         return [((lon + 180) / 360) * n * TILE_SIZE, ((1 - Math.asinh(Math.tan(lat * k)) / Math.PI) / 2) * n * TILE_SIZE];
     };
     const margin = 0.04;
-    const [x0, y0] = toPixel([BOX[2] + margin, BOX[1] - margin]).map((p) => { return Math.floor(p / TILE_SIZE); });
-    const [x1, y1] = toPixel([BOX[0] - margin, BOX[3] + margin]).map((p) => { return Math.floor(p / TILE_SIZE); });
+    const [x0, y0] = toPixel([box[2] + margin, box[1] - margin]).map((p) => { return Math.floor(p / TILE_SIZE); });
+    const [x1, y1] = toPixel([box[0] - margin, box[3] + margin]).map((p) => { return Math.floor(p / TILE_SIZE); });
     const tiles = new Map();
     for (let tx = x0; tx <= x1; tx++) {
         for (let ty = y0; ty <= y1; ty++) {
-            const png = await download(`${TILES}/${TILE_ZOOM}/${tx}/${ty}.png`, `terrarium-${TILE_ZOOM}-${tx}-${ty}.png`);
+            const png = await download(`${TILES}/${zoom}/${tx}/${ty}.png`, `terrarium-${zoom}-${tx}-${ty}.png`);
             const { data, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
             const heights = new Float32Array(TILE_SIZE * TILE_SIZE);
             for (let i = 0; i < heights.length; i++) {
@@ -401,7 +383,7 @@ const route = northbound(await highwayWays());
 const projected = route.points.map(project);
 const line = resample(smooth(resample(projected, seg), LINE_SIGMA / seg), seg);
 const { heading, curvature } = curvatureOf(line);
-const terrainAt = await terrain();
+const terrainAt = await terrain(BOX, TILE_ZOOM);
 const lidarAt = await lidar();
 let fromLidar = 0;
 let samples = 0;
@@ -437,12 +419,29 @@ for (let i = 0; i < line.length; i += NEAR_STEP) {
         for (let out = 0; out <= NEAR_REACH; out += NEAR_SPACING) roadside.push(Math.round((await rise(side * (edge + out))) * 10));
     }
 }
+/** The land around the route, every SURROUNDINGS_STEP m over SURROUNDINGS, north row first, as 16-bit
+ *  metres above the sea. */
+const distantAt = await terrain([SURROUNDINGS.south, SURROUNDINGS.west, SURROUNDINGS.north, SURROUNDINGS.east], SURROUNDINGS_ZOOM);
+const degree = Math.PI / 180;
+const metresPerDegree = [EARTH * Math.cos(START[0] * degree) * degree, EARTH * degree];
+const rows = Math.round(((SURROUNDINGS.north - SURROUNDINGS.south) * metresPerDegree[1]) / SURROUNDINGS_STEP) + 1;
+const columns = Math.round(((SURROUNDINGS.east - SURROUNDINGS.west) * metresPerDegree[0]) / SURROUNDINGS_STEP) + 1;
+const distant = new Int16Array(rows * columns);
+for (let row = 0; row < rows; row++) {
+    const lat = SURROUNDINGS.north - (row / (rows - 1)) * (SURROUNDINGS.north - SURROUNDINGS.south);
+    for (let col = 0; col < columns; col++) {
+        distant[row * columns + col] = Math.round(distantAt([lat, SURROUNDINGS.west + (col / (columns - 1)) * (SURROUNDINGS.east - SURROUNDINGS.west)]));
+    }
+}
+mkdirSync(SURROUNDINGS_HEIGHTS.split('/').slice(0, -1).join('/'), { recursive: true });
+writeFileSync(SURROUNDINGS_HEIGHTS, Buffer.from(distant.buffer));
 const length = (line.length - 1) * seg;
 console.info(`[route] ${route.points.length} mapped points, ${(length / 1000).toFixed(2)} km, ${line.length} nodes, `
     + `${spans.length} bridges; integration drift ${drift(line, heading, curvature).toFixed(2)} m; road `
     + `${Math.min(...elevation).toFixed(0)}..${Math.max(...elevation).toFixed(0)} m above the sea; `
     + `${((100 * fromLidar) / samples).toFixed(1)}% of heights from LiDAR; the real road's flat reaches typically `
-    + `${[...platform].sort((x, y) => { return x - y; })[platform.length >> 1]} m to either side of the line`);
+    + `${[...platform].sort((x, y) => { return x - y; })[platform.length >> 1]} m to either side of the line; `
+    + `the land around ${columns}x${rows} heights`);
 writeFileSync(OUTPUT, `/** The Sea-to-Sky Highway (BC 99) northbound, from the Horseshoe Bay interchange to Squamish, every
  *  ROAD.segment m: curvature (rad/m, + right) and height above the sea (m); the roadside every \`nearStep\`
  *  nodes, left then right, from the edge of the real road out \`nearReach\` m every \`nearSpacing\` m, as
@@ -454,6 +453,19 @@ writeFileSync(OUTPUT, `/** The Sea-to-Sky Highway (BC 99) northbound, from the H
  *  Licence - Canada) via the Mapzen/AWS terrain tiles. */
 export const SEA_TO_SKY = {
     bearingDeg: ${((heading[0] * 180) / Math.PI).toFixed(2)},
+    // Where the route lies on the map: local metres east and north of \`origin\` (lat, lon), with
+    // \`metresPerDegree\` of longitude and latitude; \`start\` is its first node there.
+    origin: [${START.join(', ')}],
+    metresPerDegree: [${metresPerDegree.map((m) => { return m.toFixed(3); }).join(', ')}],
+    start: [${line[0].map((m) => { return m.toFixed(2); }).join(', ')}],
+    // The land around it to the horizon: heights every few hundred metres, north row first (16-bit metres
+    // above the sea), and its colour as Landsat 5 saw it on 5 September 1987, both over the same box.
+    surroundings: {
+        south: ${SURROUNDINGS.south}, north: ${SURROUNDINGS.north}, west: ${SURROUNDINGS.west}, east: ${SURROUNDINGS.east},
+        rows: ${rows}, columns: ${columns},
+        heights: '${SURROUNDINGS_HEIGHTS}',
+        image: '${SURROUNDINGS_IMAGE}',
+    },
     curvature: [
 ${list(curvature, 6)}
     ],
