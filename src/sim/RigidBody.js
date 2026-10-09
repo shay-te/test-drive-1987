@@ -2,11 +2,13 @@ import { PHYS } from '../config.js';
 import { conjugate, integrate, rotate } from '../util/quaternion.js';
 import { add, cross, dot, length, normalize, scale, sub, vec } from '../util/vector.js';
 
-/** A rigid body tumbling over the ground: gravity, air drag, and crushing contacts with friction at
- *  sample points on its hull. Vectors are plain {x, y, z}; orientation is a unit quaternion. */
+/** A rigid body tumbling over the ground: gravity, air drag, crushing contacts with friction at sample
+ *  points on its hull, and the sea it may float in, fill with and sink through. Vectors are plain
+ *  {x, y, z}; orientation is a unit quaternion. */
 export class RigidBody {
     /** `spec` = {mass, inertia {x, y, z} (principal, body frame), points [{x, y, z, rolling}] (body
-     *  frame, from the centre of mass), dragArea, contact {stiffness, damping, friction, grip, rolling}}. */
+     *  frame, from the centre of mass), volume (bounding box, m3), dragArea, contact {stiffness,
+     *  damping, friction, grip, rolling}, water (WATER)}. */
     constructor(spec, { position, velocity, orientation, angularVelocity }) {
         Object.assign(this, spec);
         this.position = position;
@@ -16,6 +18,9 @@ export class RigidBody {
         this.impact = 0;
         this.penetration = 0;
         this.rollingShare = spec.contact.rolling;
+        this.wet = 0;
+        this.flooded = 0;
+        this.splash = 0;
     }
 
     get speed() {
@@ -26,32 +31,45 @@ export class RigidBody {
         return length(this.angularVelocity);
     }
 
-    /** Advances by `dt` over `ground` = {heightAt(x, z), normalAt(x, z)}. Afterwards `impact` holds the
-     *  hardest closing speed of any contact (m/s) and `penetration` the deepest crush (m). */
+    /** Advances by `dt` over `ground` = {heightAt(x, z), normalAt(x, z), waterLevel?}. Afterwards `impact`
+     *  holds the hardest closing speed of any contact (m/s), `penetration` the deepest crush (m), `wet`
+     *  the share of the hull under water, and `splash` the speed it went in at on the step it did. */
     step(dt, ground) {
         const q = this.orientation;
         const drag = -0.5 * PHYS.airDensity * this.dragArea * this.speed;
         let force = add(vec(0, -this.mass * PHYS.g, 0), scale(this.velocity, drag));
         let torque = vec();
         const forward = rotate(q, vec(0, 0, -1));
+        const sea = ground.waterLevel ?? -Infinity;
+        let wet = 0;
         this.impact = 0;
         this.penetration = 0;
         for (const point of this.points) {
             const r = rotate(q, point);
             const p = add(this.position, r);
-            const depth = ground.heightAt(p.x, p.z) - p.y;
-            if (depth <= 0) continue;
-            const n = ground.normalAt(p.x, p.z);
             const v = add(this.velocity, cross(this.angularVelocity, r));
-            const vn = dot(v, n);
-            const crush = depth * n.y;
-            const fn = Math.max(0, this.contact.stiffness * crush - this.contact.damping * vn);
-            this.impact = Math.max(this.impact, -vn);
-            this.penetration = Math.max(this.penetration, crush);
-            const f = add(scale(n, fn), this._friction(sub(v, scale(n, vn)), n, fn, point.rolling, forward, dt));
+            let f = vec();
+            if (p.y < sea) {
+                const under = Math.min(1, (sea - p.y) / this.water.surface);
+                wet += under / this.points.length;
+                f = this._water(v, under, dt);
+            }
+            const depth = ground.heightAt(p.x, p.z) - p.y;
+            if (depth > 0) {
+                const n = ground.normalAt(p.x, p.z);
+                const vn = dot(v, n);
+                const crush = depth * n.y;
+                const fn = Math.max(0, this.contact.stiffness * crush - this.contact.damping * vn);
+                this.impact = Math.max(this.impact, -vn);
+                this.penetration = Math.max(this.penetration, crush);
+                f = add(f, add(scale(n, fn), this._friction(sub(v, scale(n, vn)), n, fn, point.rolling, forward, dt)));
+            }
             force = add(force, f);
             torque = add(torque, cross(r, f));
         }
+        this.splash = wet > 0 && this.wet === 0 ? this.speed : 0;
+        this.wet = wet;
+        if (wet > 0) this.flooded = Math.min(1, this.flooded + dt / this.water.floodSeconds);
         this.velocity = add(this.velocity, scale(force, dt / this.mass));
         this.position = add(this.position, scale(this.velocity, dt));
         // Euler's equations in the body frame, where the inertia is diagonal.
@@ -66,6 +84,19 @@ export class RigidBody {
         const spin = length(this.angularVelocity);
         if (spin > this.contact.maxSpin) this.angularVelocity = scale(this.angularVelocity, this.contact.maxSpin / spin);
         this.orientation = integrate(q, this.angularVelocity, dt);
+    }
+
+    /** What the sea does at one hull point `under` (0..1) the surface moving at `v`: it holds up its share
+     *  of the air still inside and of the steel, and drags, never hard enough to turn the point back. */
+    _water(v, under, dt) {
+        const w = this.water;
+        const share = under / this.points.length;
+        const displaced = this.volume * w.airShare * (1 - this.flooded) + this.mass / w.steel;
+        const lift = vec(0, displaced * share * w.density * PHYS.g, 0);
+        const speed = length(v);
+        if (speed < 1e-6) return lift;
+        const pull = Math.min(0.5 * w.density * w.dragArea * share * speed * speed, (this.mass * share * speed) / dt);
+        return add(lift, scale(v, -pull / speed));
     }
 
     /** Coulomb friction against sliding velocity `vt`; a rolling point resists only `rollingShare` of

@@ -5,7 +5,11 @@ import { ResourceManager } from '../src/core/ResourceManager.js';
 import { carById } from '../src/data/cars.js';
 import { Session } from '../src/sim/Session.js';
 import { DriveScreen } from '../src/ui/screens/DriveScreen.js';
+import { STAGES } from '../src/data/stages.js';
+import { Landscape } from '../src/sim/Landscape.js';
+import { buildTrack } from '../src/sim/TrackBuilder.js';
 import { keyboardInput } from './helpers/keyboard.js';
+import { aimedOffTheEdge, findPlunge } from './helpers/plunge.js';
 
 const FRAME = 1 / 60;
 /** The 3D world needs WebGL, so the drive screen gets one that only accepts calls. */
@@ -134,4 +138,34 @@ test('hitting a car plays the crash out, watched from outside, before the notice
     assert.equal(screen.state, 'driving');
     assert.ok(!screen.traffic.vehicles.includes(truck), 'the wreck is cleared away');
     assert.deepEqual(screen.cracks, [], 'a fresh windshield');
+});
+
+test('over the edge into Howe Sound: a splash, the camera follows the car under, and the notice says how deep it sank', () => {
+    const { screen, run, tap } = startStage();
+    const track = buildTrack(STAGES[0]);
+    const { node } = findPlunge(track, new Landscape(track, STAGES[0]), 1);
+    const played = [];
+    const play = screen.audio.play.bind(screen.audio);
+    screen.audio.play = (name, options) => {
+        played.push(name);
+        return play(name, options);
+    };
+    const aimed = aimedOffTheEdge(screen.track, node);
+    screen.vehicle.reset(aimed.s, aimed.u);
+    Object.assign(screen.vehicle, { vx: aimed.vx, theta: aimed.theta });
+    screen.vehicle.engine.gear = aimed.engine.gear;
+    let underwater = false;
+    for (let t = 0; t < 40 && screen.state !== 'crashed'; t += 0.5) {
+        run(0.5);
+        underwater ||= screen.view.underwater;
+    }
+    assert.equal(screen.cause, 'edge');
+    assert.ok(played.includes('splash') && played.includes('bubbles'), played.join());
+    assert.ok(underwater, 'watched from under the water');
+    assert.ok(screen.view.water.bubbles.length > 0 || screen.wreck.body.flooded === 1, 'air bubbling out');
+    assert.match(screen._fallStats(), /Howe Sound/);
+    tap('Enter');
+    assert.equal(screen.state, 'driving');
+    assert.equal(screen.view.underwater, false, 'back on the road');
+    assert.equal(screen.water.drops.length + screen.water.bubbles.length, 0, 'the sea is calm again');
 });

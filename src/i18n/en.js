@@ -95,6 +95,7 @@ export const EN = {
         engine: 'You blew the engine!',
         chancesLeft: 'Chances left: {{n}}',
         fallStats: 'Fell {{ft}} ft in {{s}} s and hit the ground at {{mph}} mph',
+        intoTheSea: 'Fell {{ft}} ft into Howe Sound and sank {{depth}} ft to the bottom',
         continue: 'Press ENTER to continue',
     },
     ticket: {

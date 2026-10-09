@@ -22,6 +22,9 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   `src/data/seaToSky.js` from OpenStreetMap and Natural Resources Canada elevation data.
 - Sea-to-Sky light: the late-afternoon sun stands at its real compass position in the west, on
   the left as you drive north, sinking stage by stage and glinting off the water as the road turns.
+- Over the edge into Howe Sound: the car splashes in, floats while the water pours in, then sinks
+  to the bottom (the heavy end first) as its air bubbles out; the camera follows it under, where
+  fish circle the wreck. The notice says how far it fell and how deep it sank.
 - `src/audio/`: `AudioManager`, per-car engine synthesiser (AudioWorklet), sound bank, soundscape.
 - `src/world/`: three.js world: road, cliff, drop, terrain, trees, props, vehicles, sky lighting.
 - `src/world/cabin/`: the 3D cabin carried along at the car's pose: padded dash and hood, the
@@ -54,11 +57,11 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
    five exact cars exist (only stand-ins: a 911 of unknown year, a Murcielago V12, a Saab turbo
    four, a Corvette of unknown generation), so the engines stay synthesised until recordings
    with usable rights are found. Drop them in `assets/audio/engines/` (see its README).
-2. **Sea-to-Sky polish:** one polished 500 m section first (the blasted granite cuts, concrete
-   barriers, the railway between road and shore, Lions Bay, the islands across the sound), with
-   rock assets from Poly Haven (CC0); one lane each way as in the 1966 TranBC footage.
-3. **Over the edge into the sea:** the car sinks, with fish and rising air bubbles.
-4. Test on phones (touch controls, performance of the cabin pass).
+2. **Sea-to-Sky polish:** the road as it is, from BC's 1 m LiDAR elevation (LidarBC) and the
+   provincial Digital Road Atlas: the real blasted granite cuts and cliffs, concrete barriers, the
+   railway between road and shore, Lions Bay, the islands across the sound; one polished 500 m
+   section first, rock assets from Poly Haven (CC0).
+3. Test on phones (touch controls, performance of the cabin pass).
 
 ## Play it
 

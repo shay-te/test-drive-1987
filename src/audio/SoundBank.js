@@ -1,5 +1,8 @@
 import { createRng, TAU } from '../util/math.js';
 
+/** Seconds between the glugs of air leaving a sinking car. */
+const GLUG = 0.11;
+
 /** Procedural sound effects, rendered once into AudioBuffers (the game ships no audio files). */
 const SOUNDS = {
     noise: {
@@ -42,6 +45,24 @@ const SOUNDS = {
                 x.decay(0.6);
             const glass = x.t > 0.05 && x.random() < 0.02 * x.decay(0.5) ? x.noise() * 0.9 : 0;
             return thump + debris + metal + glass;
+        },
+    },
+    splash: {
+        seconds: 1.8,
+        render: (x) => {
+            const slap = Math.sin(TAU * (70 + 40 * x.decay(0.05)) * x.t) * x.decay(0.12) * 0.8;
+            const spray = x.noise() * (0.6 * x.decay(0.4) * x.attack(0.01) + 0.2 * x.decay(1.1));
+            return slap + spray;
+        },
+    },
+    bubbles: {
+        seconds: 2.5,
+        render: (x) => {
+            // Glugs: a short rising tone every GLUG seconds, its pitch scattered, fading as the air runs out.
+            const n = Math.floor(x.t / GLUG);
+            const t = x.t - n * GLUG;
+            const scatter = Math.abs(Math.sin(n * 12.9898) * 43758.5453) % 1;
+            return Math.sin(TAU * (160 + 240 * scatter) * t * (1 + 4 * t)) * Math.exp(-t / 0.03) * 0.5 * x.decay(1.2);
         },
     },
     ding: {
