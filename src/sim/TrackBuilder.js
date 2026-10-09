@@ -1,5 +1,5 @@
 import { ROAD, PHYS } from '../config.js';
-import { clamp, createRng, Noise, smoothstep } from '../util/math.js';
+import { DEG, clamp, createRng, Noise, smoothstep } from '../util/math.js';
 import { Track } from './Track.js';
 
 const MILE = 1609.34;
@@ -7,11 +7,13 @@ const MILE = 1609.34;
 const START_PAD = 50;
 /** Segments of scenery after the finish. */
 const TAIL = 260;
-/** Heading is kept within this many radians of the stage direction so the road never folds back. */
-const MAX_HEADING = 0.95;
+/** Bends gentler than this radius (m) count as straight; tighter than SHARP or MEDIUM, as signed. */
+const STRAIGHT_RADIUS = 1100;
+const SHARP_RADIUS = 260;
+const MEDIUM_RADIUS = 450;
 
-/** Lays out a stage: bends, gradients, rock face, pull-outs, rails, signs, traps and gas station.
- *  Deterministic for a given stage seed. */
+/** Lays out a stage on its leg of the route: rock face, pull-outs, rails, signs, traps and gas
+ *  station. Deterministic for a given stage seed. */
 export function buildTrack(stage) {
     const builder = new TrackBuilder(stage);
     return builder.build();
@@ -37,8 +39,7 @@ class TrackBuilder {
     }
 
     build() {
-        this._layoutBends();
-        this._layoutElevation();
+        this._layoutRoute();
         this._layoutRockFace();
         this._placeTraps();
         this._placeFinish();
@@ -55,107 +56,44 @@ class TrackBuilder {
             traps: this.traps,
             startS: this.startIndex * this.seg,
             finishS: this.finishIndex * this.seg,
+            routeStart: this.routeStart,
+            bearing: this.bearing,
         });
     }
 
-    // ------------------------------------------------------------------ bends
+    // ------------------------------------------------------------------ route
 
-    _layoutBends() {
-        const { rng, stage } = this;
-        let i = this.startIndex + 70;
-        let psi = 0;
-        const end = this.finishIndex - 110;
+    /** The stage's leg of the real road: its bends and gradients, and the compass heading it starts on. */
+    _layoutRoute() {
+        const { route, startNode } = this.stage;
+        this.routeStart = startNode - START_PAD;
+        if (this.routeStart < 0 || this.routeStart + this.count > route.curvature.length)
+            throw new Error(`Stage ${this.stage.name} runs off its route`);
+        this.curvature.set(route.curvature.slice(this.routeStart, this.routeStart + this.count));
+        this.elevation.set(route.elevation.slice(this.routeStart, this.routeStart + this.count));
+        const turned = route.curvature.slice(0, this.routeStart).reduce((sum, k) => { return sum + k * this.seg; }, 0);
+        this.bearing = route.bearingDeg + turned / DEG;
+        this._findPieces();
+    }
 
-        while (i < end) {
-            const roll = rng();
-            const straightChance = 0.32 - stage.curviness * 0.18;
-            if (roll < straightChance) {
-                const len = rng.int(25, 90);
-                this.pieces.push({ type: 'straight', start: i, end: i + len, k: 0 });
-                i += len;
-                continue;
+    /** Splits the road into straights and bends (typed by their tightest radius) for signs and traps. */
+    _findPieces() {
+        const turn = (i) => {
+            const k = this.curvature[i];
+            return Math.abs(k) * STRAIGHT_RADIUS < 1 ? 0 : Math.sign(k);
+        };
+        let start = 0;
+        for (let i = 1; i <= this.count; i++) {
+            if (i < this.count && turn(i) === turn(start)) continue;
+            if (turn(start) === 0) this.pieces.push({ type: 'straight', start, end: i, k: 0 });
+            else {
+                let k = 0;
+                for (let j = start; j < i; j++) if (Math.abs(this.curvature[j]) > Math.abs(k)) k = this.curvature[j];
+                const radius = 1 / Math.abs(k);
+                const type = radius < SHARP_RADIUS ? 'sharp' : radius < MEDIUM_RADIUS ? 'medium' : 'sweeper';
+                this.pieces.push({ type, start, end: i, k, radius });
             }
-            if (roll < straightChance + 0.12 * (0.5 + stage.curviness)) {
-                // Esses: two linked bends in opposite directions.
-                const radius = rng.range(170, 360) * (1.25 - stage.sharpness * 0.45);
-                const dir = this._chooseDirection(psi);
-                i = this._addBend(i, dir, radius, rng.int(22, 40), psi, end);
-                psi = this._headingAt(i);
-                i = this._addBend(i, -dir, radius * rng.range(0.85, 1.2), rng.int(22, 40), psi, end);
-                psi = this._headingAt(i);
-                continue;
-            }
-            const severity = rng();
-            let radius;
-            if (severity < 0.18 + stage.sharpness * 0.22) radius = rng.range(95, 175);
-            else if (severity < 0.55) radius = rng.range(190, 420);
-            else radius = rng.range(450, 1100);
-            const hold = rng.int(15, 70);
-            i = this._addBend(i, this._chooseDirection(psi), radius, hold, psi, end);
-            psi = this._headingAt(i);
-        }
-    }
-
-    _chooseDirection(psi) {
-        const pRight = clamp(0.5 - psi / 1.6, 0.08, 0.92);
-        return this.rng() < pRight ? 1 : -1;
-    }
-
-    /** Writes a bend with eased entry/exit; returns the index after it. */
-    _addBend(start, dir, radius, hold, psi, end) {
-        const k = dir / radius;
-        const ease = Math.round(clamp(radius / 14, 10, 34));
-        // Limit the total heading change so the road stays within +-MAX_HEADING.
-        const room = dir > 0 ? MAX_HEADING - psi : MAX_HEADING + psi;
-        const maxLen = Math.max(0, (room * radius) / this.seg - ease);
-        hold = Math.min(hold, Math.floor(maxLen));
-        if (hold < 4) {
-            const len = 30;
-            this.pieces.push({ type: 'straight', start, end: start + len, k: 0 });
-            return start + len;
-        }
-        const total = Math.min(ease * 2 + hold, end - start);
-        for (let n = 0; n < total; n++) {
-            let f;
-            if (n < ease) f = smoothstep(0, 1, n / ease);
-            else if (n < ease + hold) f = 1;
-            else f = smoothstep(0, 1, (total - n) / ease);
-            this.curvature[start + n] = k * f;
-        }
-        this.pieces.push({
-            type: radius < 260 ? 'sharp' : radius < 450 ? 'medium' : 'sweeper',
-            start,
-            end: start + total,
-            k,
-            radius,
-        });
-        return start + total;
-    }
-
-    _headingAt(index) {
-        let psi = 0;
-        for (let i = 0; i < index; i++) psi += this.curvature[i] * this.seg;
-        return psi;
-    }
-
-    // ------------------------------------------------------------------ elevation
-
-    _layoutElevation() {
-        const { stage, noise } = this;
-        const baseGrade = stage.climb / (stage.segments * this.seg);
-        let y = stage.startElevation;
-        for (let i = 0; i < this.count; i++) {
-            this.elevation[i] = y;
-            const s = i * this.seg;
-            let grade = baseGrade + 0.05 * noise.fbm2(s / 420, 0.3, 3);
-            // Level ground around the start, the gas station and the summit.
-            const nearStart = smoothstep(this.startIndex + 30, this.startIndex + 90, i);
-            const nearFinish =
-                1 -
-                smoothstep(this.finishIndex - 70, this.finishIndex - 25, i) *
-                    (1 - smoothstep(this.finishIndex + 40, this.finishIndex + 90, i));
-            grade *= nearStart * nearFinish;
-            y += clamp(grade, -0.05, 0.1) * this.seg;
+            start = i;
         }
     }
 

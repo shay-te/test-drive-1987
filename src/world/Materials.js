@@ -40,6 +40,8 @@ export class WorldMaterials {
             roughness: 1,
         });
         this.steel = new THREE.MeshStandardMaterial({ color: '#c3c8ce', roughness: 0.42, metalness: 0.7 });
+        // Smooth enough to throw the low sun back as a glint.
+        this.water = new THREE.MeshStandardMaterial({ color: '#1f3d48', roughness: 0.14, metalness: 0.05 });
         this.post = new THREE.MeshStandardMaterial({
             map: this._texture('post', 32, 128, (ctx, w, h) => {
                 drawDelineator(ctx, w, h);

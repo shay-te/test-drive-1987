@@ -119,7 +119,7 @@ export const EN = {
         continue: 'Press ENTER for the next stage',
     },
     results: {
-        summit: 'YOU MADE IT TO THE TOP OF THE ROCK!',
+        summit: 'YOU MADE IT TO SQUAMISH!',
         dealer: 'The dealer is impressed. The keys are yours... almost.',
         gameOver: 'GAME OVER',
         totalTime: 'Total time',
@@ -134,7 +134,7 @@ export const EN = {
         speedLimit: 'SPEED\nLIMIT',
         gas1mi: 'GAS\n1 MILE',
         gasHalf: 'GAS\n1/2 MILE',
-        summit: 'TOP OF\nTHE ROCK',
+        summit: 'WELCOME TO\nSQUAMISH',
         dealer: 'EXOTIC CARS',
         station: 'GAS',
         advisory: '{{n}}\nMPH',

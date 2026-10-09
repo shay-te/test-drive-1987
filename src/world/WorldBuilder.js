@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { ROAD } from '../config.js';
-import { SHOULDER_DROP } from '../sim/Landscape.js';
+import { SEA_LEVEL, SHOULDER_DROP } from '../sim/Landscape.js';
 import { Noise, clamp, createRng, lerp, smoothstep } from '../util/math.js';
 import { mixRgb } from '../util/color.js';
 import { buildRibbon } from './Ribbon.js';
 import { ROAD_TEXTURE_LENGTH, ROCK_TEXTURE_SIZE, shadeVertex } from './Materials.js';
 import { buildProps } from './Props.js';
+import { TREE_LINE_LOW } from './Terrain.js';
 
 const FACE_ROWS = 12;
 const SLOPE_ROWS = 6;
@@ -142,30 +143,29 @@ export class WorldBuilder {
     treePlacements(track) {
         const rng = createRng(this.stage.seed + 3);
         const placements = [];
-        const drop = this.landscape.dropSection;
+        const drops = this.landscape.dropSections;
         const place = (i, section, from, to) => {
             const k = rng.int(from, to - 1);
             const f = rng();
             const u = lerp(section[k].u, section[k + 1].u, f);
             const h = lerp(section[k].h, section[k + 1].h, f);
             const p = track.nodeWorld(i, u, h - 0.5, {});
-            placements.push({ x: p.x, y: p.y, z: p.z, height: rng.range(6, 15) });
+            if (p.y > SEA_LEVEL + TREE_LINE_LOW) placements.push({ x: p.x, y: p.y, z: p.z, height: rng.range(6, 15) });
         };
         for (let i = 0; i < track.count; i += 2) {
             if (rng() < 0.35) place(i, this._slopeSection(track, i), 1, SLOPE_ROWS);
-            if (rng() < 0.18) place(i, drop, 0, drop.length - 5);
+            if (rng() < 0.18) place(i, drops[i], 0, drops[i].length - 5);
         }
         return placements;
     }
 
     /** The sheer drop into the valley on the left. */
     _drop(track) {
-        const section = this.landscape.dropSection;
         return buildRibbon(
             track,
             this.materials.cliff,
-            () => {
-                return section;
+            (i) => {
+                return this.landscape.dropSections[i];
             },
             {
                 alongTile: ROCK_TEXTURE_SIZE,

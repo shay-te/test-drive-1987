@@ -17,6 +17,7 @@ import { CABIN_LAYER } from './cabin/cabinLayer.js';
 import { photographProfile } from './profilePhoto.js';
 import { photographStation } from './stationPhoto.js';
 import { chasePose, followYaw } from './chaseView.js';
+import { sunDirection } from './sunDirection.js';
 
 const FAR = 24000;
 const SKY_SCALE = 18000;
@@ -165,20 +166,22 @@ export class WorldView {
         const materials = new WorldMaterials(this.resources, this.renderer, stage);
         const builder = new WorldBuilder(materials, stage, landscape, this.authored);
         const terrain = new Terrain(landscape, stage, materials);
-        scene.add(builder.build(track), terrain.mesh, terrain.ring);
+        scene.add(builder.build(track), terrain.mesh, terrain.ring, terrain.sea);
         scene.add(buildTrees([...builder.treePlacements(track), ...terrain.treePlacements()], materials));
         scene.fog = new THREE.FogExp2(stage.fog.color, stage.fog.density);
-        this._installCabin(scene, stage, car, cabinAsset);
+        this._installCabin(scene, stage, car, cabinAsset, track.bearing);
     }
 
     loadPreview(stage, car, cabinAsset) {
         this.dispose();
         this.track = null;
-        this._installCabin(new THREE.Scene(), stage, car, cabinAsset);
+        // No road here: the car faces north.
+        this._installCabin(new THREE.Scene(), stage, car, cabinAsset, 0);
     }
 
-    _installCabin(scene, stage, car, cabinAsset) {
-        this._addSkyAndSun(scene, stage);
+    /** `bearing`: the compass heading (deg) the road starts on, which the world's -z points along. */
+    _installCabin(scene, stage, car, cabinAsset, bearing) {
+        this._addSkyAndSun(scene, stage, bearing);
         this.renderer.toneMappingExposure = stage.sky.exposure;
         this.cabin = new AssetCabin(
             car,
@@ -237,14 +240,9 @@ export class WorldView {
         scene.add(this.cabinSun, this.cabinSun.target, sky);
     }
 
-    _addSkyAndSun(scene, stage) {
-        const elevation = stage.sun.elevation * DEG;
-        const azimuth = stage.sun.azimuth * DEG;
-        this.sunDirection = new THREE.Vector3(
-            Math.sin(azimuth) * Math.cos(elevation),
-            Math.sin(elevation),
-            -Math.cos(azimuth) * Math.cos(elevation),
-        );
+    _addSkyAndSun(scene, stage, bearing) {
+        const sun = sunDirection(stage.sun, bearing);
+        this.sunDirection = new THREE.Vector3(sun.x, sun.y, sun.z);
         this.sky = new Sky();
         this.sky.scale.setScalar(SKY_SCALE);
         const u = this.sky.material.uniforms;

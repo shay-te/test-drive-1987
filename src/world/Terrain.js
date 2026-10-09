@@ -1,14 +1,17 @@
 import * as THREE from 'three';
 import { createRng, lerp, smoothstep } from '../util/math.js';
-import { MOUNTAIN_NEAR, VALLEY_NEAR } from '../sim/Landscape.js';
+import { MOUNTAIN_NEAR, SEA_LEVEL, VALLEY_NEAR } from '../sim/Landscape.js';
 import { shadeVertex } from './Materials.js';
 import { mixRgb } from '../util/color.js';
 
 const FOREST_TREES = 5500;
 const RING_INNER = 5200;
 const RING_OUTER = 15000;
+/** Trees grow from this height above the sea; below SHORE m the ground is bare shore rock. */
+export const TREE_LINE_LOW = 3;
+const SHORE = 6;
 
-/** The mountain above the road, the valley below it and the ranges on the horizon. */
+/** The land around the road, the sea along it and the ranges on the horizon. */
 export class Terrain {
     constructor(landscape, stage, materials) {
         this.landscape = landscape;
@@ -16,6 +19,7 @@ export class Terrain {
         this.noise = landscape.noise;
         this.mesh = this._buildMesh(materials.terrain);
         this.ring = this._buildRing(materials.terrain);
+        this.sea = this._buildSea(materials.water);
     }
 
     /** World positions for forest trees on the valley side and the lower mountain. */
@@ -31,12 +35,9 @@ export class Terrain {
             const distance = Math.abs(side);
             if (distance < (side < 0 ? VALLEY_NEAR + 15 : MOUNTAIN_NEAR + 10) || distance > 900) continue;
             if (this.noise.noise2(ix * 0.08, iz * 0.08) < -0.1) continue;
-            placements.push({
-                x: l.x0 + ix * l.cell,
-                z: l.z0 + iz * l.cell,
-                y: l.gridHeight(ix, iz) - 0.5,
-                height: rng.range(9, 20),
-            });
+            const y = l.gridHeight(ix, iz);
+            if (y < SEA_LEVEL + TREE_LINE_LOW) continue;
+            placements.push({ x: l.x0 + ix * l.cell, z: l.z0 + iz * l.cell, y: y - 0.5, height: rng.range(9, 20) });
         }
         return placements;
     }
@@ -82,16 +83,8 @@ export class Terrain {
             const flat = normal.getY(k);
             const patch = this.noise.noise2(pos.getX(k) * 0.004, pos.getZ(k) * 0.004);
             let c = isValley(k) && patch > 0.15 ? field : forest;
-            c = mixRgb(rock, c, smoothstep(0.62, 0.85, flat));
-            c = mixRgb(
-                c,
-                snow,
-                smoothstep(
-                    this.landscape.valleyFloor + 1500,
-                    this.landscape.valleyFloor + 1900,
-                    y + patch * 120,
-                ) * smoothstep(0.5, 0.75, flat),
-            );
+            c = mixRgb(rock, c, smoothstep(0.62, 0.85, flat) * smoothstep(SEA_LEVEL, SEA_LEVEL + SHORE, y));
+            c = mixRgb(c, snow, smoothstep(SEA_LEVEL + 1500, SEA_LEVEL + 1900, y + patch * 120) * smoothstep(0.5, 0.75, flat));
             colors.set(c, k * 3);
         }
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
@@ -113,7 +106,7 @@ export class Terrain {
             const x = cx + Math.cos(a) * r;
             const z = cz + Math.sin(a) * r;
             const ridge = this.noise.ridged2(Math.cos(a) * 3 + f * 2, Math.sin(a) * 3 + f * 2);
-            const y = this.landscape.valleyFloor + 150 + ridge * 1500 * Math.sin(f * Math.PI) + f * 300;
+            const y = SEA_LEVEL + 150 + ridge * 1500 * Math.sin(f * Math.PI) + f * 300;
             pos.setXYZ(k, x, y, z);
         }
         geometry.computeVertexNormals();
@@ -123,5 +116,16 @@ export class Terrain {
         const ringMaterial = material.clone();
         ringMaterial.side = THREE.DoubleSide;
         return new THREE.Mesh(geometry, ringMaterial);
+    }
+
+    /** The sea's surface out to the far ranges. */
+    _buildSea(material) {
+        const b = this.landscape.track.bounds;
+        const geometry = new THREE.PlaneGeometry(RING_OUTER * 2, RING_OUTER * 2);
+        geometry.rotateX(-Math.PI / 2);
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set((b.minX + b.maxX) / 2, SEA_LEVEL, (b.minZ + b.maxZ) / 2);
+        mesh.receiveShadow = true;
+        return mesh;
     }
 }

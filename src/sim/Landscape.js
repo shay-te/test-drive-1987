@@ -1,5 +1,5 @@
 import { ROAD } from '../config.js';
-import { Noise, clamp, lerp, smoothstep } from '../util/math.js';
+import { Noise, clamp, lerp } from '../util/math.js';
 import { normalize } from '../util/vector.js';
 
 /** Terrain grid spacing and how far it reaches beyond the road (m). */
@@ -9,7 +9,13 @@ const SAMPLE_STEP = 4;
 /** Lateral zone covered by the detailed road-side ribbons; the heightfield ducks underneath. */
 export const MOUNTAIN_NEAR = 62;
 export const VALLEY_NEAR = 52;
-const VALLEY_DEPTH = 260;
+/** Beyond the rock face the mountain starts this far above its top and falls away to the real ground
+ *  by SHOULDER_FALL per metre further out (the shoulder above a cutting). */
+const SHOULDER_RISE = 30;
+const SHOULDER_FALL = 0.25;
+/** Ground at or below the sea's surface is sea floor, this deep. */
+export const SEA_LEVEL = 0;
+export const SEA_DEPTH = 20;
 /** The gravel shoulders fall away from the asphalt by this much at their outer edge. */
 export const SHOULDER_DROP = 0.06;
 /** Depth profile of the drop into the valley: [lateral offset beyond the edge, depth]. */
@@ -24,8 +30,10 @@ const DROP_PROFILE = [
     [28, 96],
     [44, 130],
 ];
-/** The valley terrain meets the drop just below its last profile point. */
-const DROP_FOOT = DROP_PROFILE.at(-1)[1] + 1;
+/** The drop's cliff profile as a road cross-section, outermost point first. */
+const DROP_SECTION = [...DROP_PROFILE].reverse().map(([out, depth]) => {
+    return { u: ROAD.edgeOffset - out, h: -depth };
+});
 /** Rock relief on the drop face: noise scale and how deep it carves. */
 const RELIEF_SCALE = 0.05;
 const RELIEF_DEPTH = 12;
@@ -39,14 +47,14 @@ export function groundNormal(ground, x, z) {
     return normalize({ x: -dx, y: 2 * NORMAL_STEP, z: -dz });
 }
 
-/** The ground of a stage: road and shoulders, the drop below the edge, the mountain and valley
- *  beyond. The renderer builds its meshes from it and a car going over the edge lands on it. */
+/** The ground of a stage: road and shoulders, the drop below the edge, and the real terrain of the
+ *  route beyond (the sea floor under the water). The renderer builds its meshes from it and a car
+ *  going over the edge lands on it. */
 export class Landscape {
     constructor(track, stage) {
         this.track = track;
         this.noise = new Noise(stage.seed + 17);
         this.reliefNoise = new Noise(stage.seed + 99);
-        this.valleyFloor = stage.startElevation - VALLEY_DEPTH;
         this.cell = CELL;
         const b = track.bounds;
         this.x0 = b.minX - MARGIN;
@@ -55,9 +63,7 @@ export class Landscape {
         this.nz = Math.ceil((b.maxZ - b.minZ + 2 * MARGIN) / CELL) + 1;
         this.heights = new Float32Array(this.nx * this.nz);
         this.sides = new Float32Array(this.nx * this.nz);
-        this.dropSection = [...DROP_PROFILE].reverse().map(([out, depth]) => {
-            return { u: ROAD.edgeOffset - out, h: -depth };
-        });
+        this.dropSections = Array.from({ length: track.count }, (_, i) => { return this._dropSection(i); });
         this.hint = 0;
         this._computeHeights();
     }
@@ -77,7 +83,18 @@ export class Landscape {
     /** Vertical relief carved into the drop face at world (x, z), `depth` metres below the road. */
     relief(x, z, depth) {
         const n = this.reliefNoise.fbm3(x * RELIEF_SCALE, 7.1, z * RELIEF_SCALE, 3);
-        return n * Math.min(depth, RELIEF_DEPTH) * RELIEF_AMOUNT;
+        return n * clamp(depth, 0, RELIEF_DEPTH) * RELIEF_AMOUNT;
+    }
+
+    /** The drop at node `i`: the cliff profile, but never below the straight fall from the road's edge to
+     *  the real ground (or sea floor) at its foot, so it meets the land beyond or rises as a hillside. */
+    _dropSection(i) {
+        const t = this.track;
+        const foot = DROP_SECTION[0].u;
+        const fall = seaFloor(routeGround(t, i, foot)) - t.elevation[i];
+        return DROP_SECTION.map(({ u, h }) => {
+            return { u, h: Math.max(h, (fall * (ROAD.edgeOffset - u)) / (ROAD.edgeOffset - foot)) };
+        });
     }
 
     /** The terrain mesh's surface: two triangles per grid cell, split like three.js's PlaneGeometry. */
@@ -114,8 +131,9 @@ export class Landscape {
         const road = t.elevation[i] + (t.elevation[i + 1] - t.elevation[i]) * fs;
         if (u >= -ROAD.halfWidth && u <= ROAD.halfWidth) return road;
         if (u > ROAD.halfWidth) {
-            const wall = t.wallOffset[i] + 0.4;
-            if (u > wall) return road + t.wallHeight[i];
+            // Between nodes the face runs straight from one to the next, as its ribbon is drawn.
+            const wall = lerp(t.wallOffset[i], t.wallOffset[i + 1], fs) + 0.4;
+            if (u > wall) return road + lerp(t.wallHeight[i], t.wallHeight[i + 1], fs);
             return road - lerp(0.01, SHOULDER_DROP, (u - ROAD.halfWidth) / (wall - ROAD.halfWidth));
         }
         if (u >= ROAD.edgeOffset) {
@@ -128,14 +146,15 @@ export class Landscape {
 
     /** The drop ribbon: the same vertices (with relief) and the same triangle split as its mesh. */
     _drop(i, fs, u) {
-        const section = this.dropSection;
+        const section = DROP_SECTION;
         if (u < section[0].u) return -Infinity;
         let j = 0;
         while (j < section.length - 2 && u > section[j + 1].u) j++;
         const fu = clamp((u - section[j].u) / (section[j + 1].u - section[j].u), 0, 1);
         const vertex = (row, col) => {
-            const p = this.track.nodeWorld(i + row, section[col].u, section[col].h, {});
-            return p.y + this.relief(p.x, p.z, -section[col].h);
+            const { h } = this.dropSections[i + row][col];
+            const p = this.track.nodeWorld(i + row, section[col].u, h, {});
+            return p.y + this.relief(p.x, p.z, -h);
         };
         const h00 = vertex(0, j);
         const h10 = vertex(1, j);
@@ -167,26 +186,46 @@ export class Landscape {
                     (z - t.pz[best]) * Math.sin(t.heading[best]);
                 const k = iz * this.nx + ix;
                 this.sides[k] = u;
-                this.heights[k] = this._height(x, z, u, t.elevation[best], t.wallHeight[best]);
+                this.heights[k] = this._height(best, u);
             }
         }
     }
 
-    _height(x, z, u, roadY, wallHeight) {
-        const n = this.noise;
+    /** Terrain at lateral offset `u` from road node `i`, under the road-side ribbons near the road. */
+    _height(i, u) {
+        const t = this.track;
+        const roadY = t.elevation[i];
         if (u > 0) {
             if (u < MOUNTAIN_NEAR) return roadY - 25;
-            const peaks = n.ridged2(x * 0.0011, z * 0.0011) * 420 * smoothstep(80, 700, u);
-            return roadY + wallHeight + 30 + (u - MOUNTAIN_NEAR) * 0.85 + peaks;
+            const shoulder = roadY + t.wallHeight[i] + SHOULDER_RISE - (u - MOUNTAIN_NEAR) * SHOULDER_FALL;
+            return Math.max(seaFloor(routeGround(t, i, u)), shoulder);
         }
-        // The valley side starts at the foot of the drop and runs down from there, so a car that goes
-        // over lands on a slope that carries it on down, not in a ditch under the face.
-        const d = -u;
-        const foot = roadY - DROP_FOOT;
-        if (d < VALLEY_NEAR) return foot;
-        const hills = n.fbm2(x * 0.002, z * 0.002, 4) * 35;
-        const slope = foot - (d - VALLEY_NEAR) * 0.62;
-        const farWall = n.ridged2(x * 0.0009 + 5, z * 0.0009) * 700 * smoothstep(1300, 2800, d);
-        return Math.max(this.valleyFloor + hills, slope) + farWall;
+        // Just under the drop's lowest point, so the ground beyond runs on from its foot.
+        if (-u < VALLEY_NEAR) return roadY + Math.min(...this.dropSections[i].map((p) => { return p.h; })) - 1;
+        return seaFloor(routeGround(t, i, u));
     }
+}
+
+/** Ground at or below the sea's surface is the sea floor. */
+function seaFloor(height) {
+    return height > SEA_LEVEL ? height : SEA_LEVEL - SEA_DEPTH;
+}
+
+/** The real ground across the route at track node `i`, lateral offset `u`: bilinear between the
+ *  route's cross-sections, held at the nearest and furthest offsets on that side of the road. */
+function routeGround(track, i, u) {
+    const { sectionStep, sectionOffsets: offsets, sections } = track.stage.route;
+    const rows = sections.length / offsets.length;
+    const at = clamp((track.routeStart + i) / sectionStep, 0, rows - 1.0001);
+    const row = Math.floor(at);
+    const right = offsets.findIndex((offset) => { return offset > 0; });
+    const [first, last] = u < 0 ? [0, right - 1] : [right, offsets.length - 1];
+    const across = clamp(u, offsets[first], offsets[last]);
+    let c = first;
+    while (c < last - 1 && across > offsets[c + 1]) c++;
+    const f = (across - offsets[c]) / (offsets[c + 1] - offsets[c]);
+    const height = (r) => {
+        return lerp(sections[r * offsets.length + c], sections[r * offsets.length + c + 1], f);
+    };
+    return lerp(height(row), height(row + 1), at - row);
 }
