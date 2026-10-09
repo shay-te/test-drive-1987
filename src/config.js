@@ -63,6 +63,8 @@ export const PHYS = Object.freeze({
     /** One horsepower is one lb-ft of torque turning at this many rpm. */
     lbftRpmPerHp: 5252,
     lbToKg: 0.453592,
+    /** Square metres in a hectare. */
+    hectare: 10000,
 });
 
 /** How the brochure's figures were measured, and how the drivetrain is fitted to them. */

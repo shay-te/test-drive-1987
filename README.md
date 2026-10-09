@@ -39,6 +39,11 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   Lions Bay, Britannia Beach with its stepped mill, Squamish) stands on its footprint, with walls
   from its storeys, a gable or pyramid roof on houses and flat roofs stepping up the hillside on
   the rest (`scripts/import-buildings.mjs`).
+- The coastal forest: Douglas firs and hemlocks 12 to 34 m tall, 90 a hectare on the slopes by the
+  road and thinning to 8 a hectare a kilometre off, never on rock too steep to hold soil, above the
+  tree line or inside a building. Each tree is a trunk and whorls of drooping branch sprays painted
+  needle by needle; beyond 450 m it becomes three crossed cards of its silhouette. Close to the road
+  the ground is the floor of a coastal pine forest (Poly Haven, CC0).
 - The cut is blasted granite: blocks a couple of metres across, each set back by its own amount,
   dark joints between them, at about a metre's detail.
 - Stages load in the background: from the moment the title screen shows, a worker lays out the
@@ -89,8 +94,8 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
    five exact cars exist (only stand-ins: a 911 of unknown year, a Murcielago V12, a Saab turbo
    four, a Corvette of unknown generation), so the engines stay synthesised until recordings
    with usable rights are found. Drop them in `assets/audio/engines/` (see its README).
-2. **Sea-to-Sky detail:** a denser, real-looking coastal forest near the road, concrete barriers
-   where the real road has them, the railway between road and shore. (The provincial road atlas
+2. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, concrete barriers where
+   the real road has them, the railway between road and shore. (The provincial road atlas
    and orthophotos are "access only", so they are not used.)
 3. **Every stage inspected section by section** for anything that does not look real.
 4. Frame rates on real phones (the cabin pass, the mirrors, shadows).
@@ -167,7 +172,7 @@ Elevation Model, Natural Resources Canada (Open Government Licence – Canada), 
 Terrain Tiles. The land's colour: Landsat 5 imagery of 5 September and 10 July 1987, courtesy of
 the U.S. Geological Survey / NASA (public domain), read from Microsoft's Planetary Computer.
 Rock and ground textures: Poly Haven (CC0) — Rock Face 03 by Dario Barresi and Rico Cilliers,
-Lichen Rock and Aerial Rocks 04 by Rico Cilliers. The buildings: © OpenStreetMap contributors;
+Lichen Rock and Aerial Rocks 04 by Rico Cilliers, Forest Ground 04 by Rob Tuytel. The buildings: © OpenStreetMap contributors;
 `assets/terrain/sea-to-sky/buildings.json` is derived from OpenStreetMap and available under the
 ODbL. The driver's hands: the generic hand of the W3C Immersive Web WebXR Input Profiles
 (`@webxr-input-profiles/assets`, MIT licence).

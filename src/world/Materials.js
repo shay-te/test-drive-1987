@@ -1,12 +1,18 @@
 import * as THREE from 'three';
 import { ROAD } from '../config.js';
-import { LAND_DETAIL, SCENERY_TEXTURES } from '../data/scenery.js';
+import { FOREST, LAND_DETAIL, SCENERY_TEXTURES } from '../data/scenery.js';
 import { withoutTiling } from './noTiling.js';
 import { TRI_START, triplanarFragment, triplanarRock, triplanarVertex } from './triplanar.js';
 import { t } from '../i18n/i18n.js';
 import { font } from '../ui/theme.js';
 import { linearGradient, multilineText, speckle } from '../util/canvas.js';
 import { hexToRgb, mixRgb } from '../util/color.js';
+import { createRng } from '../util/math.js';
+
+/** The pictures of a branch spray (along, across) and of a whole tree (across, up), in pixels. */
+const NEEDLES_SIZE = [256, 128];
+const SILHOUETTE_SIZE = [128, 256];
+const NEEDLE_SEED = 41;
 
 /** Road texture covers both lanes and one 12 m dash period of the centre line. */
 export const ROAD_TEXTURE_LENGTH = 12;
@@ -47,12 +53,20 @@ export class WorldMaterials {
         });
         this.wood = new THREE.MeshStandardMaterial({ color: '#6b5236', roughness: 0.9 });
         this.building = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 });
-        this.foliage = new THREE.MeshStandardMaterial({
-            color: '#2e4a24',
-            roughness: 0.95,
-            flatShading: true,
-        });
-        this.bark = new THREE.MeshStandardMaterial({ color: '#4a3524', roughness: 1 });
+        // Branch sprays near by, whole silhouettes far off: cut out of their pictures, smoothed at the
+        // edges by the multisampling.
+        const foliage = (key, width, height, draw) => {
+            return new THREE.MeshStandardMaterial({
+                map: this._texture(key, width, height, draw, { repeat: false }),
+                alphaTest: 0.5,
+                alphaToCoverage: true,
+                side: THREE.DoubleSide,
+                roughness: 0.92,
+            });
+        };
+        this.needles = foliage('needles', NEEDLES_SIZE[0], NEEDLES_SIZE[1], drawNeedles);
+        this.treeSilhouette = foliage('silhouette', SILHOUETTE_SIZE[0], SILHOUETTE_SIZE[1], drawSilhouette);
+        this.bark = new THREE.MeshStandardMaterial({ color: FOREST.colors.bark, roughness: 1 });
         // Rock fallen from the cut: the same granite, without the face's shading.
         this.boulder = triplanarRock(new THREE.MeshStandardMaterial({ roughness: 0.96 }), 'boulder', this._rockTextures(SCENERY_TEXTURES.rock), SCENERY_TEXTURES.rock.metres);
         this.signCache = new Map();
@@ -90,11 +104,14 @@ export class WorldMaterials {
         const rock = SCENERY_TEXTURES.cliff;
         const [bare, soil] = LAND_DETAIL.bareRock.map((v) => { return v.toFixed(2); });
         const [fade, gone] = LAND_DETAIL.reach.map((v) => { return v.toFixed(1); });
+        const floor = LAND_DETAIL.floor;
+        const floorMap = this._photo(floor.map, true);
         withoutTiling(material, `land-${broad}-${close}`, (fragment, shader) => {
             shader.uniforms.detailMap = { value: detail };
+            shader.uniforms.floorMap = { value: floorMap };
             triplanarVertex(shader, this._rockTextures(rock));
             const span = rock.metres.toFixed(2);
-            return triplanarFragment(`uniform sampler2D detailMap;\n${fragment}`)
+            return triplanarFragment(`uniform sampler2D detailMap;\nuniform sampler2D floorMap;\n${fragment}`)
                 .replace('#include <map_fragment>', `#include <map_fragment>
     ${TRI_START}
     float bare = smoothstep(${soil}, ${bare}, triN.y);
@@ -104,9 +121,13 @@ export class WorldMaterials {
     vec2 fine = vTriWorld.xz / ${close.toFixed(1)};
     vec2 fineDx = triDx.xz / ${close.toFixed(1)};
     vec2 fineDy = triDy.xz / ${close.toFixed(1)};
-    float closeUp = 0.5;
-    if (near > 0.0) closeUp = mix(0.5, textureNoTileGrad(detailMap, fine, fineDx, fineDy).r, near);
-    diffuseColor.rgb *= 4.0 * textureNoTile(detailMap, ground).r * closeUp;
+    vec3 land = diffuseColor.rgb * 2.0 * textureNoTile(detailMap, ground).r;
+    if (near > 0.0) {
+        vec3 detailed = land * 2.0 * textureNoTileGrad(detailMap, fine, fineDx, fineDy).r;
+        vec3 forestFloor = textureNoTileGrad(floorMap, vTriWorld.xz / ${floor.metres.toFixed(2)}, triDx.xz / ${floor.metres.toFixed(2)}, triDy.xz / ${floor.metres.toFixed(2)}).rgb;
+        land = mix(land, mix(detailed, forestFloor, ${floor.share.toFixed(2)}), near);
+    }
+    diffuseColor.rgb = land;
     vec3 rock = textureLod(rockMap, vec2(0.5), 16.0).rgb;
     if (near > 0.0 && bare > 0.0) rock = mix(rock, triplanarColor(rockMap, vTriWorld, triDx, triDy, triN, ${span}), near);
     diffuseColor.rgb = mix(diffuseColor.rgb, rock, bare);`)
@@ -196,6 +217,63 @@ function drawDelineator(ctx, w, h) {
     ctx.fillRect(0, 0, w, h * 0.22);
     ctx.fillStyle = '#ffb21e';
     ctx.fillRect(w * 0.25, h * 0.06, w * 0.5, h * 0.1);
+}
+
+/** Needles along a twig from (x, y) heading `angle`, `length` px: dark inside, fresher green outside. */
+function needleTwig(ctx, rng, x, y, angle, length, needle) {
+    const colors = FOREST.colors.needles;
+    ctx.lineCap = 'round';
+    for (let d = 0; d < length; d += 1.5) {
+        const px = x + Math.cos(angle) * d;
+        const py = y + Math.sin(angle) * d;
+        const fresh = d / length;
+        for (const side of [-1, 1]) {
+            const a = angle + side * rng.range(0.7, 1.2);
+            const n = needle * rng.range(0.7, 1.1);
+            ctx.strokeStyle = colors[Math.min(colors.length - 1, Math.floor(fresh * colors.length * rng.range(0.6, 1.2)))];
+            ctx.lineWidth = rng.range(0.9, 1.6);
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(px + Math.cos(a) * n, py + Math.sin(a) * n);
+            ctx.stroke();
+        }
+    }
+}
+
+/** A Douglas fir branch spray seen from above, its twig from the trunk (left) to the tip (right):
+ *  side twigs sweeping forward, widest a third of the way out, each furred with needles. */
+function drawNeedles(ctx, w, h) {
+    const rng = createRng(NEEDLE_SEED);
+    ctx.clearRect(0, 0, w, h);
+    const mid = h / 2;
+    needleTwig(ctx, rng, 0, mid, 0, w * 0.97, h * 0.07);
+    for (let x = w * 0.08; x < w * 0.92; x += w * 0.06) {
+        const out = x / w;
+        const reach = h * 0.42 * Math.sin(Math.PI * Math.min(1, out * 1.4)) * rng.range(0.75, 1.05);
+        for (const side of [-1, 1]) needleTwig(ctx, rng, x, mid, side * rng.range(0.6, 0.9), reach, h * 0.06);
+    }
+}
+
+/** A whole fir as it shows from a distance: a dark spire of drooping branch sprays round a trunk. */
+function drawSilhouette(ctx, w, h) {
+    const t = FOREST.tree;
+    const rng = createRng(NEEDLE_SEED + 1);
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = FOREST.colors.bark;
+    ctx.lineWidth = w * 0.03;
+    ctx.beginPath();
+    ctx.moveTo(w / 2, h);
+    ctx.lineTo(w / 2, 0);
+    ctx.stroke();
+    // The card spans the crown's widest reach either side of the trunk.
+    for (let y = h * (1 - t.crownBase); y > h * 0.01; y -= h * 0.018) {
+        const up = 1 - y / h;
+        const reach = (w / 2) * ((1 - up) / (1 - t.crownBase)) ** t.taper * rng.range(0.75, 1.05);
+        for (const side of [-1, 1]) {
+            const angle = side > 0 ? rng.range(0.15, 0.45) : Math.PI - rng.range(0.15, 0.45);
+            needleTwig(ctx, rng, w / 2, y, angle, reach, w * 0.05);
+        }
+    }
 }
 
 const SIGN_STYLES = {

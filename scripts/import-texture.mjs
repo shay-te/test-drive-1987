@@ -1,6 +1,7 @@
 /** Imports a Poly Haven texture (CC0) into assets/textures/<id>/: its colour and OpenGL normal map at 1k,
  *  re-encoded as smaller JPEGs. `grade` is a saturation (0..1) that greys the colour (warm sandstone to
- *  granite), or `detail`: grey only, centred on mid-grey, to multiply over other colours (no normal map).
+ *  granite); `detail`: grey only, centred on mid-grey, to multiply over other colours; `colour`: the
+ *  colour as it is. Neither of the last two takes the normal map.
  *  Usage: node scripts/import-texture.mjs <polyhaven id> [grade] */
 import { Buffer } from 'node:buffer';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -14,7 +15,8 @@ const MAPS = { Diffuse: 'diffuse.jpg', nor_gl: 'normal.jpg' };
 
 const id = process.argv[2];
 const detail = process.argv[3] === 'detail';
-const saturation = detail ? 0 : Number(process.argv[3] ?? 1);
+const colourOnly = detail || process.argv[3] === 'colour';
+const saturation = detail ? 0 : process.argv[3] === 'colour' ? 1 : Number(process.argv[3] ?? 1);
 if (!id) throw new Error('Usage: node scripts/import-texture.mjs <polyhaven id> [grade]');
 /** A detail texture's mean grey. */
 const MID_GREY = 128;
@@ -22,7 +24,7 @@ const files = await (await fetch(`${API}/${id}`)).json();
 const folder = `assets/textures/${id}`;
 mkdirSync(folder, { recursive: true });
 for (const [map, name] of Object.entries(MAPS)) {
-    if (detail && map !== 'Diffuse') continue;
+    if (colourOnly && map !== 'Diffuse') continue;
     const source = files[map]?.[RESOLUTION]?.jpg?.url;
     if (!source) throw new Error(`${id} has no ${RESOLUTION} ${map} map`);
     const bytes = Buffer.from(await (await fetch(source)).arrayBuffer());

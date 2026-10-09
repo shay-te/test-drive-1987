@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { ROAD } from '../config.js';
-import { SEA_LEVEL, SHOULDER_DROP } from '../sim/Landscape.js';
+import { SHOULDER_DROP } from '../sim/Landscape.js';
 import { roadsideAt } from '../sim/routeTerrain.js';
 import { landUv } from './routeFrame.js';
-import { Noise, clamp, createRng, lerp, smoothstep } from '../util/math.js';
+import { Noise, clamp, smoothstep } from '../util/math.js';
 import { buildRibbon } from './Ribbon.js';
 import { ROAD_TEXTURE_LENGTH, shadeVertex } from './Materials.js';
 import { buildProps } from './Props.js';
-import { TREE_LINE_LOW } from './Terrain.js';
+import { roadsideTrees } from './forestLayout.js';
 
 /** The cut's mesh: rows up its height, and rows along the road for each track node. */
 const FACE_ROWS = 32;
@@ -175,24 +175,12 @@ export class WorldBuilder {
         return points;
     }
 
-    /** Pines dotted over the mountainside above the face and clinging to the drop below the road. */
+    /** Where the forest stands on the mountainside above the face and down the drop below the road. */
     treePlacements(track) {
-        const rng = createRng(this.stage.seed + 3);
-        const placements = [];
         const drops = this.landscape.dropSections;
-        const place = (i, section, from, to) => {
-            const k = rng.int(from, to - 1);
-            const f = rng();
-            const u = lerp(section[k].u, section[k + 1].u, f);
-            const h = lerp(section[k].h, section[k + 1].h, f);
-            const p = track.nodeWorld(i, u, h - 0.5, {});
-            if (p.y > SEA_LEVEL + TREE_LINE_LOW) placements.push({ x: p.x, y: p.y, z: p.z, height: rng.range(6, 15) });
-        };
-        for (let i = 0; i < track.count; i += 2) {
-            if (rng() < 0.35) place(i, this._slopeSection(track, i), 1, SLOPE_ROWS);
-            if (rng() < 0.18) place(i, drops[i], 0, drops[i].length - 5);
-        }
-        return placements;
+        return roadsideTrees(track, (i) => {
+            return [[this._slopeSection(track, i), 1, SLOPE_ROWS], [drops[i], 0, drops[i].length - 5]];
+        }, this.stage.seed + 3);
     }
 
     /** Lays the picture of the route's surroundings on a ribbon by its world position. */

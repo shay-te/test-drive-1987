@@ -6,7 +6,8 @@ import { DEG } from '../util/math.js';
 import { WorldMaterials } from './Materials.js';
 import { WorldBuilder } from './WorldBuilder.js';
 import { Terrain } from './Terrain.js';
-import { buildTrees } from './Props.js';
+import { Forest } from './Forest.js';
+import { landTrees } from './forestLayout.js';
 import { VehicleModels } from './VehicleModels.js';
 import { AuthoredModels } from './AuthoredModels.js';
 import { buildBuildings } from './buildingMesh.js';
@@ -137,6 +138,7 @@ export class WorldView {
             this.resources.binary(heights),
             this.resources.image(image),
             this.resources.image(LAND_DETAIL.map),
+            this.resources.image(LAND_DETAIL.floor.map),
             this.resources.json(ROUTE_BUILDINGS),
         ];
         return Promise.all([this.authored.prepare(), ...photos, ...land]);
@@ -187,13 +189,14 @@ export class WorldView {
         const scene = new THREE.Scene();
         const materials = new WorldMaterials(this.resources, this.renderer, stage);
         const builder = new WorldBuilder(materials, stage, landscape, this.authored);
-        const terrain = new Terrain(landscape, stage, materials);
+        const terrain = new Terrain(landscape, materials);
         const heights = new Int16Array(this.resources.get(`binary:${stage.route.surroundings.heights}`));
         const surroundings = new Surroundings(track, landscape, heights, materials.land);
         const buildings = layOutBuildings(this.resources.get(`json:${ROUTE_BUILDINGS}`), track, landscape);
         scene.add(builder.build(track), terrain.mesh, surroundings.mesh, terrain.sea, buildBuildings(buildings, materials.building));
-        const trees = clearOfBuildings([...builder.treePlacements(track), ...terrain.treePlacements()], buildings);
-        scene.add(buildTrees(trees, materials));
+        const trees = clearOfBuildings([...builder.treePlacements(track), ...landTrees(landscape, stage.seed + 71)], buildings);
+        this.forest = new Forest(trees, materials, stage.seed);
+        scene.add(this.forest.group);
         scene.fog = new THREE.FogExp2(stage.fog.color, stage.fog.density);
         this.underwater = new Underwater(scene, landscape.waterLevel);
         this._installCabin(scene, stage, car, cabinAsset, track.bearing);
@@ -362,6 +365,7 @@ export class WorldView {
         this.sun.target.position.set(focus.x, focus.y, focus.z);
         this.sun.position.copy(this.sun.target.position).addScaledVector(this.sunDirection, 450);
         const car = this.cabin.root.position;
+        this.forest?.update(car);
         const underwater = Boolean(view.underwater);
         this.underwater?.update({ underwater, car, water: view.water, time: view.time });
         const daylight = underwater ? WATER.light : 1;

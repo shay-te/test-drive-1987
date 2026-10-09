@@ -59,31 +59,6 @@ export function buildProps(track, materials, stage, authored) {
     return group;
 }
 
-/** Instanced pines at world positions [{x, y, z, height}]: trunk plus two foliage tiers. */
-export function buildTrees(placements, materials) {
-    const tiers = [[], []];
-    const trunks = [];
-    const at = (p, lift, width, height) => {
-        return new THREE.Matrix4().compose(
-            new THREE.Vector3(p.x, p.y + lift, p.z),
-            new THREE.Quaternion(),
-            new THREE.Vector3(width, height, width),
-        );
-    };
-    for (const p of placements) {
-        tiers[0].push(at(p, p.height * 0.15, p.height * 0.3, p.height * 0.6));
-        tiers[1].push(at(p, p.height * 0.45, p.height * 0.2, p.height * 0.55));
-        trunks.push(at(p, 0, 0.22, p.height * 0.3));
-    }
-    const cone = new THREE.ConeGeometry(1, 1, 8).translate(0, 0.5, 0);
-    const group = new THREE.Group();
-    for (const tier of tiers) group.add(instanced(cone, materials.foliage, tier, true));
-    group.add(
-        instanced(new THREE.CylinderGeometry(1, 1, 1, 5).translate(0, 0.5, 0), materials.bark, trunks, false),
-    );
-    return group;
-}
-
 /** An irregular lump of rock (flat-faced, as broken granite is) from noise seeded by `seed`. */
 function boulderGeometry(seed) {
     const noise = new Noise(seed);
