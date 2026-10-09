@@ -3,7 +3,7 @@ import { CockpitState } from '../../cockpit/CockpitState.js';
 import { HeadMotion } from '../../cockpit/HeadMotion.js';
 import { boostPsi, instrumentReadings, lampStates, revState } from '../../cockpit/instruments.js';
 import { tripInfo, tripLines } from '../../cockpit/tripDisplay.js';
-import { CRASH, GAME, MOTION, PHYS } from '../../config.js';
+import { CRASH, GAME, MOTION, PHYS, SMOKE } from '../../config.js';
 import { gearLabel } from '../../data/cars.js';
 import { STAGES } from '../../data/stages.js';
 import { inputKey, t } from '../../i18n/i18n.js';
@@ -29,6 +29,7 @@ import {
 } from '../driveOverlays.js';
 import { COLORS } from '../theme.js';
 import { ImpactGate } from '../../audio/impactGate.js';
+import { EngineSmoke } from '../../sim/EngineSmoke.js';
 
 const STEP = 1 / GAME.physicsHz;
 const INTRO_SECONDS = 4;
@@ -99,6 +100,7 @@ export class DriveScreen {
         this.track = track;
         this.landscape = landscape;
         this.water = new WaterParticles(this.landscape.waterLevel, session.stage.seed);
+        this.smoke = new EngineSmoke(session.stage.seed);
         this.sunk = false;
         this.world.load(this.track, session.stage, car, this.landscape, cabinAsset);
         this.vehicle = new VehicleDynamics(car);
@@ -164,6 +166,7 @@ export class DriveScreen {
 
     _advance(dt) {
         this.stageTime += dt;
+        this.smoke.update(dt, this._engineBay(), this.vehicle.engine.blown);
         if (this.toast) this.toast.time += dt;
         if (this.state === 'driving') this._drive(dt);
         else if (this.state === 'wrecking') this._wrecking(dt);
@@ -330,8 +333,19 @@ export class DriveScreen {
         this.cracks = [];
         this.wreck = null;
         this.water.clear();
+        this.smoke.clear();
         this.sunk = false;
         this.state = 'driving';
+    }
+
+    /** Where the car's engine sits (SMOKE.bay by its layout), in world space. */
+    _engineBay() {
+        const v = this.vehicle;
+        const p = this.track.toWorld(v.s, v.u);
+        const [x, y, z] = SMOKE.bay[this.car.sound.cabin];
+        // The car's right is (cos a, sin a) on the ground and its back (-sin a, cos a).
+        const a = p.heading + v.theta;
+        return { x: p.x + Math.cos(a) * x - Math.sin(a) * z, y: p.y + y, z: p.z + Math.sin(a) * x + Math.cos(a) * z };
     }
 
     /** Stopped for the patrol car: the ticket is written, the patrol car leaves and the drive goes on. */
@@ -419,6 +433,7 @@ export class DriveScreen {
             spectator: this.wreck ? this.impactAt : null,
             underwater: Boolean(this.wreck?.underwater),
             water: this.water,
+            smoke: this.smoke.puffs,
             head,
             cockpit: {
                 state: this.cockpit,

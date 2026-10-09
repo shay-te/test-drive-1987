@@ -233,3 +233,20 @@ test('driving into the gas station with the patrol car still on your tail is an 
     assert.equal(visits[0][1].session.arrested, true);
     assert.equal(visits[0][1].session.over, true);
 });
+
+test('a blown engine smokes: from the tail of the rear-engined Porsche, from the bonnet of the Corvette', async () => {
+    for (const [carId, end] of [['porsche', 1], ['corvette', -1]]) {
+        const { screen, run } = await startStage(carId);
+        screen.vehicle.engine.blown = true;
+        run(1.5);
+        assert.equal(screen.state, 'crashed');
+        const puffs = screen.view.smoke;
+        assert.ok(puffs.length > 10, `${carId}: ${puffs.length} puffs`);
+        // Behind the car is +z in its own frame: the newest puff tells which end it came from.
+        const car = screen.track.toWorld(screen.vehicle.s, screen.vehicle.u);
+        const a = car.heading + screen.vehicle.theta;
+        const newest = puffs.at(-1);
+        const back = -Math.sin(a) * (newest.x - car.x) + Math.cos(a) * (newest.z - car.z);
+        assert.ok(Math.sign(back) === end, `${carId}: smoke from the ${end > 0 ? 'tail' : 'bonnet'}`);
+    }
+});

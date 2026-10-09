@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { TRAFFIC_TYPES } from '../data/traffic.js';
+import { softDot } from './softDot.js';
 
 const LIGHT_BAR_FLASH_HZ = 2.6;
 const LIGHT_BAR_GLOW = { flash: 6, idle: 0.2 };
 /** A flashing lens also shines as a glow this big on screen (share of the view's height) whatever its
- *  distance, as a light bar carries a long way even by day; the glow's picture is GLOW_PIXELS square. */
+ *  distance, as a light bar carries a long way even by day. */
 const GLOW_SIZE = 0.04;
-const GLOW_PIXELS = 64;
+const GLOW_STOPS = [[0, 1], [0.25, 0.6], [1, 0]];
 const GLOW_COLORS = { red: '#ff2a1a', blue: '#2f5dff' };
 
 /** Places the road users' authored models and flashes the patrol cars' light bars. */
@@ -64,18 +65,7 @@ export class VehicleModels {
 
     /** A soft round glow, bright at its heart, made once and shared. */
     _glowTexture() {
-        if (this.glow) return this.glow;
-        const canvas = document.createElement('canvas');
-        canvas.width = canvas.height = GLOW_PIXELS;
-        const ctx = canvas.getContext('2d');
-        const half = GLOW_PIXELS / 2;
-        const gradient = ctx.createRadialGradient(half, half, 0, half, half, half);
-        gradient.addColorStop(0, 'rgba(255,255,255,1)');
-        gradient.addColorStop(0.25, 'rgba(255,255,255,0.6)');
-        gradient.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, GLOW_PIXELS, GLOW_PIXELS);
-        this.glow = new THREE.CanvasTexture(canvas);
+        this.glow ??= softDot(GLOW_STOPS);
         return this.glow;
     }
 }

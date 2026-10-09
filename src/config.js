@@ -211,6 +211,26 @@ export const CRASH = Object.freeze({
     sound: { audible: 4, cooldown: 0.35, harder: 1.6, loud: 30 },
 });
 
+/** Smoke pouring from a blown engine (src/sim/EngineSmoke.js): `rate` puffs a second from the engine
+ *  bay, in car space (m; x right, y up, -z forward) by where the engine sits, each rising at `rise`
+ *  m/s and spreading `spread` m/s, carried by the `wind` (m/s, world x and z), swelling from `size` by
+ *  `grow` m a second and thinning out over its `life` (s), slowly at first (density 1 - (age /
+ *  life)^`thinning`); at most `most` puffs at once, of oily grey `color` and `opacity` when fresh. */
+export const SMOKE = Object.freeze({
+    rate: 24,
+    bay: { front: [0, 0.85, -1.5], mid: [0, 0.95, 0.9], rear: [0, 0.95, 1.7] },
+    rise: [1.4, 2.6],
+    spread: 0.5,
+    wind: [0.9, 0.3],
+    size: [0.5, 0.9],
+    grow: 0.9,
+    life: [3, 5.5],
+    thinning: 2,
+    most: 160,
+    color: '#8e8c88',
+    opacity: 0.8,
+});
+
 /** The sea a car goes into: how it floats, floods and sinks, and what the water does around it. */
 export const WATER = Object.freeze({
     /** Sea water and steel (kg/m3). */

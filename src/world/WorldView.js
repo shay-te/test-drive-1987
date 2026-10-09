@@ -23,6 +23,7 @@ import { photographProfile } from './profilePhoto.js';
 import { photographStation } from './stationPhoto.js';
 import { chasePose, diverPose, followYaw, spectatorPose } from './chaseView.js';
 import { Surroundings } from './Surroundings.js';
+import { Smoke } from './Smoke.js';
 import { Underwater } from './Underwater.js';
 import { sunDirection } from './sunDirection.js';
 
@@ -214,6 +215,7 @@ export class WorldView {
         scene.add(this.forest.group);
         scene.fog = new THREE.FogExp2(stage.fog.color, stage.fog.density);
         this.underwater = new Underwater(scene, landscape.waterLevel);
+        this.smoke = new Smoke(scene);
         this._installCabin(scene, stage, car, cabinAsset, track.bearing);
     }
 
@@ -221,6 +223,7 @@ export class WorldView {
         this.dispose();
         this.track = null;
         this.underwater = null;
+        this.smoke = null;
         // No road here: the car faces north.
         this._installCabin(new THREE.Scene(), stage, car, cabinAsset, 0);
     }
@@ -383,6 +386,7 @@ export class WorldView {
         this.forest?.update(car);
         const underwater = Boolean(view.underwater);
         this.underwater?.update({ underwater, car, water: view.water, time: view.time });
+        this.smoke?.update(view.smoke ?? []);
         const daylight = underwater ? WATER.light : 1;
         this.sun.intensity = this.daylight.sun * daylight;
         this.skyLight.intensity = this.daylight.sky * daylight;

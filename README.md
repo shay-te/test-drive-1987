@@ -108,16 +108,19 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
   game is over. Get far enough ahead and he breaks off the chase; the roadblock stays. No
   helicopters (not used for general policing then) and no spike belts (not in the guidelines).
 
+- A blown engine smokes: grey smoke pours from where the engine sits (the 930's tail, the
+  Corvette's bonnet, behind the seats of the mid-engined cars), rising, drifting with the wind,
+  swelling and thinning out, until the car is sent back on the road.
+
 ### Next (queued, in order)
 
 1. **Escape the other way:** reverse gear and a U-turn, the patrol car turning to follow.
-2. **A blown engine smokes:** smoke pouring from the engine when it blows.
-3. **A 1980s RCMP patrol car** in place of the 2001 Crown Victoria model.
-4. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, the railway on its bench
+2. **A 1980s RCMP patrol car** in place of the 2001 Crown Victoria model.
+3. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, the railway on its bench
    between road and shore. (The provincial road atlas and orthophotos are "access only", so they
    are not used.)
-5. **Every stage inspected section by section** for anything that does not look real.
-6. Frame rates on real phones (the cabin pass, the mirrors, shadows).
+4. **Every stage inspected section by section** for anything that does not look real.
+5. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
 
