@@ -16,6 +16,9 @@ export const LAND_DETAIL = {
     /** Close up detail and photographed rock fade out over these distances (m): beyond them the
      *  ground keeps only the broad detail and the rock's average colour. */
     reach: [250, 400],
+    /** Close up, the ground is this share the floor of the coastal pine forest (Poly Haven
+     *  forest_ground_04, CC0), `metres` across in the photograph. */
+    floor: { map: 'assets/textures/forest_ground_04/diffuse.jpg', metres: 3.15, share: 0.8 },
 };
 
 /** The houses and buildings along the route (scripts/import-buildings.mjs, from OpenStreetMap). */

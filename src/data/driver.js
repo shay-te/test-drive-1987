@@ -5,8 +5,10 @@ export const DRIVER = {
     // The seat's hip (H-)point.
     hip: { across: 0.1, down: 0.72, back: 0.16 },
     upperArm: 0.32,
-    // Elbow to wrist.
+    // Elbow to wrist; the jacket's cuff follows the hand this far back from the wrist, over the glove's
+    // own (cut-off) wrist however the hand bends.
     forearm: 0.27,
+    cuff: 0.045,
     // An arm reaches this share of its length before the shoulder leans in after the target.
     straightArm: 0.97,
     thigh: 0.47,
@@ -39,6 +41,8 @@ export const DRIVER = {
         ],
         thumb: { across: 0.045, root: 0.6, bones: [0.04, 0.032, 0.027], radius: 0.0105, start: 0.6 },
         metacarpal: 0.33,
+        /** The rigged hand's own build, slimmed: across each bone and through it (back to palm). */
+        girth: [0.84, 0.72],
         rimTilt: 0.8,
         knobTilt: 0.35,
         rim: 0.016,

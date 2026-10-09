@@ -33,7 +33,7 @@ export const EN = {
         start: 'Press ENTER to start',
         choice: '◀   {{car}}   ▶',
         controls:
-            'Arrows: steer / gas / brake    A / Z: shift up / down    Q/E/R/F: look    V: outside view    I: readout    M: mute    P: pause',
+            'Arrows: steer / gas / brake    A / Z: shift up / down (Z at a stop: reverse)    Q/E/R/F: look    V: outside view    I: readout    M: mute    P: pause',
         badge: 'TD',
         credit: 'A fan tribute to Test Drive by Distinctive Software and Accolade (1987).',
     },
@@ -80,8 +80,10 @@ export const EN = {
         shiftUp: 'Press A to shift up',
         pausedHint: 'Press P to resume    ESC to choose another car',
         loading: 'Building the road up the mountain...',
-        pursuit: 'You have been clocked by a radar trap!',
+        pursuit: 'Clocked by a radar trap: pull over and stop!',
+        failedToStop: 'You failed to stop. The officer is radioing for assistance.',
         escaped: 'You lost the patrol car',
+        wrongWay: 'Wrong way: the stage runs the other way',
         engineWarning: 'OVER-REV',
     },
     crash: {
@@ -90,6 +92,7 @@ export const EN = {
         edge: 'You went over the edge!',
         headOn: 'Head-on collision!',
         rearEnd: 'You ran into the back of a car!',
+        reversing: 'You backed into a car!',
         police: 'You rammed a patrol car!',
         engine: 'You blew the engine!',
         chancesLeft: 'Chances left: {{n}}',
@@ -97,8 +100,14 @@ export const EN = {
         intoTheSea: 'Fell {{ft}} ft into Howe Sound and sank {{depth}} ft to the bottom',
         continue: 'Press ENTER to continue',
     },
+    arrest: {
+        heading: 'ARRESTED',
+        charge: 'Failing to stop for a police officer',
+        law: 'Motor Vehicle Act, s. 67: a fine of up to $2,000, or up to six months in jail',
+        jail: 'You are going to jail.',
+    },
     ticket: {
-        agency: 'STATE HIGHWAY PATROL',
+        agency: 'ROYAL CANADIAN MOUNTED POLICE',
         notice: 'NOTICE OF SPEEDING VIOLATION',
         vehicle: 'Vehicle',
         recorded: 'Recorded speed',
@@ -122,6 +131,7 @@ export const EN = {
         summit: 'YOU MADE IT TO SQUAMISH!',
         dealer: 'The dealer is impressed. The keys are yours... almost.',
         gameOver: 'GAME OVER',
+        jailed: 'Arrested for failing to stop for the police: you are going to jail.',
         totalTime: 'Total time',
         chancesBonus: 'Chances bonus',
         finalScore: 'Final score',
@@ -135,7 +145,7 @@ export const EN = {
     touch: {
         title: {
             start: 'Tap to start',
-            controls: 'Touch: ◀ ▶ steer    ▲ gas    ▼ brake    − + gears    ◫ outside view',
+            controls: 'Touch: ◀ ▶ steer    ▲ gas    ▼ brake    − + gears (− at a stop: reverse)    ◫ outside view',
         },
         preview: { assetRetry: 'Tap to retry' },
         select: { hint: '◀ ▶  choose a car        Tap  take it for a test drive' },

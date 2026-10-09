@@ -1,7 +1,10 @@
-import { PHYS, ROAD_TEST } from '../config.js';
+import { GAME, PHYS, ROAD_TEST } from '../config.js';
 import { bisect, clamp, lerp, smoothstep } from '../util/math.js';
+import { driveGrip } from './axleLoads.js';
 
 const RPM_TO_RADS = (2 * Math.PI) / 60;
+/** The gear below neutral. */
+export const REVERSE = -1;
 
 /** Engine + gearbox: torque curve from published figures, turbo lag, clutch slip and over-rev damage.
  *  Fits drag area (top speed), launch revs and a torque factor (0-60, 0-100, quarter mile) to the road test. */
@@ -65,8 +68,10 @@ export class Drivetrain {
         return t ? lerp(t.offBoost, 1, boost) : 1;
     }
 
-    /** Overall reduction from crank to wheel for `gear` (1-based). */
+    /** Overall reduction from crank to wheel for `gear` (1-based); negative in reverse, which turns the
+     *  wheels backwards. */
     ratio(gear) {
+        if (gear === REVERSE) return -this.dt.reverse * this.dt.finalDrive;
         return gear > 0 ? this.dt.gears[gear - 1] * this.dt.finalDrive : 0;
     }
 
@@ -98,15 +103,19 @@ export class Drivetrain {
         };
     }
 
-    shift(state, direction) {
-        const next = clamp(state.gear + direction, 0, this.gearCount);
+    /** Moves the lever a gear up (`direction` 1) or down (-1); below neutral is reverse, which goes in
+     *  only with the car (at `v` m/s) at a standstill. */
+    shift(state, direction, v = 0) {
+        const next = clamp(state.gear + direction, REVERSE, this.gearCount);
         if (next === state.gear || state.blown) return false;
+        if (next === REVERSE && Math.abs(v) > GAME.pullAwaySpeed) return false;
         state.gear = next;
         state.shiftTimer = 0.16;
         return true;
     }
 
-    /** Advances the engine; returns the force at the driven wheels (N). `v` is road speed (m/s). */
+    /** Advances the engine; returns the force at the driven wheels (N), forwards positive. `v` is road
+     *  speed (m/s), negative rolling backwards. */
     update(s, v, throttle, dt) {
         const e = this.engine;
         s.throttle = s.blown ? 0 : throttle;
@@ -129,7 +138,7 @@ export class Drivetrain {
             if (s.blown) {
                 target = 0;
                 rate = 1.5;
-            } else if (s.gear > 0) {
+            } else if (s.gear !== 0) {
                 // Mid-shift: the revs swing towards the speed of the newly selected gear.
                 target = Math.max(e.idleRpm, this.rpmAtSpeed(v, s.gear));
                 rate = 14;
@@ -179,21 +188,10 @@ export class Drivetrain {
         }
     }
 
-    /** Tractive force limit of the driven axle (N). */
-    tractionLimit(longAccel = 0) {
-        const c = this.chassis;
-        const rearShare = 1 - c.frontWeight;
-        // Weight transfers to the rear under acceleration.
-        const transfer = (c.cgHeight / c.wheelbase) * (longAccel / PHYS.g);
-        const share = c.driven === 'rear' ? rearShare + transfer : c.frontWeight - transfer;
-        // Longitudinal grip of the tyre exceeds the skid-pad (lateral) figure.
-        return c.grip * 1.25 * c.massKg * PHYS.g * clamp(share, 0.2, 0.85);
-    }
-
-    /** Aerodynamic + rolling resistance (N) at speed `v`. */
+    /** Aerodynamic + rolling resistance (N) at speed `v`, against the way the car rolls. */
     resistance(v) {
-        const roll = v > 0.05 ? PHYS.rollingResistance * this.chassis.massKg * PHYS.g : 0;
-        return 0.5 * PHYS.airDensity * this.dragArea * v * v + roll;
+        const roll = Math.abs(v) > 0.05 ? PHYS.rollingResistance * this.chassis.massKg * PHYS.g : 0;
+        return Math.sign(v) * (0.5 * PHYS.airDensity * this.dragArea * v * v + roll);
     }
 
     /** Effective mass including rotating inertia of the driveline in `gear`. */
@@ -262,7 +260,8 @@ export class Drivetrain {
                 shifts.push({ from: s.gear, to: s.gear + 1, t: clock, v });
                 this.shift(s, 1);
             }
-            const force = Math.min(this.update(s, v, 1, dt), this.tractionLimit(accel));
+            // The same tyres as on the road (src/sim/axleLoads.js): the car fitted is the car driven.
+            const force = Math.min(this.update(s, v, 1, dt), driveGrip(this.chassis, accel));
             accel = (force - this.resistance(v)) / this.effectiveMass(s.gear);
             v = Math.max(0, v + accel * dt);
             x += v * dt;

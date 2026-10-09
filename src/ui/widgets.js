@@ -2,6 +2,9 @@ import { VIEW } from '../config.js';
 import { linearGradient } from '../util/canvas.js';
 import { COLORS, font } from './theme.js';
 
+/** The spinner's line (share of its radius), how bright its ring shows, its arc (rad) and speed. */
+const SPINNER = { thickness: 0.18, ring: 0.35, sweep: Math.PI * 1.3, turnsPerSecond: 1.1 };
+
 /** A dark translucent panel with a thin light edge (overlays on the windshield and menus). */
 export function drawPanel(ctx, x, y, w, h) {
     ctx.save();
@@ -63,6 +66,25 @@ export function drawPrompt(ctx, text, time, y = VIEW.height - 70) {
 }
 
 /** A bold red word laid over artwork, like a rubber stamp. */
+/** A loading spinner at (x, y), `radius` px: an arc chasing round a faint ring, turning with `time` (s). */
+export function drawSpinner(ctx, x, y, radius, time) {
+    ctx.save();
+    ctx.lineWidth = radius * SPINNER.thickness;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = COLORS.paperLine;
+    ctx.globalAlpha = SPINNER.ring;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = COLORS.accent;
+    const start = time * SPINNER.turnsPerSecond * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, start, start + SPINNER.sweep);
+    ctx.stroke();
+    ctx.restore();
+}
+
 export function drawStamp(ctx, text, x, y, size) {
     drawText(ctx, text, x, y, { size, weight: 'bold', color: COLORS.danger, glow: COLORS.ink });
 }

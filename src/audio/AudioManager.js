@@ -1,8 +1,10 @@
 import { renderSound } from './SoundBank.js';
-import { SampleEngineSound, SynthEngineSound } from './EngineSound.js';
+import { RecordedEngineSound, SynthEngineSound } from './EngineSound.js';
 
 const WORKLET_URL = new URL('./worklets/engine-processor.js', import.meta.url);
 const ENGINE_MANIFEST = 'assets/audio/engines/manifest.json';
+/** Recorded effects (scripts/import-sounds.mjs): each name's variants, one picked at random per play. */
+const EFFECTS_MANIFEST = 'assets/audio/effects/manifest.json';
 const BUSES = { engine: 0.85, sfx: 0.9, ambience: 0.7, ui: 0.6 };
 
 /** Owns the Web Audio graph: master chain, mix buses, one-shot effects, loops and engine voices. */
@@ -12,6 +14,7 @@ export class AudioManager {
         this.context = null;
         this.starting = null;
         this.buses = {};
+        this.recorded = {};
         this.muted = false;
     }
 
@@ -43,6 +46,11 @@ export class AudioManager {
             this.buses[name].connect(this.master);
         }
         await context.audioWorklet.addModule(WORKLET_URL);
+        const manifest = await this.resources.json(EFFECTS_MANIFEST);
+        const recorded = await Promise.all(Object.entries(manifest).map(async ([name, files]) => {
+            return [name, await Promise.all(files.map((file) => { return this.resources.audioBuffer(context, file); }))];
+        }));
+        this.recorded = Object.fromEntries(recorded);
         this.context = context;
     }
 
@@ -56,11 +64,12 @@ export class AudioManager {
         });
     }
 
-    /** Plays a one-shot effect from the sound bank. */
+    /** Plays a one-shot effect: one of its recordings if it has them, otherwise from the sound bank. */
     play(name, { volume = 1, rate = 1, bus = 'sfx' } = {}) {
         if (!this.context) return;
+        const takes = this.recorded[name];
         const source = new AudioBufferSourceNode(this.context, {
-            buffer: this.buffer(name),
+            buffer: takes ? takes[Math.floor(Math.random() * takes.length)] : this.buffer(name),
             playbackRate: rate,
         });
         const gain = new GainNode(this.context, { gain: volume });
@@ -78,7 +87,8 @@ export class AudioManager {
         return { source, gain, filter: shaper };
     }
 
-    /** Engine voice for `car`: real recordings when installed, otherwise the synthesiser. */
+    /** Engine voice for `car`: real recordings when installed (with the synthesiser past the highest),
+     *  otherwise the synthesiser. */
     async createEngine(car) {
         const manifest = await this.resources.json(ENGINE_MANIFEST);
         const entries = manifest[car.id];
@@ -88,8 +98,8 @@ export class AudioManager {
                     return { ...entry, buffer: await this.resources.audioBuffer(this.context, entry.file) };
                 }),
             );
-            console.info(`[audio] ${car.fullName}: using ${loops.length} recorded engine loops`);
-            return new SampleEngineSound(this.context, car, this.buses.engine, loops);
+            console.info(`[audio] ${car.fullName}: using ${loops.length} recorded engine loops, the synthesiser above them`);
+            return new RecordedEngineSound(this.context, car, this.buses.engine, loops);
         }
         console.info(`[audio] ${car.fullName}: no recordings installed, using the engine synthesiser`);
         return new SynthEngineSound(this.context, car, this.buses.engine);

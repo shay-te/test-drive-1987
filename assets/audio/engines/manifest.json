@@ -1,1 +1,43 @@
-{}
+{
+    "porsche": [
+        { "rpm": 963, "load": "off", "file": "assets/audio/engines/porsche/off_963.wav" },
+        { "rpm": 1332, "load": "off", "file": "assets/audio/engines/porsche/off_1332.wav" },
+        { "rpm": 1549, "load": "on", "file": "assets/audio/engines/porsche/on_1549.wav" },
+        { "rpm": 1718, "load": "off", "file": "assets/audio/engines/porsche/off_1718.wav" },
+        { "rpm": 1997, "load": "on", "file": "assets/audio/engines/porsche/on_1997.wav" },
+        { "rpm": 2825, "load": "on", "file": "assets/audio/engines/porsche/on_2825.wav" },
+        { "rpm": 3869, "load": "on", "file": "assets/audio/engines/porsche/on_3869.wav" },
+        { "rpm": 4206, "load": "off", "file": "assets/audio/engines/porsche/off_4206.wav" },
+        { "rpm": 5736, "load": "on", "file": "assets/audio/engines/porsche/on_5736.wav" }
+    ],
+    "ferrari": [
+        { "rpm": 1028, "load": "off", "file": "assets/audio/engines/ferrari/off_1028.wav" },
+        { "rpm": 1431, "load": "off", "file": "assets/audio/engines/ferrari/off_1431.wav" },
+        { "rpm": 1511, "load": "on", "file": "assets/audio/engines/ferrari/on_1511.wav" },
+        { "rpm": 2052, "load": "on", "file": "assets/audio/engines/ferrari/on_2052.wav" },
+        { "rpm": 2104, "load": "off", "file": "assets/audio/engines/ferrari/off_2104.wav" },
+        { "rpm": 2846, "load": "on", "file": "assets/audio/engines/ferrari/on_2846.wav" }
+    ],
+    "lamborghini": [
+        { "rpm": 857, "load": "off", "file": "assets/audio/engines/lamborghini/off_857.wav" },
+        { "rpm": 1277, "load": "off", "file": "assets/audio/engines/lamborghini/off_1277.wav" },
+        { "rpm": 1633, "load": "on", "file": "assets/audio/engines/lamborghini/on_1633.wav" },
+        { "rpm": 3434, "load": "off", "file": "assets/audio/engines/lamborghini/off_3434.wav" },
+        { "rpm": 3460, "load": "on", "file": "assets/audio/engines/lamborghini/on_3460.wav" },
+        { "rpm": 4663, "load": "on", "file": "assets/audio/engines/lamborghini/on_4663.wav" }
+    ],
+    "lotus": [
+        { "rpm": 1189, "load": "off", "file": "assets/audio/engines/lotus/off_1189.wav" },
+        { "rpm": 1637, "load": "off", "file": "assets/audio/engines/lotus/off_1637.wav" },
+        { "rpm": 1922, "load": "on", "file": "assets/audio/engines/lotus/on_1922.wav" },
+        { "rpm": 3076, "load": "on", "file": "assets/audio/engines/lotus/on_3076.wav" },
+        { "rpm": 3952, "load": "off", "file": "assets/audio/engines/lotus/off_3952.wav" },
+        { "rpm": 4776, "load": "on", "file": "assets/audio/engines/lotus/on_4776.wav" }
+    ],
+    "corvette": [
+        { "rpm": 635, "load": "off", "file": "assets/audio/engines/corvette/off_635.wav" },
+        { "rpm": 810, "load": "off", "file": "assets/audio/engines/corvette/off_810.wav" },
+        { "rpm": 1308, "load": "on", "file": "assets/audio/engines/corvette/on_1308.wav" },
+        { "rpm": 1341, "load": "off", "file": "assets/audio/engines/corvette/off_1341.wav" }
+    ]
+}

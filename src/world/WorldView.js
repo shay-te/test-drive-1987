@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { CHASE, CRASH, LIGHTING, VIEW, WATER } from '../config.js';
+import { CHASE, CRASH, GRAPHICS, LIGHTING, VIEW, WATER } from '../config.js';
 import { DRIVER } from '../data/driver.js';
 import { DEG } from '../util/math.js';
 import { WorldMaterials } from './Materials.js';
 import { WorldBuilder } from './WorldBuilder.js';
 import { Terrain } from './Terrain.js';
-import { buildTrees } from './Props.js';
+import { Forest } from './Forest.js';
+import { landTrees, thinned } from './forestLayout.js';
+import { graphicsTier, rendererName } from './graphicsTier.js';
 import { VehicleModels } from './VehicleModels.js';
 import { AuthoredModels } from './AuthoredModels.js';
 import { buildBuildings } from './buildingMesh.js';
@@ -21,10 +23,10 @@ import { photographProfile } from './profilePhoto.js';
 import { photographStation } from './stationPhoto.js';
 import { chasePose, diverPose, followYaw, spectatorPose } from './chaseView.js';
 import { Surroundings } from './Surroundings.js';
+import { Smoke } from './Smoke.js';
 import { Underwater } from './Underwater.js';
 import { sunDirection } from './sunDirection.js';
 
-const FAR = 45000;
 const SKY_SCALE = 40000;
 const SHADOW_EXTENT = 70;
 const SHADOW_AHEAD = 35;
@@ -36,6 +38,17 @@ const MIRROR_TEXELS = 512;
 const DOOR_MIRROR = { texels: 256, vfovDeg: 12 };
 
 /** A render target for a mirror picture, flipped left to right as a mirror shows it. */
+/** The rear-view mirror's picture as a panel at the top of the screen (CHASE.mirror, layout px). */
+function mirrorInset(texture) {
+    const m = CHASE.mirror;
+    const camera = new THREE.OrthographicCamera(0, VIEW.width, VIEW.height, 0, -1, 1);
+    const panel = new THREE.Mesh(new THREE.PlaneGeometry(m.width, m.height), new THREE.MeshBasicMaterial({ map: texture, depthTest: false }));
+    panel.position.set(VIEW.width / 2, VIEW.height - m.top - m.height / 2, 0);
+    const scene = new THREE.Scene();
+    scene.add(panel);
+    return { scene, camera };
+}
+
 function mirrorTarget() {
     const target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
     target.texture.wrapS = THREE.RepeatWrapping;
@@ -63,13 +76,15 @@ export class WorldView {
         });
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.shadowMap.enabled = true;
+        this.graphics = graphicsTier(rendererName(this.renderer.getContext()));
+        if (this.graphics !== GRAPHICS.full) console.info(`[world] ${rendererName(this.renderer.getContext())} draws on the CPU: a lighter world`);
+        this.renderer.shadowMap.enabled = this.graphics.shadows;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.camera = new THREE.PerspectiveCamera(
             this._verticalFov(),
             VIEW.width / VIRTUAL_HEIGHT,
             WORLD_NEAR,
-            FAR,
+            this.graphics.far,
         );
         this.camera.rotation.order = 'YXZ';
         this.camera.setViewOffset(
@@ -92,10 +107,11 @@ export class WorldView {
         this.authored = new AuthoredModels(resources);
         this.vehicles = new VehicleModels(this.authored);
         // The outside view sees the car (cabin layer) and the world in one pass, lit by the world's sun.
-        this.chaseCamera = new THREE.PerspectiveCamera(CHASE.verticalFovDeg, VIEW.width / VIEW.height, WORLD_NEAR, FAR);
+        this.chaseCamera = new THREE.PerspectiveCamera(CHASE.verticalFovDeg, VIEW.width / VIEW.height, WORLD_NEAR, this.graphics.far);
         this.chaseCamera.layers.enable(CABIN_LAYER);
         this.chaseYaw = null;
         this.chaseTime = null;
+        this.mirrorInset = mirrorInset(this.mirrorTarget.texture);
         this.models = new Map();
         this.scene = null;
         this.cabin = null;
@@ -137,6 +153,7 @@ export class WorldView {
             this.resources.binary(heights),
             this.resources.image(image),
             this.resources.image(LAND_DETAIL.map),
+            this.resources.image(LAND_DETAIL.floor.map),
             this.resources.json(ROUTE_BUILDINGS),
         ];
         return Promise.all([this.authored.prepare(), ...photos, ...land]);
@@ -181,28 +198,34 @@ export class WorldView {
         });
     }
 
+    /** Builds the stage's world around `track` and `landscape` with the car's cabin; returns the trees it
+     *  planted ([{ x, y, z, height, species }]), which a crashing car meets. */
     load(track, stage, car, landscape, cabinAsset = null) {
         this.dispose();
         this.track = track;
         const scene = new THREE.Scene();
         const materials = new WorldMaterials(this.resources, this.renderer, stage);
         const builder = new WorldBuilder(materials, stage, landscape, this.authored);
-        const terrain = new Terrain(landscape, stage, materials);
+        const terrain = new Terrain(landscape, materials);
         const heights = new Int16Array(this.resources.get(`binary:${stage.route.surroundings.heights}`));
         const surroundings = new Surroundings(track, landscape, heights, materials.land);
         const buildings = layOutBuildings(this.resources.get(`json:${ROUTE_BUILDINGS}`), track, landscape);
         scene.add(builder.build(track), terrain.mesh, surroundings.mesh, terrain.sea, buildBuildings(buildings, materials.building));
-        const trees = clearOfBuildings([...builder.treePlacements(track), ...terrain.treePlacements()], buildings);
-        scene.add(buildTrees(trees, materials));
+        const trees = thinned(clearOfBuildings([...builder.treePlacements(track), ...landTrees(landscape, stage.seed + 71)], buildings), this.graphics.forest);
+        this.forest = new Forest(trees, materials, stage.seed);
+        scene.add(this.forest.group);
         scene.fog = new THREE.FogExp2(stage.fog.color, stage.fog.density);
         this.underwater = new Underwater(scene, landscape.waterLevel);
+        this.smoke = new Smoke(scene);
         this._installCabin(scene, stage, car, cabinAsset, track.bearing);
+        return trees;
     }
 
     loadPreview(stage, car, cabinAsset) {
         this.dispose();
         this.track = null;
         this.underwater = null;
+        this.smoke = null;
         // No road here: the car faces north.
         this._installCabin(new THREE.Scene(), stage, car, cabinAsset, 0);
     }
@@ -336,7 +359,7 @@ export class WorldView {
             scene.add(ground);
         }
         try {
-            this.environmentTarget = pmrem.fromScene(scene, 0, LIGHTING.environmentNear, FAR, {
+            this.environmentTarget = pmrem.fromScene(scene, 0, LIGHTING.environmentNear, this.graphics.far, {
                 size: LIGHTING.environmentSize, position,
             });
             return this.environmentTarget.texture;
@@ -362,8 +385,10 @@ export class WorldView {
         this.sun.target.position.set(focus.x, focus.y, focus.z);
         this.sun.position.copy(this.sun.target.position).addScaledVector(this.sunDirection, 450);
         const car = this.cabin.root.position;
+        this.forest?.update(car);
         const underwater = Boolean(view.underwater);
         this.underwater?.update({ underwater, car, water: view.water, time: view.time });
+        this.smoke?.update(view.smoke ?? []);
         const daylight = underwater ? WATER.light : 1;
         this.sun.intensity = this.daylight.sun * daylight;
         this.skyLight.intensity = this.daylight.sky * daylight;
@@ -378,18 +403,25 @@ export class WorldView {
             else this._placeChase(view.time);
             this.chaseCamera.getWorldPosition(this.sky.position);
             r.render(this.scene, this.chaseCamera);
+            // Driving, the rear-view mirror shows at the top of the screen as it would in the car.
+            if (!view.spectator) {
+                this._renderMirror(this.mirrorCamera, this.mirrorTarget);
+                r.autoClear = false;
+                r.render(this.mirrorInset.scene, this.mirrorInset.camera);
+                r.autoClear = true;
+            }
             return;
         }
         this.chaseYaw = null;
         this._renderMirror(this.mirrorCamera, this.mirrorTarget);
-        const doors = this.activeDoorMirrors;
+        const doors = this.graphics.doorMirrors ? this.activeDoorMirrors : [];
         if (doors.length) {
             const door = doors[this.frame++ % doors.length];
             this._renderMirror(door.camera, door.target);
         }
 
         this.camera.getWorldPosition(this.sky.position);
-        this._lens(0, WORLD_NEAR, FAR);
+        this._lens(0, WORLD_NEAR, this.graphics.far);
         r.render(this.scene, this.camera);
         // The cabin is drawn last over a cleared depth buffer, so its near plane can sit at the eye.
         this._lens(CABIN_LAYER, CABIN_NEAR, CABIN_FAR);
@@ -478,7 +510,7 @@ export class WorldView {
             } else {
                 const p = this.track.toWorld(v.s, v.u);
                 model.position.set(p.x, p.y, p.z);
-                model.rotation.set(0, -p.heading + (v.dir < 0 ? Math.PI : 0), 0);
+                model.rotation.set(0, -p.heading + (v.dir < 0 ? Math.PI : 0) + (v.yaw ?? 0), 0);
             }
             model.userData.siren = Boolean(v.siren);
             this.vehicles.animate(model, time);

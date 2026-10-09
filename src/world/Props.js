@@ -9,17 +9,14 @@ const POST_SPACING = 6;
 const BOULDER = { radius: 0.6, detail: 2, roughness: 0.32, frequency: 1.6, squat: 0.7, shapes: [11, 23, 37] };
 const SIGN_SIZE = 0.95;
 
-/** Roadside objects: posts, rail posts, boulders, signs, the gas station and the summit dealership. */
+/** Roadside objects: delineator posts, boulders, signs, the gas station and the summit dealership. */
 export function buildProps(track, materials, stage, authored) {
     const group = new THREE.Group();
     const rng = createRng(stage.seed + 5);
     const posts = [];
-    const railPosts = [];
     const boulders = [];
     for (let i = 0; i < track.count; i++) {
-        if (track.rail[i]) railPosts.push(transform(track, i * track.segment, ROAD.postOffset - 0.08, 0, 1));
-        else if (i % POST_SPACING === 0)
-            posts.push(transform(track, i * track.segment, ROAD.postOffset, 0, 1));
+        if (!track.rail[i] && i % POST_SPACING === 0) posts.push(transform(track, i * track.segment, ROAD.postOffset, 0, 1));
         if (rng() < 0.16) {
             const size = rng.range(0.3, 1.5);
             boulders.push(
@@ -37,14 +34,6 @@ export function buildProps(track, materials, stage, authored) {
     group.add(
         instanced(new THREE.BoxGeometry(0.1, 1.05, 0.1).translate(0, 0.52, 0), materials.post, posts, false),
     );
-    group.add(
-        instanced(
-            new THREE.BoxGeometry(0.15, 0.85, 0.12).translate(0, 0.42, 0),
-            materials.steel,
-            railPosts,
-            true,
-        ),
-    );
     // A few shapes of broken rock, the boulders shared out among them.
     BOULDER.shapes.forEach((seed, k) => {
         const share = boulders.filter((_, i) => { return i % BOULDER.shapes.length === k; });
@@ -56,31 +45,6 @@ export function buildProps(track, materials, stage, authored) {
         if (prop.type === 'station') group.add(buildStation(track, authored, prop));
         if (prop.type === 'dealership') group.add(buildDealership(track, materials, prop));
     }
-    return group;
-}
-
-/** Instanced pines at world positions [{x, y, z, height}]: trunk plus two foliage tiers. */
-export function buildTrees(placements, materials) {
-    const tiers = [[], []];
-    const trunks = [];
-    const at = (p, lift, width, height) => {
-        return new THREE.Matrix4().compose(
-            new THREE.Vector3(p.x, p.y + lift, p.z),
-            new THREE.Quaternion(),
-            new THREE.Vector3(width, height, width),
-        );
-    };
-    for (const p of placements) {
-        tiers[0].push(at(p, p.height * 0.15, p.height * 0.3, p.height * 0.6));
-        tiers[1].push(at(p, p.height * 0.45, p.height * 0.2, p.height * 0.55));
-        trunks.push(at(p, 0, 0.22, p.height * 0.3));
-    }
-    const cone = new THREE.ConeGeometry(1, 1, 8).translate(0, 0.5, 0);
-    const group = new THREE.Group();
-    for (const tier of tiers) group.add(instanced(cone, materials.foliage, tier, true));
-    group.add(
-        instanced(new THREE.CylinderGeometry(1, 1, 1, 5).translate(0, 0.5, 0), materials.bark, trunks, false),
-    );
     return group;
 }
 
@@ -99,18 +63,16 @@ function boulderGeometry(seed) {
     return geometry;
 }
 
-/** Matrix placing an object at road coordinates, facing back down the road. */
-function transform(track, s, u, h, scale, spin = 0) {
+/** Matrix placing an object at road coordinates, facing back down the road (its x across the road,
+ *  its z along it), scaled by `scale` (a number, or [across, up, along]). */
+export function transform(track, s, u, h, scale, spin = 0) {
     const p = track.toWorld(s, u, h);
     const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -p.heading + spin, 0));
-    return new THREE.Matrix4().compose(
-        new THREE.Vector3(p.x, p.y, p.z),
-        rotation,
-        new THREE.Vector3(scale, scale, scale),
-    );
+    const size = Array.isArray(scale) ? scale : [scale, scale, scale];
+    return new THREE.Matrix4().compose(new THREE.Vector3(p.x, p.y, p.z), rotation, new THREE.Vector3(...size));
 }
 
-function instanced(geometry, material, matrices, castShadow) {
+export function instanced(geometry, material, matrices, castShadow) {
     const mesh = new THREE.InstancedMesh(geometry, material, Math.max(1, matrices.length));
     matrices.forEach((matrix, i) => {
         mesh.setMatrixAt(i, matrix);

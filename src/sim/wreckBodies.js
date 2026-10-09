@@ -38,7 +38,7 @@ export function playerBody(vehicle, track) {
  *  ground, front towards -z; `centre` is its centre of mass in it. */
 export function trafficBody(vehicle, track, spec) {
     const centre = vec(0, spec.height * FALL.trafficCg, 0);
-    const yaw = -track.headingAt(vehicle.s) + (vehicle.dir < 0 ? Math.PI : 0);
+    const yaw = -track.headingAt(vehicle.s) + (vehicle.dir < 0 ? Math.PI : 0) + (vehicle.yaw ?? 0);
     const orientation = fromEulerYXZ(Math.atan(track.gradeAt(vehicle.s)) * vehicle.dir, yaw, 0);
     const ground = track.toWorld(vehicle.s, vehicle.u, 0);
     const half = vehicle.length / 2;

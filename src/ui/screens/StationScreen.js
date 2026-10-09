@@ -8,7 +8,7 @@ import { drawCarArt } from '../CarArt.js';
 import { whenPhotographed } from '../photos.js';
 import { paintScenery } from '../scenery.js';
 import { COLORS, font } from '../theme.js';
-import { drawPanel, drawPrompt, drawText } from '../widgets.js';
+import { drawPanel, drawPrompt, drawSpinner, drawText } from '../widgets.js';
 
 const HORIZON = 430;
 const FILL_SECONDS = 3;
@@ -16,6 +16,8 @@ const CANOPY = { x: 120, y: 190, w: 700, h: 46, posts: [160, 760], ground: 640 }
 const PUMPS = [300, 560];
 const PANEL = { x: 860, y: 230, w: 380, h: 330, row: 44 };
 const FUEL_BAR = { x: 890, y: 500, w: 320, h: 22 };
+/** Where the station's photo will show the car, a spinner turns while it is taken. */
+const SPINNER = { x: 460, y: 520, radius: 40 };
 
 /** Midday in the hills, at the pumps. */
 const DAY = {
@@ -39,12 +41,14 @@ export class StationScreen {
         Object.assign(this, { game, display, resources, audio, input, world });
         this.time = 0;
         this.full = false;
-        this.photo = null;
+        this.photo = undefined;
     }
 
-    /** Fills up in the authored station once its photo with this car is ready; drawn until then. */
+    /** Fills up in the authored station once its photo with this car is ready (a spinner until then,
+     *  the drawn station if it cannot be taken). */
     enter({ session, result, outside = false }) {
         this.session = session;
+        this.photo = undefined;
         this.result = result;
         this.outside = outside;
         this.audio.play('pump', { volume: 0.7 });
@@ -71,7 +75,7 @@ export class StationScreen {
         const car = this.session.car;
         const photo = this.photo;
         const scene = this.resources.scaledCanvas(
-            `station:${photo ? 'photo' : 'drawn'}:${car.id}`,
+            `station:${photo ? 'photo' : photo === null ? 'drawn' : 'waiting'}:${car.id}`,
             VIEW.width,
             VIEW.height,
             this.display.scale,
@@ -79,13 +83,14 @@ export class StationScreen {
                 paintScenery(c, DAY, HORIZON);
                 if (photo) {
                     c.drawImage(photo, 0, 0, VIEW.width, VIEW.height);
-                    return;
+                } else if (photo === null) {
+                    paintStation(c);
+                    drawCarArt(c, car, 250, CANOPY.ground, 420);
                 }
-                paintStation(c);
-                drawCarArt(c, car, 250, CANOPY.ground, 420);
             },
         );
         ctx.drawImage(scene, 0, 0, VIEW.width, VIEW.height);
+        if (photo === undefined) drawSpinner(ctx, SPINNER.x, SPINNER.y, SPINNER.radius, this.time);
         this._sheet(ctx);
     }
 

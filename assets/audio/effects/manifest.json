@@ -1,0 +1,16 @@
+{
+    "crash": [
+        "assets/audio/effects/crash-1.wav",
+        "assets/audio/effects/crash-2.wav",
+        "assets/audio/effects/crash-3.wav"
+    ],
+    "impact": [
+        "assets/audio/effects/impact-1.wav",
+        "assets/audio/effects/impact-2.wav",
+        "assets/audio/effects/impact-3.wav",
+        "assets/audio/effects/impact-4.wav"
+    ],
+    "crack": [
+        "assets/audio/effects/crack-1.wav"
+    ]
+}

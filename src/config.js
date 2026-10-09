@@ -43,6 +43,20 @@ export const ROAD = Object.freeze({
     eyeHeight: 1.08,
 });
 
+/** Guard rail, a steel W-beam on posts (src/sim/TrackBuilder.js lays it, src/world/guardRail.js
+ *  draws it). It stands where the real ground `reach` m beyond the edge lies `depth` m or more below
+ *  the road, as an embankment that steep warrants a barrier; runs closer than `gap` m join, runs
+ *  shorter than `shortest` m are left out, and each carries on `flare` m into its turned-down ends.
+ *  Hit faster than `breach` m/s sideways it gives way and the car goes over the edge. */
+export const RAIL = Object.freeze({
+    reach: 6,
+    depth: 3,
+    gap: 40,
+    shortest: 30,
+    flare: 8,
+    breach: 9,
+});
+
 /** Where the route's real buildings may stand (src/world/buildingLayout.js). */
 export const BUILDINGS = Object.freeze({
     /** Clear of the road's edge by this much (m) on the valley side. */
@@ -51,6 +65,15 @@ export const BUILDINGS = Object.freeze({
     sink: 1,
     /** Ground under water deeper than this (m) is the sea: nothing is built there. */
     dryAbove: 0.3,
+});
+
+/** Engine voices (src/audio/EngineSound.js). */
+export const ENGINE_SOUND = Object.freeze({
+    /** The engine's level into the engine bus. */
+    level: 0.9,
+    /** Recordings play up to the first multiple of the highest one's rpm, handing over to the
+     *  synthesiser by the second: past that they would only be pitched up, not heard as they are. */
+    recordedReach: [1.25, 1.6],
 });
 
 export const PHYS = Object.freeze({
@@ -63,7 +86,17 @@ export const PHYS = Object.freeze({
     /** One horsepower is one lb-ft of torque turning at this many rpm. */
     lbftRpmPerHp: 5252,
     lbToKg: 0.453592,
+    /** Square metres in a hectare. */
+    hectare: 10000,
 });
+
+/** The tyres on dry asphalt: their peak friction over the skid-pad figure (they grip harder than at
+ *  the limit of a skid-pad circle), each axle's share of it (the front lets go first: stable limit
+ *  understeer), how much harder they grip driving or braking than sideways (`longitudinal`), the share
+ *  of rigid-body pitch transfer that reaches them (suspension compliance), at most `maxTransfer` of an
+ *  axle's static load moving off it, and how much of an axle's grip is left to drive or brake with.
+ *  The car on the road and its road-test calibration share them. */
+export const TYRES = Object.freeze({ peak: 1.1, front: 0.9, rear: 1.08, longitudinal: 1.15, transfer: 0.55, maxTransfer: 0.8, budget: 0.95 });
 
 /** How the brochure's figures were measured, and how the drivetrain is fitted to them. */
 export const ROAD_TEST = Object.freeze({
@@ -86,13 +119,56 @@ export const GAME = Object.freeze({
     speedLimitMph: 55,
     /** Passing a radar trap above this speed starts a pursuit. */
     radarTriggerMph: 65,
-    ticketPenaltySec: 30,
     /** Fixed physics step. */
     physicsHz: 120,
-    /** Throttle below this speed (m/s) in neutral selects first gear, as a driver pulling away would. */
+    /** Throttle below this speed (m/s) in neutral selects first gear, as a driver pulling away would;
+     *  reverse goes in only below it, and the car is moving one way along the road only above it. */
     pullAwaySpeed: 1,
+    /** How far back past the start line (m) the road is open; beyond it the car is turned round. */
+    backLimit: 60,
     /** Within this many rpm of the redline, below top gear, the driver is told to shift up. */
     shiftHintRpm: 350,
+});
+
+/** How much of the world is drawn: all of it on a graphics card, less on a software renderer that
+ *  draws on the CPU (a browser without a graphics driver, such as the CI's headless ones). `forest`
+ *  is the share of the trees kept, `far` how far (m) the world is drawn: a CPU spends its time on
+ *  every triangle in view. */
+export const GRAPHICS = Object.freeze({
+    full: { forest: 1, shadows: true, doorMirrors: true, far: 45000 },
+    software: { forest: 0.15, shadows: false, doorMirrors: false, far: 2000 },
+});
+
+/** A pursuit as the B.C. Police Commission's 1982 guidelines had it (in force through 1989; reproduced in
+ *  its 1990 report "Police Pursuit in British Columbia"). A driver stopped (under `stoppedMph` for
+ *  `stopSeconds`) within `signalRange` m of the patrol car has stopped for it; one who has not stopped
+ *  `complySeconds` s after it came within `complyRange` m has failed to stop (Motor Vehicle Act s. 67).
+ *  The officer then radios for assistance and a roadblock is ready `roadblockDelay` s later, at least
+ *  `lead` m ahead, where a driver at the car's speed sees it in time to stop braking at `brake` m/s²
+ *  with `margin` m to spare (s. 7.7): on a bend of radius R, with the cut or the trees `sightClearance`
+ *  m inside the line, the road is seen about 2·sqrt(2·R·clearance) m ahead. Patrol cars stand broadside
+ *  across it, as many as it takes from the edge to the cut.
+ *  The patrol car follows `followGap` m behind and never boxes in or rams (s. 7.9-7.10); a driver
+ *  who turns back past it is followed after it has stopped and turned round in `turnSeconds` s, and
+ *  the roadblock's officers redeploy ahead of them, leaving once they are `outOfSight` m away.
+ *  Stopping within `roadblockReach` m of the roadblock is stopping for it. */
+export const POLICE = Object.freeze({
+    stoppedMph: 3,
+    stopSeconds: 1.5,
+    signalRange: 250,
+    complyRange: 150,
+    complySeconds: 10,
+    roadblockDelay: 40,
+    lead: 1500,
+    brake: 6,
+    margin: 60,
+    roadblockReach: 250,
+    followGap: 18,
+    turnSeconds: 6,
+    outOfSight: 400,
+    sightClearance: 8,
+    /** Time lost to a roadside speeding ticket (s). */
+    ticketSeconds: 30,
 });
 
 /** How the car body and the driver's head move with the car (the camera rides on both). */
@@ -137,8 +213,9 @@ export const CRASH = Object.freeze({
     /** The rock face as a crashing car meets it: a slope it is pushed back off, not a sheer step. */
     wallSlope: 20,
     wallGap: 0.4,
-    /** The wreck stops playing after this long even if the cars are still moving (s). */
-    maxSeconds: 8,
+    /** The wreck stops playing after this long even if the cars are still moving (s): long enough for
+     *  the traffic behind to run into it. */
+    maxSeconds: 12,
     /** From then on ENTER skips to the crash notice (s). */
     skipAfter: 1.5,
     /** Where the crash is watched from: behind the impact, out over the drop, above the road (m); a
@@ -146,6 +223,29 @@ export const CRASH = Object.freeze({
     camera: { back: 16, out: 9, up: 4.5, aimUp: 0.6, follow: 30, lookDownDeg: 35 },
     /** Under water the camera follows the car down: this far beyond it, above it, below the surface. */
     diver: { distance: 7, up: 1.2, belowSurface: 0.8 },
+    /** Which hits of a wreck are heard: none softer than `audible` m/s, none within `cooldown` s of
+     *  the last one heard unless `harder` times as hard; full volume from `loud` m/s. */
+    sound: { audible: 4, cooldown: 0.35, harder: 1.6, loud: 30 },
+});
+
+/** Smoke pouring from a blown engine (src/sim/EngineSmoke.js): `rate` puffs a second from the engine
+ *  bay, in car space (m; x right, y up, -z forward) by where the engine sits, each rising at `rise`
+ *  m/s and spreading `spread` m/s, carried by the `wind` (m/s, world x and z), swelling from `size` by
+ *  `grow` m a second and thinning out over its `life` (s), slowly at first (density 1 - (age /
+ *  life)^`thinning`); at most `most` puffs at once, of oily grey `color` and `opacity` when fresh. */
+export const SMOKE = Object.freeze({
+    rate: 24,
+    bay: { front: [0, 0.85, -1.5], mid: [0, 0.95, 0.9], rear: [0, 0.95, 1.7] },
+    rise: [1.4, 2.6],
+    spread: 0.5,
+    wind: [0.9, 0.3],
+    size: [0.5, 0.9],
+    grow: 0.9,
+    life: [3, 5.5],
+    thinning: 2,
+    most: 160,
+    color: '#8e8c88',
+    opacity: 0.8,
 });
 
 /** The sea a car goes into: how it floats, floods and sinks, and what the water does around it. */
@@ -200,6 +300,8 @@ export const CHASE = Object.freeze({
     /** How fast its yaw catches up with the car's (1/s). */
     followRate: 4,
     verticalFovDeg: 50,
+    /** The rear-view mirror shown at the top of the outside view (layout px): its size, how far down. */
+    mirror: { width: 340, height: 96, top: 14, frame: 5 },
 });
 
 /** Layout and demonstration settings for the isolated cabin inspection screen. */
@@ -220,6 +322,10 @@ export const FALL = Object.freeze({
     damping: 2.7e4,
     /** Sliding friction of steel on rock, a sticking term (N per m/s), and rolling wheels' share. */
     friction: 0.7,
+    /** Off the road, on ground that holds soil, a sliding car rides on wet moss and undergrowth,
+     *  slicker than rock: it goes on down a steep slope (to the sea, where the slope runs down to it)
+     *  unless a tree stops it. */
+    undergrowth: 0.45,
     grip: 1.5e5,
     rolling: 0.06,
     /** A hit this hard (m/s) smashes the wheels: from then on they drag instead of rolling. */
@@ -229,7 +335,7 @@ export const FALL = Object.freeze({
     restSpeed: 0.3,
     restSpin: 0.3,
     restSeconds: 1,
-    maxSeconds: 45,
+    maxSeconds: 120,
     /** A contact closing faster than this (m/s) is a hit: a crash sound and a jolt. */
     hitSpeed: 4,
     /** Floor pan and sills above the road, wheels inset from the body sides (m). */

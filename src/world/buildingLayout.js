@@ -26,19 +26,6 @@ function footprints(data) {
     });
 }
 
-function nearestNode(track, x, z) {
-    let best = 0;
-    let bestD = Infinity;
-    for (let i = 0; i < track.count; i += SCAN) {
-        const d = (x - track.px[i]) ** 2 + (z - track.pz[i]) ** 2;
-        if (d < bestD) {
-            bestD = d;
-            best = i;
-        }
-    }
-    return best;
-}
-
 /** The real buildings that stand around a stage: each footprint in world space ({ x, z } corners), its
  *  base (sunk into the ground), the height of the eaves at each corner and the roof's. Downhill a
  *  building stands on whatever is drawn (the drop or the terrain), uphill on the terrain past the cut's
@@ -52,7 +39,7 @@ export function layOutBuildings(data, track, landscape) {
     for (const [index, building] of footprints(data).entries()) {
         const ring = building.ring.map(([lat, lon]) => { return worldOf(track, lat, lon); });
         if (!ring.every(inside)) continue;
-        let hint = nearestNode(track, ring[0].x, ring[0].z);
+        let hint = track.nearestNode(ring[0].x, ring[0].z, SCAN);
         let sides = 0;
         const grounds = [];
         for (const corner of ring) {
@@ -63,7 +50,8 @@ export function layOutBuildings(data, track, landscape) {
             // Uphill, the cut's ribbons and the grid's climb from under them take a grid cell past MOUNTAIN_NEAR.
             if (beside && p.u > ROAD.edgeOffset - BUILDINGS.clearance && p.u < MOUNTAIN_NEAR + l.cell) break;
             if (beside) sides |= p.u < 0 ? 1 : 2;
-            grounds.push(beside && p.u < 0 ? l.heightAt(corner.x, corner.z) : l.terrainAt(corner.x, corner.z));
+            // Beyond the cut only the grid is drawn; everywhere else whatever is on top (the drop, mostly).
+            grounds.push(beside && p.u > 0 ? l.terrainAt(corner.x, corner.z) : l.heightAt(corner.x, corner.z));
         }
         const lowest = Math.min(...grounds);
         if (grounds.length < ring.length || sides === 3 || lowest < l.waterLevel + BUILDINGS.dryAbove) continue;

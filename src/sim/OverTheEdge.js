@@ -2,12 +2,18 @@ import { FALL } from '../config.js';
 import { rotate } from '../util/quaternion.js';
 import { sub } from '../util/vector.js';
 import { airLost, playerBody, underwater } from './wreckBodies.js';
+import { trunkContacts } from './wreckContacts.js';
 
 /** A car gone over the edge: a rigid body launched with the car's last motion, tumbling down the drop
- *  until it stops, or into the sea, where it floats, fills and sinks; keeps the numbers of the fall. */
+ *  until it stops (on the ground, or against a tree), or into the sea, where it floats, fills and
+ *  sinks; keeps the numbers of the fall. */
 export class OverTheEdge {
-    constructor(vehicle, track, landscape) {
+    /** `trunks` (TreeTrunks) are the trees on the way down. */
+    constructor(vehicle, track, landscape, trunks = null) {
         this.landscape = landscape;
+        this.trunks = trunks;
+        // No traffic down the drop.
+        this.wrecked = [];
         const { body, centre, startHeight } = playerBody(vehicle, track);
         this.body = body;
         this.centre = centre;
@@ -34,6 +40,7 @@ export class OverTheEdge {
         while (this.accumulator >= FALL.substep && !this.done) {
             this.accumulator -= FALL.substep;
             body.step(FALL.substep, this.landscape);
+            if (this.trunks) trunkContacts(body, this.trunks, FALL.substep);
             this.time += FALL.substep;
             this.topSpeed = Math.max(this.topSpeed, body.speed);
             this.deepestCrush = Math.max(this.deepestCrush, body.penetration);

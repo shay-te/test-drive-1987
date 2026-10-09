@@ -3,15 +3,16 @@ import { CockpitState } from '../../cockpit/CockpitState.js';
 import { HeadMotion } from '../../cockpit/HeadMotion.js';
 import { boostPsi, instrumentReadings, lampStates, revState } from '../../cockpit/instruments.js';
 import { tripInfo, tripLines } from '../../cockpit/tripDisplay.js';
-import { CRASH, GAME, MOTION, PHYS } from '../../config.js';
+import { CRASH, GAME, MOTION, PHYS, SMOKE } from '../../config.js';
 import { gearLabel } from '../../data/cars.js';
 import { STAGES } from '../../data/stages.js';
 import { inputKey, t } from '../../i18n/i18n.js';
 import { POLICE_EVENT, PoliceManager } from '../../sim/Police.js';
 import { OverTheEdge } from '../../sim/OverTheEdge.js';
 import { RoadCrash } from '../../sim/RoadCrash.js';
+import { TreeTrunks } from '../../sim/TreeTrunks.js';
 import { CRASH_CAUSE } from '../../sim/Session.js';
-import { LANE, ONCOMING, TrafficManager } from '../../sim/Traffic.js';
+import { LANE, TrafficManager } from '../../sim/Traffic.js';
 import { VehicleDynamics } from '../../sim/VehicleDynamics.js';
 import { WaterParticles } from '../../sim/WaterParticles.js';
 import { approach } from '../../util/math.js';
@@ -22,16 +23,21 @@ import {
     drawOutsideReadout,
     drawPaused,
     drawStageIntro,
+    drawArrest,
+    drawMirrorFrame,
     drawTicket,
     drawToast,
 } from '../driveOverlays.js';
 import { COLORS } from '../theme.js';
+import { ImpactGate } from '../../audio/impactGate.js';
+import { EngineSmoke } from '../../sim/EngineSmoke.js';
 
 const STEP = 1 / GAME.physicsHz;
 const INTRO_SECONDS = 4;
 const TOAST_SECONDS = 3;
-/** A hit at this speed (m/s) or more plays the crash sound at full volume. */
-const LOUD_HIT = 30;
+/** How loud a blown engine goes, and the car a crash hits against the player's. */
+const ENGINE_BLOW_VOLUME = 0.5;
+const OTHER_CAR_VOLUME = 0.5;
 /** After a crash the car restarts this far back, in the right-hand lane. */
 const RESPAWN_BACK = 25;
 /** Fuel gauge drop over a full stage (cosmetic). */
@@ -39,7 +45,6 @@ const FUEL_USED = 0.6;
 /** Impacts above this speed (m/s) crack the windshield; each one more, until it is shattered. */
 const CRACK_IMPACT = 6;
 const MAX_CRACKS = 5;
-const TICKET_BRAKE = 1;
 /** Where on the glass an impact can crack it (layout px), the fall's tilt per second, body sway rate. */
 const CRACK_AREA = { x: 380, y: 120, w: 520, h: 220 };
 const BODY_RATE = 6;
@@ -96,8 +101,10 @@ export class DriveScreen {
         this.track = track;
         this.landscape = landscape;
         this.water = new WaterParticles(this.landscape.waterLevel, session.stage.seed);
+        this.smoke = new EngineSmoke(session.stage.seed);
         this.sunk = false;
-        this.world.load(this.track, session.stage, car, this.landscape, cabinAsset);
+        // The trees the world planted are solid to a crashing car.
+        this.trunks = new TreeTrunks(this.world.load(this.track, session.stage, car, this.landscape, cabinAsset) ?? []);
         this.vehicle = new VehicleDynamics(car);
         this.vehicle.reset(this.track.startS, LANE);
         this.traffic = new TrafficManager(this.track, session.stage);
@@ -111,7 +118,6 @@ export class DriveScreen {
         this.bodyRoll = 0;
         this.cracks = [];
         this.wreck = null;
-        this.wrecked = null;
         this.stageTime = 0;
         if (this.audio.ready) {
             this.audio.createEngine(car).then((engine) => {
@@ -161,10 +167,12 @@ export class DriveScreen {
 
     _advance(dt) {
         this.stageTime += dt;
+        this.smoke.update(dt, this._engineBay(), this.vehicle.engine.blown);
         if (this.toast) this.toast.time += dt;
         if (this.state === 'driving') this._drive(dt);
         else if (this.state === 'wrecking') this._wrecking(dt);
-        else if (this.state === 'ticket') this._stopForTicket(dt);
+        else if (this.state === 'ticket' && this.input.pressed('confirm')) this._afterTicket();
+        else if (this.state === 'arrested' && this.input.pressed('confirm')) this._afterArrest();
         else if (this.state === 'crashed' && this.input.pressed('confirm')) this._afterCrash();
     }
 
@@ -180,48 +188,69 @@ export class DriveScreen {
             this.accumulator -= STEP;
             this._step(STEP, controls);
         }
-        if (vehicle.s >= this.track.finishS && this.state === 'driving') this._finish();
+        if (vehicle.s >= this.track.finishS && this.state === 'driving') {
+            // A patrol car still on the tail of a driver who would not stop follows them into the station.
+            if (this.police.onTail) this.state = 'arrested';
+            else this._finish();
+        } else if (vehicle.s < this.track.startS && this.state === 'driving') {
+            this._backPastStart();
+        }
+    }
+
+    /** Back over the start line: a patrol car still on the tail follows the driver back to where they set
+     *  out from; otherwise the road behind is open GAME.backLimit m, and there the car is turned round. */
+    _backPastStart() {
+        if (this.police.onTail) {
+            this.state = 'arrested';
+        } else if (this.vehicle.s < this.track.startS - GAME.backLimit) {
+            this.vehicle.reset(this.track.startS, LANE);
+            this._notice(t('drive.wrongWay'), COLORS.lcd);
+        }
     }
 
     _step(h, controls) {
         const { vehicle, session } = this;
         const event = vehicle.step(h, controls, this.track);
         session.tick(h);
-        this.traffic.update(h, vehicle.s);
+        this.traffic.update(h, vehicle.s, vehicle.dir);
         if (event) {
             this._crash(event.cause, event.impact);
             return;
         }
         const hit = this.traffic.collision(vehicle.s, vehicle.u);
         if (hit) {
-            const cause =
-                hit.type === 'police'
-                    ? CRASH_CAUSE.police
-                    : hit.dir === ONCOMING
-                      ? CRASH_CAUSE.headOn
-                      : CRASH_CAUSE.rearEnd;
-            this._crash(cause, Math.abs(vehicle.vx - hit.speed * hit.dir), hit);
+            this._crash(this._hitCause(hit), Math.abs(vehicle.sDot - hit.speed * hit.dir), hit);
             return;
         }
         if (vehicle.engine.blown) {
             this._crash(CRASH_CAUSE.engine, 0);
             return;
         }
-        const player = { s: vehicle.s, u: vehicle.u, speed: vehicle.vx, mph: vehicle.speedMph };
+        const player = { s: vehicle.s, u: vehicle.u, speed: vehicle.sDot, mph: vehicle.speedMph, dir: vehicle.dir };
         const police = this.police.update(h, player);
         if (police === POLICE_EVENT.pursuit) {
             this.clockedMph = player.mph;
             this._notice(t('drive.pursuit'), COLORS.danger);
+        } else if (police === POLICE_EVENT.failedToStop) {
+            this._notice(t('drive.failedToStop'), COLORS.danger);
         } else if (police === POLICE_EVENT.escaped) {
             this._notice(t('drive.escaped'), COLORS.lcd);
-        } else if (police === POLICE_EVENT.pulledOver) {
+        } else if (police === POLICE_EVENT.ticket) {
             this.state = 'ticket';
-            this.stateTime = 0;
+        } else if (police === POLICE_EVENT.arrested) {
+            this.state = 'arrested';
         }
     }
 
+    /** What hitting traffic vehicle `hit` was: a patrol car, backing into a car, or by the way each was going. */
+    _hitCause(hit) {
+        if (hit.type === 'police') return CRASH_CAUSE.police;
+        if (this.vehicle.vx < 0) return CRASH_CAUSE.reversing;
+        return hit.dir === this.vehicle.dir ? CRASH_CAUSE.rearEnd : CRASH_CAUSE.headOn;
+    }
+
     _shift(direction) {
-        if (this.vehicle.drivetrain.shift(this.vehicle.engine, direction)) {
+        if (this.vehicle.drivetrain.shift(this.vehicle.engine, direction, this.vehicle.vx)) {
             this.audio.play('shift', { volume: 0.6 });
         }
     }
@@ -236,29 +265,31 @@ export class DriveScreen {
         this.cause = cause;
         this.over = this.session.recordCrash(cause);
         this.head.jolt(impact);
-        this.audio.play('crash', { volume: cause === CRASH_CAUSE.engine ? 0.5 : 1 });
         if (cause === CRASH_CAUSE.engine) {
+            this.audio.play('impact', { volume: ENGINE_BLOW_VOLUME });
             this.state = 'crashed';
             return;
         }
-        this._crack(impact);
-        this.impactAt = { s: this.vehicle.s, u: this.vehicle.u };
-        const { vehicle, track, landscape } = this;
-        this.wreck = cause === CRASH_CAUSE.edge
-            ? new OverTheEdge(vehicle, track, landscape)
-            : new RoadCrash(vehicle, track, landscape, other);
-        if (other) {
-            // The car hit leaves the traffic and follows its own wreck.
-            other.scripted = true;
-            other.wrecked = true;
-            this.wrecked = other;
+        this.impacts = new ImpactGate();
+        this.otherImpacts = new ImpactGate();
+        // Driving off the edge is silent until the car lands; breaking through a rail on the way is not.
+        if (cause !== CRASH_CAUSE.edge || this.track.railAt(this.vehicle.s)) {
+            this.audio.play('crash', { volume: this.impacts.hear(0, impact) });
+            this._crack(impact);
         }
+        this.impactAt = { s: this.vehicle.s, u: this.vehicle.u };
+        const { vehicle, track, landscape, trunks, traffic } = this;
+        // Every car hit leaves the traffic and follows its own wreck.
+        this.wreck = cause === CRASH_CAUSE.edge
+            ? new OverTheEdge(vehicle, track, landscape, trunks)
+            : new RoadCrash(vehicle, track, landscape, other, { trunks, traffic });
         this.state = 'wrecking';
     }
 
     /** Another crack across the windshield for a hard enough hit, up to shattered. */
     _crack(impact) {
         if (impact <= CRACK_IMPACT || this.cracks.length >= MAX_CRACKS) return;
+        this.audio.play('crack', { volume: Math.min(1, impact / CRASH.sound.loud) });
         this.cracks = [...this.cracks, {
             x: CRACK_AREA.x + Math.random() * CRACK_AREA.w,
             y: CRACK_AREA.y + Math.random() * CRACK_AREA.h,
@@ -269,14 +300,18 @@ export class DriveScreen {
     /** The wreck plays until the cars stop; every hard hit is heard, felt and may break more glass. */
     _wrecking(dt) {
         const hits = this.wreck.update(dt);
-        if (hits.player) {
-            this.audio.play('crash', { volume: Math.min(1, hits.player / LOUD_HIT) });
+        const heard = this.impacts.hear(this.wreck.time, hits.player);
+        if (heard) {
+            this.audio.play('impact', { volume: heard });
             this.head.jolt(hits.player);
             this._crack(hits.player);
         }
-        if (hits.other) this.audio.play('crash', { volume: Math.min(1, hits.other / LOUD_HIT) / 2 });
+        const other = this.otherImpacts.hear(this.wreck.time, hits.other);
+        if (other) this.audio.play('impact', { volume: other * OTHER_CAR_VOLUME });
         this._sea(hits, dt);
-        if (this.wrecked) this.wrecked.pose = this.wreck.otherPose;
+        for (const { vehicle, pose } of this.wreck.wrecked) vehicle.pose = pose;
+        // The traffic drives on, into the wreck if it does not stop in time.
+        this.traffic.update(dt, this.vehicle.s, this.vehicle.dir);
         const skip = this.wreck.time > CRASH.skipAfter && this.input.pressed('confirm');
         if (this.wreck.done || skip) this.state = 'crashed';
     }
@@ -285,7 +320,7 @@ export class DriveScreen {
     _sea(hits, dt) {
         const at = this.wreck.body.position;
         if (hits.splash) {
-            this.audio.play('splash', { volume: Math.min(1, hits.splash / LOUD_HIT) });
+            this.audio.play('splash', { volume: Math.min(1, hits.splash / CRASH.sound.loud) });
             this.water.splash(at, hits.splash);
         }
         if (hits.air) this.water.bubble(at, hits.air);
@@ -303,33 +338,38 @@ export class DriveScreen {
         }
         const s = Math.max(this.track.startS, this.vehicle.s - RESPAWN_BACK);
         this.vehicle.reset(s, LANE);
-        if (this.wrecked) this.traffic.remove(this.wrecked);
-        this.wrecked = null;
+        for (const { vehicle } of this.wreck?.wrecked ?? []) this.traffic.remove(vehicle);
         this.traffic.clearAround(s);
         this.police.release();
         this.cracks = [];
         this.wreck = null;
         this.water.clear();
+        this.smoke.clear();
         this.sunk = false;
         this.state = 'driving';
     }
 
-    /** Pulled over: the car brakes to a stop, then the citation is written. */
-    _stopForTicket(dt) {
-        const { vehicle } = this;
-        this.stateTime += dt;
-        if (vehicle.vx > 0.3) {
-            vehicle.step(dt, { steer: 0, throttle: 0, brake: TICKET_BRAKE }, this.track);
-            return;
-        }
-        if (!this.input.pressed('confirm')) return;
-        const over = this.session.recordTicket();
+    /** Where the car's engine sits (SMOKE.bay by its layout), in world space. */
+    _engineBay() {
+        const v = this.vehicle;
+        const p = this.track.toWorld(v.s, v.u);
+        const [x, y, z] = SMOKE.bay[this.car.sound.cabin];
+        // The car's right is (cos a, sin a) on the ground and its back (-sin a, cos a).
+        const a = p.heading + v.theta;
+        return { x: p.x + Math.cos(a) * x - Math.sin(a) * z, y: p.y + y, z: p.z + Math.sin(a) * x + Math.cos(a) * z };
+    }
+
+    /** Stopped for the patrol car: the ticket is written, the patrol car leaves and the drive goes on. */
+    _afterTicket() {
+        this.session.recordTicket();
         this.police.release();
-        if (over) {
-            this._leave('results', { session: this.session });
-            return;
-        }
         this.state = 'driving';
+    }
+
+    /** Arrested for failing to stop: jail, the end of the run. */
+    _afterArrest() {
+        this.session.recordArrest();
+        this._leave('results', { session: this.session });
     }
 
     _finish() {
@@ -349,8 +389,10 @@ export class DriveScreen {
         this.soundscape.update(dt, {
             ...this.vehicle.telemetry(),
             radar: this.police.radarSignal(this.vehicle),
-            sirenDistance: pursuer ? this.vehicle.s - pursuer.s : null,
+            sirenDistance: pursuer ? Math.abs(this.vehicle.s - pursuer.s) : null,
             paused: this.paused || this.state === 'crashed',
+            // A crash stalls the engine; it starts again when the car is back on the road.
+            engineOff: this.state === 'wrecking' || this.state === 'crashed',
         });
     }
 
@@ -395,13 +437,14 @@ export class DriveScreen {
             s: vehicle.s,
             u: vehicle.u,
             theta: vehicle.theta,
-            pitch: Math.atan(track.gradeAt(vehicle.s)) + this.bodyPitch,
+            pitch: Math.atan(track.gradeAt(vehicle.s) * Math.cos(vehicle.theta)) + this.bodyPitch,
             roll: this.bodyRoll,
             pose: this.wreck?.pose ?? null,
             // A crash is watched from beside it, whichever view was chosen.
             spectator: this.wreck ? this.impactAt : null,
             underwater: Boolean(this.wreck?.underwater),
             water: this.water,
+            smoke: this.smoke.puffs,
             head,
             cockpit: {
                 state: this.cockpit,
@@ -447,10 +490,11 @@ export class DriveScreen {
         }
         if (this.state === 'crashed')
             drawCrash(ctx, this.cause, this._fallStats(), session.chances, this.over, this.time, this.input.touch);
-        if (this.state === 'ticket' && this.vehicle.vx <= 0.3)
-            drawTicket(ctx, this.car, this.clockedMph, this.time, this.input.touch);
+        if (this.state === 'ticket') drawTicket(ctx, this.car, this.clockedMph, this.time, this.input.touch);
+        if (this.state === 'arrested') drawArrest(ctx, this.time, this.input.touch);
         const telemetry = this.vehicle.telemetry();
         const gear = gearLabel(this.car, telemetry.gear);
+        if (this.outside && !this.view?.spectator) drawMirrorFrame(ctx);
         if (this.outside) {
             drawOutsideReadout(ctx, {
                 mph: telemetry.mph, rpm: telemetry.rpm, rev: revState(telemetry, this.car), gear, psi: boostPsi(telemetry, this.car),

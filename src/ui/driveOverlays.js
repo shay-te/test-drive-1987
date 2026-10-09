@@ -1,4 +1,4 @@
-import { GAME, VIEW } from '../config.js';
+import { CHASE, GAME, POLICE, VIEW } from '../config.js';
 import { inputKey, t } from '../i18n/i18n.js';
 import { clamp } from '../util/math.js';
 import { COLORS, font } from './theme.js';
@@ -7,6 +7,7 @@ import { drawPanel, drawPrompt, drawText } from './widgets.js';
 const CENTER = VIEW.width / 2;
 const TICKET = { x: 400, y: 150, w: 480, h: 470, line: 46 };
 const BANNER = { w: 760, h: 120, y: 120 };
+const ARREST = { w: 760, h: 320, y: 170 };
 /** Readout panels: one field wide each, along the bottom edge (`left` in px, or centred when null). */
 const READOUT = { field: 150, h: 92, bottom: 28, size: 44, label: 15 };
 /** The driver's-seat gear panel sits in the corner, clear of the wheel and the dials. */
@@ -72,7 +73,7 @@ export function drawTicket(ctx, car, mph, time, touch) {
         [t('ticket.vehicle'), car.fullName],
         [t('ticket.recorded'), `${Math.round(mph)} ${t('general.mph')}`],
         [t('ticket.zone'), `${GAME.speedLimitMph} ${t('general.mph')}`],
-        [t('ticket.penalty'), t('ticket.seconds', { n: GAME.ticketPenaltySec })],
+        [t('ticket.penalty'), t('ticket.seconds', { n: POLICE.ticketSeconds })],
         [t('ticket.officer'), t('ticket.signature')],
     ];
     rows.forEach(([label, value], i) => {
@@ -89,6 +90,30 @@ export function drawTicket(ctx, car, mph, time, touch) {
         ctx.fillRect(k.x + 28, y + 16, k.w - 56, 1);
     });
     drawPrompt(ctx, t(inputKey('crash.continue', touch)), time, k.y + k.h - 40);
+}
+
+/** The frame round the rear-view mirror the outside view shows (WorldView draws its picture). */
+export function drawMirrorFrame(ctx) {
+    const m = CHASE.mirror;
+    ctx.save();
+    ctx.strokeStyle = COLORS.ink;
+    ctx.lineWidth = m.frame * 2;
+    ctx.beginPath();
+    ctx.roundRect(CENTER - m.width / 2 - m.frame, m.top - m.frame, m.width + m.frame * 2, m.height + m.frame * 2, m.frame * 2);
+    ctx.stroke();
+    ctx.restore();
+}
+
+/** Arrested for failing to stop: the charge, what the law says it costs, jail, and the end of the run. */
+export function drawArrest(ctx, time, touch) {
+    const a = ARREST;
+    drawPanel(ctx, CENTER - a.w / 2, a.y, a.w, a.h);
+    drawText(ctx, t('arrest.heading'), CENTER, a.y + 54, { size: 40, family: 'display', color: COLORS.danger });
+    drawText(ctx, t('arrest.charge'), CENTER, a.y + 104, { size: 22, weight: 'bold', color: COLORS.white });
+    drawText(ctx, t('arrest.law'), CENTER, a.y + 138, { size: 16, color: COLORS.chrome });
+    drawText(ctx, t('arrest.jail'), CENTER, a.y + 186, { size: 24, weight: 'bold', color: COLORS.white });
+    drawText(ctx, t('results.gameOver'), CENTER, a.y + 230, { size: 30, family: 'display', color: COLORS.danger });
+    drawPrompt(ctx, t(inputKey('crash.continue', touch)), time, a.y + a.h - 30);
 }
 
 /** Readout colours for the engine's revs (see revState). */

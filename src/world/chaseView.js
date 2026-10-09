@@ -1,10 +1,5 @@
 import { CHASE, CRASH } from '../config.js';
-import { DEG, approach, clamp, lerp } from '../util/math.js';
-
-/** `angle` wrapped into -pi..pi. */
-function wrapAngle(angle) {
-    return angle - 2 * Math.PI * Math.round(angle / (2 * Math.PI));
-}
+import { DEG, approach, clamp, lerp, wrapAngle } from '../util/math.js';
 
 /** The outside camera's yaw easing towards the car's `target` yaw, the short way round; it starts on
  *  the car's yaw when there is no `current` one yet. */

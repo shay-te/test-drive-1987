@@ -58,16 +58,20 @@ export class TrafficManager {
         }
     }
 
-    update(dt, playerS) {
+    /** Drives the traffic around a player at `playerS` going `playerDir` along the road (SAME_WAY towards
+     *  the finish, ONCOMING back): the road ahead of them is kept full, the road behind let go. */
+    update(dt, playerS, playerDir = SAME_WAY) {
         for (const v of this.vehicles) {
             if (!v.scripted) this._drive(v, dt);
         }
         this.vehicles = this.vehicles.filter((v) => {
-            return v.scripted || (v.s > playerS - WINDOW_BEHIND && v.s < playerS + WINDOW_AHEAD + 200);
+            const ahead = (v.s - playerS) * playerDir;
+            return v.scripted || (ahead > -WINDOW_BEHIND && ahead < WINDOW_AHEAD + 200);
         });
         for (const dir of [SAME_WAY, ONCOMING]) {
             if (this._count(dir) < this._wanted(dir)) {
-                this._spawn(dir, playerS + SPAWN_AHEAD_MIN + this.rng() * (WINDOW_AHEAD - SPAWN_AHEAD_MIN));
+                const ahead = SPAWN_AHEAD_MIN + this.rng() * (WINDOW_AHEAD - SPAWN_AHEAD_MIN);
+                this._spawn(dir, playerS + ahead * playerDir);
             }
         }
     }

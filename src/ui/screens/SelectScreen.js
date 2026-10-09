@@ -7,13 +7,14 @@ import { linearGradient, speckle } from '../../util/canvas.js';
 import { drawCarArt } from '../CarArt.js';
 import { COLORS, font } from '../theme.js';
 import { whenPhotographed } from '../photos.js';
-import { drawPrompt, drawStamp, drawText } from '../widgets.js';
+import { drawPrompt, drawSpinner, drawStamp, drawText } from '../widgets.js';
 
 const BAND = 352;
 const ART_WIDTH = 820;
 const ROW = 29;
 const ROWS_TOP = 396;
 const STAMP_SIZE = 72;
+const SPINNER_RADIUS = 34;
 const SPEC_KEYS = [
     'layout',
     'engineType',
@@ -93,6 +94,7 @@ export class SelectScreen {
             },
         );
         ctx.drawImage(page, 0, 0, VIEW.width, VIEW.height);
+        if (!this.artwork.has(car.id)) drawSpinner(ctx, VIEW.width / 2, BAND / 2, SPINNER_RADIUS, this.time);
         drawPrompt(ctx, t(isLocked(car) ? 'select.locked' : inputKey('select.hint', this.input.touch)), this.time, BAND - 22);
     }
 }
@@ -105,10 +107,11 @@ function paintBrochure(ctx, car, image) {
     ctx.fillRect(0, 0, VIEW.width, BAND);
     const x = (VIEW.width - ART_WIDTH) / 2;
     const ground = BAND - 46;
+    // `image` is the photo, null if it could not be taken (the drawn car stands in), or still coming.
     if (image) {
         const height = ART_WIDTH * image.height / image.width;
         ctx.drawImage(image, x, ground - height, ART_WIDTH, height);
-    } else {
+    } else if (image === null) {
         drawCarArt(ctx, car, x, ground, ART_WIDTH);
     }
     if (isLocked(car)) drawStamp(ctx, t('general.locked'), VIEW.width / 2, ground - STAMP_SIZE, STAMP_SIZE);

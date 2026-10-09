@@ -1,42 +1,16 @@
 import * as THREE from 'three';
-import { createRng } from '../util/math.js';
-import { MOUNTAIN_NEAR, SEA_LEVEL, VALLEY_NEAR } from '../sim/Landscape.js';
+import { SEA_LEVEL } from '../sim/Landscape.js';
 import { landUv } from './routeFrame.js';
 
-const FOREST_TREES = 5500;
-/** Trees grow from this height above the sea. */
-export const TREE_LINE_LOW = 3;
 /** The sea reaches this far from the stage (m), past the land drawn around it. */
 const SEA_REACH = 60000;
 
 /** The ground near the road in the colours Landsat saw, and the sea along it. */
 export class Terrain {
-    constructor(landscape, stage, materials) {
+    constructor(landscape, materials) {
         this.landscape = landscape;
-        this.stage = stage;
-        this.noise = landscape.noise;
         this.mesh = this._buildMesh(materials.land);
         this.sea = this._buildSea(materials.water);
-    }
-
-    /** World positions for forest trees on the valley side and the lower mountain. */
-    treePlacements() {
-        const rng = createRng(this.stage.seed + 71);
-        const placements = [];
-        const l = this.landscape;
-        for (let attempt = 0; attempt < FOREST_TREES * 4 && placements.length < FOREST_TREES; attempt++) {
-            const ix = rng() * (l.nx - 1);
-            const iz = rng() * (l.nz - 1);
-            const k = Math.round(iz) * l.nx + Math.round(ix);
-            const side = l.sides[k];
-            const distance = Math.abs(side);
-            if (distance < (side < 0 ? VALLEY_NEAR + 15 : MOUNTAIN_NEAR + 10) || distance > 900) continue;
-            if (this.noise.noise2(ix * 0.08, iz * 0.08) < -0.1) continue;
-            const y = l.gridHeight(ix, iz);
-            if (y < SEA_LEVEL + TREE_LINE_LOW) continue;
-            placements.push({ x: l.x0 + ix * l.cell, z: l.z0 + iz * l.cell, y: y - 0.5, height: rng.range(9, 20) });
-        }
-        return placements;
     }
 
     _buildMesh(material) {
