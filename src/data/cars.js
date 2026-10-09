@@ -81,7 +81,7 @@ export const CARS = [
             grip: 0.84,
             driven: 'rear',
         },
-        targets: { topMph: 153, zeroToSixty: 5.0 },
+        targets: { topMph: 153, zeroToSixty: 5.0, zeroToHundred: 12.8, quarterMile: 13.4, trapMph: 103 },
         sound: {
             cylinders: 6,
             firing: firingArray(flat6Firing),
@@ -240,7 +240,7 @@ export const CARS = [
             grip: 0.85,
             driven: 'rear',
         },
-        targets: { topMph: 181, zeroToSixty: 5.3 },
+        targets: { topMph: 181, zeroToSixty: 5.3, zeroToHundred: 11.9, quarterMile: 13.6, trapMph: 105 },
         sound: {
             cylinders: 12,
             firing: evenFiring(12),
@@ -363,7 +363,7 @@ export const CARS = [
             grip: 0.88,
             driven: 'rear',
         },
-        targets: { topMph: 173, zeroToSixty: 5.2 },
+        targets: { topMph: 173, zeroToSixty: 5.2, zeroToHundred: 11.2, quarterMile: 13.3, trapMph: 107 },
         sound: {
             cylinders: 12,
             firing: evenFiring(12),
@@ -495,7 +495,7 @@ export const CARS = [
             grip: 0.86,
             driven: 'rear',
         },
-        targets: { topMph: 152, zeroToSixty: 5.4 },
+        targets: { topMph: 152, zeroToSixty: 5.4, zeroToHundred: 14.6, quarterMile: 14.0, trapMph: 99 },
         sound: {
             cylinders: 4,
             firing: [0, 540, 180, 360],
@@ -617,7 +617,7 @@ export const CARS = [
             grip: 0.9,
             driven: 'rear',
         },
-        targets: { topMph: 154, zeroToSixty: 5.8 },
+        targets: { topMph: 154, zeroToSixty: 5.8, zeroToHundred: 14.6, quarterMile: 14.3, trapMph: 96 },
         sound: {
             cylinders: 8,
             firing: firingArray(v8CrossPlaneFiring),

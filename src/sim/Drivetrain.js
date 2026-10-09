@@ -1,10 +1,10 @@
-import { PHYS } from '../config.js';
-import { clamp, lerp, smoothstep } from '../util/math.js';
+import { PHYS, ROAD_TEST } from '../config.js';
+import { bisect, clamp, lerp, smoothstep } from '../util/math.js';
 
 const RPM_TO_RADS = (2 * Math.PI) / 60;
 
 /** Engine + gearbox: torque curve from published figures, turbo lag, clutch slip and over-rev damage.
- *  Self-calibrates drag area (top speed) and a torque factor (0-60 time) against the brochure. */
+ *  Fits drag area (top speed), launch revs and a torque factor (0-60, 0-100, quarter mile) to the road test. */
 export class Drivetrain {
     constructor(car) {
         this.car = car;
@@ -14,6 +14,7 @@ export class Drivetrain {
         this.gearCount = this.dt.gears.length;
         this.torqueFactor = 1;
         this.dragArea = 0.7;
+        this.launchRpm = this.engine.redline / 2;
         this._buildTorqueCurve();
         this._calibrate();
     }
@@ -23,7 +24,7 @@ export class Drivetrain {
     _buildTorqueCurve() {
         const e = this.engine;
         const peak = e.torque;
-        const atPower = (e.hp * 5252) / e.hpRpm;
+        const atPower = (e.hp * PHYS.lbftRpmPerHp) / e.hpRpm;
         // Knots of the full-load curve in (rpm, lb-ft).
         this.knots = [
             [0, peak * 0.45],
@@ -32,7 +33,7 @@ export class Drivetrain {
             [e.torqueRpm, peak],
             [lerp(e.torqueRpm, e.hpRpm, 0.5), lerp(peak, atPower, 0.4)],
             [e.hpRpm, atPower],
-            [e.redline, atPower * 0.86],
+            [e.redline, ((atPower * e.hpRpm) / e.redline) * ROAD_TEST.redlinePower],
             [e.maxRpm, atPower * 0.42],
             [e.maxRpm + 1500, 0],
         ];
@@ -147,7 +148,7 @@ export class Drivetrain {
         const ratio = this.ratio(s.gear);
         const wheelRpm = this.rpmAtSpeed(v, s.gear);
         // Clutch slip keeps the engine alive at low road speed (launches, crawling in high gears).
-        const launchRpm = s.gear === 1 ? e.idleRpm + s.throttle * 3300 : e.idleRpm * 1.05 + s.throttle * 700;
+        const launchRpm = s.gear === 1 ? lerp(e.idleRpm, this.launchRpm, s.throttle) : e.idleRpm * 1.05 + s.throttle * 700;
         if (wheelRpm < launchRpm) {
             s.clutchSlip = clamp(1 - wheelRpm / launchRpm, 0, 1);
             s.rpm += (launchRpm - s.rpm) * (1 - Math.exp(-8 * dt));
@@ -204,19 +205,34 @@ export class Drivetrain {
     // ---------------------------------------------------------------- calibration
 
     _calibrate() {
-        const { topMph, zeroToSixty } = this.car.targets;
-        for (let pass = 0; pass < 2; pass++) {
+        const { topMph, zeroToSixty, zeroToHundred, quarterMile } = this.car.targets;
+        const [lo, hi] = ROAD_TEST.torqueFactor;
+        for (let pass = 0; pass < ROAD_TEST.passes; pass++) {
             this._solveDragArea(topMph * PHYS.mph);
-            let lo = 0.75;
-            let hi = 1.35;
-            for (let i = 0; i < 18; i++) {
-                this.torqueFactor = (lo + hi) / 2;
-                const t = this.simulateLaunch(60 * PHYS.mph).time;
-                if (t > zeroToSixty) lo = this.torqueFactor;
-                else hi = this.torqueFactor;
-            }
+            this.launchRpm = this._quickestLaunch();
+            this.torqueFactor = bisect(lo, hi, (factor) => {
+                this.torqueFactor = factor;
+                const run = this.roadTest(ROAD_TEST.duration);
+                const late =
+                    run.timeTo(60 * PHYS.mph) / zeroToSixty +
+                    run.timeTo(100 * PHYS.mph) / zeroToHundred +
+                    run.quarter.time / quarterMile;
+                return late > 3;
+            });
         }
         this._solveDragArea(topMph * PHYS.mph);
+    }
+
+    /** The launch revs that reach 60 mph soonest, as a road tester finds them. */
+    _quickestLaunch() {
+        const e = this.engine;
+        let best = { rpm: this.launchRpm, time: Infinity };
+        for (let rpm = e.idleRpm + ROAD_TEST.launchStep; rpm < e.redline; rpm += ROAD_TEST.launchStep) {
+            this.launchRpm = rpm;
+            const time = this.roadTest(ROAD_TEST.duration, 60 * PHYS.mph).timeTo(60 * PHYS.mph);
+            if (time < best.time) best = { rpm, time };
+        }
+        return best.rpm;
     }
 
     _solveDragArea(vTop) {
@@ -227,35 +243,42 @@ export class Drivetrain {
         this.dragArea = Math.max(0.3, (2 * (force - roll)) / (PHYS.airDensity * vTop * vTop));
     }
 
-    /** Full-throttle standing start shifting at the redline: time to `targetSpeed`, speed trace and
-     *  shift markers (used for calibration and the brochure graph). */
-    simulateLaunch(targetSpeed, maxTime = 60, dt = 1 / 120) {
+    /** A magazine road test: full-throttle standing start from the launch revs (boost built against the
+     *  clutch), shifting at the redline, timed after the rollout, for `duration` s or until `stopSpeed`. */
+    roadTest(duration, stopSpeed = Infinity, dt = 1 / 120) {
         const s = this.createState();
         s.gear = 1;
-        let v = 0;
-        let t = 0;
-        let accel = 0;
+        s.rpm = this.launchRpm;
+        s.boost = this.boostCeiling(this.launchRpm);
         const trace = [];
         const shifts = [];
-        let sampleClock = 0;
-        while (v < targetSpeed && t < maxTime) {
+        const quarter = { time: Infinity, speed: 0 };
+        let v = 0;
+        let x = 0;
+        let accel = 0;
+        let clock = 0;
+        while (clock < duration && v < stopSpeed && !s.blown) {
             if (s.gear < this.gearCount && s.shiftTimer <= 0 && s.rpm >= this.engine.redline - 60) {
-                shifts.push({ from: s.gear, to: s.gear + 1, t, v });
+                shifts.push({ from: s.gear, to: s.gear + 1, t: clock, v });
                 this.shift(s, 1);
             }
-            let force = this.update(s, v, 1, dt);
-            const limit = this.tractionLimit(accel);
-            if (force > limit) force = limit;
+            const force = Math.min(this.update(s, v, 1, dt), this.tractionLimit(accel));
             accel = (force - this.resistance(v)) / this.effectiveMass(s.gear);
             v = Math.max(0, v + accel * dt);
-            t += dt;
-            sampleClock += dt;
-            if (sampleClock >= 0.1) {
-                sampleClock = 0;
-                trace.push([t, v]);
+            x += v * dt;
+            if (x < ROAD_TEST.rollout) continue;
+            clock += dt;
+            trace.push([clock, v]);
+            if (quarter.time === Infinity && x >= ROAD_TEST.rollout + ROAD_TEST.quarterMile) {
+                Object.assign(quarter, { time: clock, speed: v });
             }
-            if (s.blown) break;
         }
-        return { time: t, trace, shifts };
+        const timeTo = (speed) => {
+            const i = trace.findIndex(([, reached]) => {
+                return reached >= speed;
+            });
+            return i < 0 ? Infinity : trace[i][0];
+        };
+        return { trace, shifts, quarter, timeTo };
     }
 }

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ROAD } from '../config.js';
 import { LAND_DETAIL, SCENERY_TEXTURES } from '../data/scenery.js';
+import { withoutTiling } from './noTiling.js';
 import { t } from '../i18n/i18n.js';
 import { font } from '../ui/theme.js';
 import { linearGradient, multilineText, speckle } from '../util/canvas.js';
@@ -82,30 +83,28 @@ export class WorldMaterials {
      *  (m), into `material`'s colour: crisp ground under colours that come only in 30 m pixels. Each
      *  sample averages mid-grey, so twice each keeps the colour's brightness. */
     _addDetail(material, detail, [broad, close]) {
-        material.onBeforeCompile = (shader) => {
+        withoutTiling(material, `land-detail-${broad}-${close}`, (fragment, shader) => {
             shader.uniforms.detailMap = { value: detail };
             shader.vertexShader = `varying vec2 vDetail;\n${shader.vertexShader}`.replace(
                 '#include <begin_vertex>',
                 '#include <begin_vertex>\n    vDetail = (modelMatrix * vec4(transformed, 1.0)).xz;',
             );
-            shader.fragmentShader = `uniform sampler2D detailMap;\nvarying vec2 vDetail;\n${shader.fragmentShader}`.replace(
+            const sample = (metres) => { return `textureNoTile(detailMap, vDetail / ${metres.toFixed(1)}, false).r`; };
+            return `uniform sampler2D detailMap;\nvarying vec2 vDetail;\n${fragment}`.replace(
                 '#include <map_fragment>',
-                `#include <map_fragment>\n    diffuseColor.rgb *= 4.0 * texture2D(detailMap, vDetail / ${broad.toFixed(1)}).r * texture2D(detailMap, vDetail / ${close.toFixed(1)}).r;`,
+                `#include <map_fragment>\n    diffuseColor.rgb *= 4.0 * ${sample(broad)} * ${sample(close)};`,
             );
-        };
-        material.customProgramCacheKey = () => {
-            return `land-detail-${broad}-${close}`;
-        };
+        });
     }
 
     /** Rock from a photograph (`photo` from SCENERY_TEXTURES). */
     _rockMaterial(photo) {
-        return new THREE.MeshStandardMaterial({
+        return withoutTiling(new THREE.MeshStandardMaterial({
             map: this._photo(photo.map, true),
             normalMap: this._photo(photo.normal, false),
             roughness: 0.96,
             vertexColors: true,
-        });
+        }), photo.map);
     }
 
     /** Material for a road sign face of `kind` (see drawSign). */
