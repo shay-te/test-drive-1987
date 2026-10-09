@@ -1,6 +1,6 @@
 import { VIEW } from '../../config.js';
 import { STAGES } from '../../data/stages.js';
-import { t } from '../../i18n/i18n.js';
+import { inputKey, t } from '../../i18n/i18n.js';
 import { formatClock } from '../../util/format.js';
 import { COLORS } from '../theme.js';
 import { drawBackdrop, drawPanel, drawPrompt, drawText } from '../widgets.js';
@@ -31,11 +31,10 @@ export class ResultsScreen {
         this.time += dt;
         const input = this.input;
         if (this.entering) {
-            for (const key of input.takeTyped()) {
-                if (key.length === 1 && key.trim() && this.name.length < NAME_LENGTH)
-                    this.name += key.toUpperCase();
-            }
+            for (const key of input.takeTyped()) this._type(key);
             if (input.pressed('back')) this.name = this.name.slice(0, -1);
+            // A touch screen has no keys: a tap asks for the name in the device's own text box.
+            if (input.pressed('confirm') && input.touch && !this.name) for (const key of input.askText(t('results.yourName'))) this._type(key);
             if (input.pressed('confirm') && this.name) {
                 this.rank = this.scores.add({
                     name: this.name,
@@ -49,6 +48,11 @@ export class ResultsScreen {
         if (input.pressed('confirm')) this.game.go('title');
     }
 
+    /** Adds a typed character to the name, if it is one and there is room. */
+    _type(key) {
+        if (key.length === 1 && key.trim() && this.name.length < NAME_LENGTH) this.name += key.toUpperCase();
+    }
+
     render(ctx) {
         drawBackdrop(ctx, COLORS.navy, '#02040f');
         drawText(ctx, this.summit ? t('results.summit') : t('results.gameOver'), VIEW.width / 2, 60, {
@@ -60,7 +64,7 @@ export class ResultsScreen {
             drawText(ctx, t('results.dealer'), VIEW.width / 2, 110, { size: 19, color: COLORS.chrome });
         this._sheet(ctx);
         if (this.entering) {
-            drawPrompt(ctx, t('results.enterName'), this.time, VIEW.height - 120);
+            drawPrompt(ctx, t(inputKey('results.enterName', this.input.touch)), this.time, VIEW.height - 120);
             drawText(ctx, `${this.name}_`, VIEW.width / 2, VIEW.height - 70, {
                 size: 34,
                 family: 'mono',
@@ -69,7 +73,7 @@ export class ResultsScreen {
             });
         } else {
             this._highScores(ctx);
-            drawPrompt(ctx, t('results.continue'), this.time, VIEW.height - 34);
+            drawPrompt(ctx, t(inputKey('results.continue', this.input.touch)), this.time, VIEW.height - 34);
         }
     }
 

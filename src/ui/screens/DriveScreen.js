@@ -6,7 +6,7 @@ import { tripInfo, tripLines } from '../../cockpit/tripDisplay.js';
 import { CRASH, GAME, MOTION, PHYS } from '../../config.js';
 import { gearLabel } from '../../data/cars.js';
 import { STAGES } from '../../data/stages.js';
-import { t } from '../../i18n/i18n.js';
+import { inputKey, t } from '../../i18n/i18n.js';
 import { POLICE_EVENT, PoliceManager } from '../../sim/Police.js';
 import { Landscape } from '../../sim/Landscape.js';
 import { OverTheEdge } from '../../sim/OverTheEdge.js';
@@ -354,7 +354,7 @@ export class DriveScreen {
     render(ctx) {
         if (this.state === 'loading') {
             this.world.clear();
-            drawLoading(ctx, this.time, this.loadError);
+            drawLoading(ctx, this.time, this.input.touch, this.loadError);
             this.loadingShown = true;
             return;
         }
@@ -431,6 +431,7 @@ export class DriveScreen {
                 STAGES.length,
                 this.stageTime,
                 INTRO_SECONDS,
+                this.input.touch,
             );
         }
         if (this.toast && this.toast.time < TOAST_SECONDS) {
@@ -439,12 +440,12 @@ export class DriveScreen {
         if (this.state === 'driving' && this.vehicle.engine.overRevTime > 0) {
             drawToast(ctx, t('drive.engineWarning'), 1, COLORS.danger);
         } else if (this.state === 'driving' && this.shiftHint) {
-            drawToast(ctx, t('drive.shiftUp'), 1, COLORS.accent);
+            drawToast(ctx, t(inputKey('drive.shiftUp', this.input.touch)), 1, COLORS.accent);
         }
         if (this.state === 'crashed')
-            drawCrash(ctx, this.cause, this._fallStats(), session.chances, this.over, this.time);
+            drawCrash(ctx, this.cause, this._fallStats(), session.chances, this.over, this.time, this.input.touch);
         if (this.state === 'ticket' && this.vehicle.vx <= 0.3)
-            drawTicket(ctx, this.car, this.clockedMph, this.time);
+            drawTicket(ctx, this.car, this.clockedMph, this.time, this.input.touch);
         const telemetry = this.vehicle.telemetry();
         const gear = gearLabel(this.car, telemetry.gear);
         if (this.outside) {

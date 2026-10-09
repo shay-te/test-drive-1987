@@ -61,6 +61,8 @@ export class InputManager {
         this.drag = null;
         this.padTriggers = [0, 0];
         this.typed = [];
+        // The same test the stylesheet uses to show the touch buttons.
+        this.touch = Boolean(globalThis.matchMedia?.('(pointer: coarse)').matches);
         target.addEventListener('keydown', (e) => {
             this._onKey(e, true);
         });
@@ -209,6 +211,12 @@ export class InputManager {
 
     brake() {
         return Math.max(this.isDown('brake') ? 1 : 0, this.padTriggers[0], this.padAxes[1] > 0.5 ? 1 : 0);
+    }
+
+    /** On a touch screen, which has no keys to type with: a line of text from the device's own text
+     *  box, '' if the player declines. */
+    askText(question) {
+        return globalThis.prompt?.(question) ?? '';
     }
 
     /** Printable characters typed since the last frame. */

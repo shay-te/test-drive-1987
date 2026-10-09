@@ -65,3 +65,28 @@ body {
         font-size: 28px;
     }
 }
+
+/* Too narrow for one row: steering and pedals along the bottom under the thumbs, the rest above. */
+@media (pointer: coarse) and (orientation: portrait) {
+    #touch-controls {
+        display: grid;
+        grid-template-columns: repeat(4, var(--size-touch));
+        grid-template-areas:
+            "view . down up"
+            "left right brake throttle";
+        justify-content: space-between;
+        row-gap: var(--space-touch);
+    }
+
+    #touch-controls .cluster {
+        display: contents;
+    }
+
+    #touch-controls [data-action="toggleView"] { grid-area: view; }
+    #touch-controls [data-action="shiftDown"] { grid-area: down; }
+    #touch-controls [data-action="shiftUp"] { grid-area: up; }
+    #touch-controls [data-action="steerLeft"] { grid-area: left; }
+    #touch-controls [data-action="steerRight"] { grid-area: right; }
+    #touch-controls [data-action="brake"] { grid-area: brake; }
+    #touch-controls [data-action="throttle"] { grid-area: throttle; }
+}

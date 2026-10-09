@@ -3,6 +3,8 @@ import { VIEW } from '../config.js';
 const ASPECT = VIEW.width / VIEW.height;
 /** Backing-store width cap: sharp on 4K without burning fill rate. */
 const MAX_BACKING_WIDTH = 2560;
+/** Phones of 3x density get 2x: sharp, without drawing nine pixels for every one shown. */
+const MAX_PIXEL_RATIO = 2;
 
 /** The 16:10 letterboxed stage: a WebGL canvas for the world under a 2D canvas for the rest. */
 export class Display {
@@ -37,7 +39,7 @@ export class Display {
         const cssHeight = cssWidth / ASPECT;
         const backingWidth = Math.min(
             MAX_BACKING_WIDTH,
-            Math.round(cssWidth * (window.devicePixelRatio || 1)),
+            Math.round(cssWidth * Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO)),
         );
         const scale = backingWidth / VIEW.width;
         for (const canvas of [this.glCanvas, this.uiCanvas]) {

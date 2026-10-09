@@ -114,8 +114,9 @@ export const CRASH = Object.freeze({
     maxSeconds: 8,
     /** From then on ENTER skips to the crash notice (s). */
     skipAfter: 1.5,
-    /** Where the crash is watched from: behind the impact, out over the drop, above the road (m). */
-    camera: { back: 16, out: 9, up: 4.5, aimUp: 0.6 },
+    /** Where the crash is watched from: behind the impact, out over the drop, above the road (m); a
+     *  car thrown further than `follow` is followed, looked down on from `lookDownDeg` above it. */
+    camera: { back: 16, out: 9, up: 4.5, aimUp: 0.6, follow: 30, lookDownDeg: 35 },
     /** Under water the camera follows the car down: this far beyond it, above it, below the surface. */
     diver: { distance: 7, up: 1.2, belowSurface: 0.8 },
 });

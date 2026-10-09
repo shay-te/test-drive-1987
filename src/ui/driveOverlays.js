@@ -1,5 +1,5 @@
 import { GAME, VIEW } from '../config.js';
-import { t } from '../i18n/i18n.js';
+import { inputKey, t } from '../i18n/i18n.js';
 import { clamp } from '../util/math.js';
 import { COLORS, font } from './theme.js';
 import { drawPanel, drawPrompt, drawText } from './widgets.js';
@@ -14,15 +14,16 @@ const GEAR_CORNER = 28;
 
 // Messages drawn over the windshield while driving: stage intro, crash, ticket, pause, notices.
 
-export function drawLoading(ctx, time, failed = false, retryKey = 'drive.assetRetry') {
+/** `touch`: the player has touch buttons, not keys (so are the prompts). */
+export function drawLoading(ctx, time, touch, failed = false, retryKey = 'drive.assetRetry') {
     ctx.fillStyle = COLORS.ink;
     ctx.fillRect(0, 0, VIEW.width, VIEW.height);
     drawText(ctx, t(failed ? 'drive.assetError' : 'drive.loading'), CENTER, VIEW.height / 2, { size: 26, color: COLORS.chrome });
-    drawPrompt(ctx, t(failed ? retryKey : 'general.loading'), time, VIEW.height / 2 + 50);
+    drawPrompt(ctx, t(failed ? inputKey(retryKey, touch) : 'general.loading'), time, VIEW.height / 2 + 50);
 }
 
 /** "STAGE 2 OF 5 — name" and how to pull away, fading out after `time` seconds. */
-export function drawStageIntro(ctx, stage, n, total, time, duration) {
+export function drawStageIntro(ctx, stage, n, total, time, duration, touch) {
     ctx.save();
     ctx.globalAlpha = clamp((duration - time) * 2, 0, 1);
     drawPanel(ctx, CENTER - BANNER.w / 2, BANNER.y, BANNER.w, BANNER.h);
@@ -31,7 +32,7 @@ export function drawStageIntro(ctx, stage, n, total, time, duration) {
         family: 'display',
         color: COLORS.accent,
     });
-    drawText(ctx, t('drive.startHint'), CENTER, BANNER.y + 88, { size: 18, color: COLORS.chrome });
+    drawText(ctx, t(inputKey('drive.startHint', touch)), CENTER, BANNER.y + 88, { size: 18, color: COLORS.chrome });
     ctx.restore();
 }
 
@@ -44,18 +45,18 @@ export function drawToast(ctx, text, alpha, color = COLORS.white) {
     ctx.restore();
 }
 
-export function drawCrash(ctx, causeKey, detail, chances, over, time) {
+export function drawCrash(ctx, causeKey, detail, chances, over, time, touch) {
     drawPanel(ctx, CENTER - 330, 200, 660, detail ? 236 : 200);
     drawText(ctx, t(`crash.${causeKey}`), CENTER, 255, { size: 34, family: 'display', color: COLORS.danger });
     if (detail) drawText(ctx, detail, CENTER, 300, { size: 20, color: COLORS.white });
     const status = over ? t('results.gameOver') : t('crash.chancesLeft', { n: chances });
     const offset = detail ? 36 : 0;
     drawText(ctx, status, CENTER, 310 + offset, { size: 22, color: COLORS.chrome });
-    drawPrompt(ctx, t('crash.continue'), time, 365 + offset);
+    drawPrompt(ctx, t(inputKey('crash.continue', touch)), time, 365 + offset);
 }
 
 /** The speeding citation, filled in like the patrolman's pad. */
-export function drawTicket(ctx, car, mph, time) {
+export function drawTicket(ctx, car, mph, time, touch) {
     const k = TICKET;
     ctx.save();
     ctx.fillStyle = COLORS.shadow;
@@ -87,7 +88,7 @@ export function drawTicket(ctx, car, mph, time) {
         ctx.fillStyle = COLORS.paperLine;
         ctx.fillRect(k.x + 28, y + 16, k.w - 56, 1);
     });
-    drawPrompt(ctx, t('crash.continue'), time, k.y + k.h - 40);
+    drawPrompt(ctx, t(inputKey('crash.continue', touch)), time, k.y + k.h - 40);
 }
 
 /** Readout colours for the engine's revs (see revState). */

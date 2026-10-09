@@ -32,7 +32,6 @@ export const EN = {
         tagline: 'The 1987 classic, rebuilt for the web',
         start: 'Press ENTER to start',
         choice: '◀   {{car}}   ▶',
-        tap: 'Tap to start',
         controls:
             'Arrows: steer / gas / brake    A / Z: shift up / down    Q/E/R/F: look    V: outside view    I: readout    M: mute    P: pause',
         badge: 'TD',
@@ -127,9 +126,27 @@ export const EN = {
         chancesBonus: 'Chances bonus',
         finalScore: 'Final score',
         enterName: 'New high score! Type your name and press ENTER',
+        yourName: 'Your name for the high scores',
         highScores: 'HIGH SCORES',
         empty: 'No scores yet',
         continue: 'Press ENTER',
+    },
+    // What the prompts above say on a touch screen, at the same keys under `touch`.
+    touch: {
+        title: {
+            start: 'Tap to start',
+            controls: 'Touch: ◀ ▶ steer    ▲ gas    ▼ brake    − + gears    ◫ outside view',
+        },
+        preview: { assetRetry: 'Tap to retry' },
+        select: { hint: '◀ ▶  choose a car        Tap  take it for a test drive' },
+        drive: {
+            assetRetry: 'Tap to retry',
+            startHint: 'Hold ▲ to pull away in first gear, then tap + to shift up',
+            shiftUp: 'Tap + to shift up',
+        },
+        crash: { continue: 'Tap to continue' },
+        station: { continue: 'Tap for the next stage' },
+        results: { enterName: 'New high score! Tap to type your name', continue: 'Tap' },
     },
     signs: {
         speedLimit: 'SPEED\nLIMIT',
