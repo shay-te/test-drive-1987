@@ -26,12 +26,14 @@ import {
     drawToast,
 } from '../driveOverlays.js';
 import { COLORS } from '../theme.js';
+import { ImpactGate } from '../../audio/impactGate.js';
 
 const STEP = 1 / GAME.physicsHz;
 const INTRO_SECONDS = 4;
 const TOAST_SECONDS = 3;
-/** A hit at this speed (m/s) or more plays the crash sound at full volume. */
-const LOUD_HIT = 30;
+/** How loud a blown engine goes, and the car a crash hits against the player's. */
+const ENGINE_BLOW_VOLUME = 0.5;
+const OTHER_CAR_VOLUME = 0.5;
 /** After a crash the car restarts this far back, in the right-hand lane. */
 const RESPAWN_BACK = 25;
 /** Fuel gauge drop over a full stage (cosmetic). */
@@ -236,12 +238,18 @@ export class DriveScreen {
         this.cause = cause;
         this.over = this.session.recordCrash(cause);
         this.head.jolt(impact);
-        this.audio.play('crash', { volume: cause === CRASH_CAUSE.engine ? 0.5 : 1 });
         if (cause === CRASH_CAUSE.engine) {
+            this.audio.play('impact', { volume: ENGINE_BLOW_VOLUME });
             this.state = 'crashed';
             return;
         }
-        this._crack(impact);
+        this.impacts = new ImpactGate();
+        this.otherImpacts = new ImpactGate();
+        // Driving off the edge is silent until the car lands; breaking through a rail on the way is not.
+        if (cause !== CRASH_CAUSE.edge || this.track.railAt(this.vehicle.s)) {
+            this.audio.play('crash', { volume: this.impacts.hear(0, impact) });
+            this._crack(impact);
+        }
         this.impactAt = { s: this.vehicle.s, u: this.vehicle.u };
         const { vehicle, track, landscape } = this;
         this.wreck = cause === CRASH_CAUSE.edge
@@ -259,6 +267,7 @@ export class DriveScreen {
     /** Another crack across the windshield for a hard enough hit, up to shattered. */
     _crack(impact) {
         if (impact <= CRACK_IMPACT || this.cracks.length >= MAX_CRACKS) return;
+        this.audio.play('crack', { volume: Math.min(1, impact / CRASH.sound.loud) });
         this.cracks = [...this.cracks, {
             x: CRACK_AREA.x + Math.random() * CRACK_AREA.w,
             y: CRACK_AREA.y + Math.random() * CRACK_AREA.h,
@@ -269,12 +278,14 @@ export class DriveScreen {
     /** The wreck plays until the cars stop; every hard hit is heard, felt and may break more glass. */
     _wrecking(dt) {
         const hits = this.wreck.update(dt);
-        if (hits.player) {
-            this.audio.play('crash', { volume: Math.min(1, hits.player / LOUD_HIT) });
+        const heard = this.impacts.hear(this.wreck.time, hits.player);
+        if (heard) {
+            this.audio.play('impact', { volume: heard });
             this.head.jolt(hits.player);
             this._crack(hits.player);
         }
-        if (hits.other) this.audio.play('crash', { volume: Math.min(1, hits.other / LOUD_HIT) / 2 });
+        const other = this.otherImpacts.hear(this.wreck.time, hits.other);
+        if (other) this.audio.play('impact', { volume: other * OTHER_CAR_VOLUME });
         this._sea(hits, dt);
         if (this.wrecked) this.wrecked.pose = this.wreck.otherPose;
         const skip = this.wreck.time > CRASH.skipAfter && this.input.pressed('confirm');
@@ -285,7 +296,7 @@ export class DriveScreen {
     _sea(hits, dt) {
         const at = this.wreck.body.position;
         if (hits.splash) {
-            this.audio.play('splash', { volume: Math.min(1, hits.splash / LOUD_HIT) });
+            this.audio.play('splash', { volume: Math.min(1, hits.splash / CRASH.sound.loud) });
             this.water.splash(at, hits.splash);
         }
         if (hits.air) this.water.bubble(at, hits.air);

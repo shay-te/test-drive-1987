@@ -32,21 +32,6 @@ const SOUNDS = {
             );
         },
     },
-    crash: {
-        seconds: 2.4,
-        render: (x) => {
-            const thump = Math.sin(TAU * (55 + 30 * x.decay(0.1)) * x.t) * x.decay(0.25);
-            const debris = x.noise() * (0.55 * x.decay(0.35) + 0.15 * x.decay(1.2));
-            const metal =
-                (Math.sin(TAU * 412 * x.t) +
-                    Math.sin(TAU * 731 * x.t) * 0.7 +
-                    Math.sin(TAU * 1193 * x.t) * 0.5) *
-                0.18 *
-                x.decay(0.6);
-            const glass = x.t > 0.05 && x.random() < 0.02 * x.decay(0.5) ? x.noise() * 0.9 : 0;
-            return thump + debris + metal + glass;
-        },
-    },
     splash: {
         seconds: 1.8,
         render: (x) => {

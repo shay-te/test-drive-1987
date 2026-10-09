@@ -94,16 +94,14 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
 
 ### Next (queued, in order)
 
-1. **Crashes that sound real:** an impact sound only when the car actually hits something, never
-   repeating while it slides or settles.
-2. **The real forest's species and density:** Douglas-fir, western hemlock and redcedar, with red
+1. **The real forest's species and density:** Douglas-fir, western hemlock and redcedar, with red
    alder and bigleaf maple by the road and creeks and Sitka spruce at Furry Creek, each drawn as it
    grows and mixed as surveyed along the route.
-3. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, concrete barriers where
+2. **Sea-to-Sky detail:** undergrowth (ferns, salal) on the forest floor, concrete barriers where
    the real road has them, the railway between road and shore. (The provincial road atlas
    and orthophotos are "access only", so they are not used.)
-4. **Every stage inspected section by section** for anything that does not look real.
-5. Frame rates on real phones (the cabin pass, the mirrors, shadows).
+3. **Every stage inspected section by section** for anything that does not look real.
+4. Frame rates on real phones (the cabin pass, the mirrors, shadows).
 
 ## Play it
 
@@ -160,6 +158,10 @@ related engines (see [assets/audio/engines/README.md](assets/audio/engines/READM
 highest recording, which would otherwise only be pitched up, the engine synthesiser (firing order,
 cylinder banks, exhaust resonances, turbo) takes over. A crash stalls the engine.
 
+Crashes are recorded too (CC0, cut by `scripts/import-sounds.mjs`): a real crash for the first
+impact, metal knocks as a wreck tumbles (only for a fresh, hard knock, never every time it touches
+the ground), and a windshield cracking each time the glass does.
+
 ## Development
 
 ```sh
@@ -186,5 +188,7 @@ Lichen Rock and Aerial Rocks 04 by Rico Cilliers, Forest Ground 04 by Rob Tuytel
 ODbL. Engine recordings (CC BY 3.0 unless marked): Seppe Vanrolleghem (Porsche 930 Turbo),
 NelloRacing (RUF CTR), Jason #jcr_cars (Ferrari Testarossa), automobilemusicengines (Lamborghini
 Countach LP500S), cheesepuff on Freesound (CC0), Thomas Fletcher (Lotus Esprit S4s), LUNI Classic
-Cars (Chevrolet Corvette C4); titles and links in `assets/audio/engines/README.md`. The driver's hands: the generic hand of the W3C Immersive Web WebXR Input Profiles
+Cars (Chevrolet Corvette C4); titles and links in `assets/audio/engines/README.md`. Crash sounds
+(Freesound, CC0): magnuswaker, softwalls, squareal, LPA134, craigsmith and Sanderboah (titles in
+`scripts/import-sounds.mjs`). The driver's hands: the generic hand of the W3C Immersive Web WebXR Input Profiles
 (`@webxr-input-profiles/assets`, MIT licence).

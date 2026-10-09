@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { CRASH } from '../src/config.js';
 import { AudioManager } from '../src/audio/AudioManager.js';
 import { ResourceManager } from '../src/core/ResourceManager.js';
 import { carById } from '../src/data/cars.js';
@@ -181,6 +182,8 @@ test('over the edge into Howe Sound: a splash, the camera follows the car under,
     }
     assert.equal(screen.cause, 'edge');
     assert.ok(played.includes('splash') && played.includes('bubbles'), played.join());
+    const knocks = played.filter((name) => { return name === 'crash' || name === 'impact'; }).length;
+    assert.ok(knocks <= screen.wreck.time / CRASH.sound.cooldown + 2, `${knocks} crash sounds in ${screen.wreck.time.toFixed(1)} s`);
     assert.ok(underwater, 'watched from under the water');
     assert.ok(screen.view.water.bubbles.length > 0 || screen.wreck.body.flooded === 1, 'air bubbling out');
     assert.match(screen._fallStats(), /Howe Sound/);

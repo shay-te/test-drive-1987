@@ -171,6 +171,9 @@ export const CRASH = Object.freeze({
     camera: { back: 16, out: 9, up: 4.5, aimUp: 0.6, follow: 30, lookDownDeg: 35 },
     /** Under water the camera follows the car down: this far beyond it, above it, below the surface. */
     diver: { distance: 7, up: 1.2, belowSurface: 0.8 },
+    /** Which hits of a wreck are heard: none softer than `audible` m/s, none within `cooldown` s of
+     *  the last one heard unless `harder` times as hard; full volume from `loud` m/s. */
+    sound: { audible: 4, cooldown: 0.35, harder: 1.6, loud: 30 },
 });
 
 /** The sea a car goes into: how it floats, floods and sinks, and what the water does around it. */

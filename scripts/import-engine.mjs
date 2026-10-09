@@ -2,15 +2,14 @@
  *  recordings of the cars; the method and the download commands are in that folder's README.md.
  *  Usage: node scripts/import-engine.mjs [car ...] [--track]   (--track dumps tracks to tmp/engine-work/) */
 import { Buffer } from 'node:buffer';
-import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { CARS } from '../src/data/cars.js';
+import { decodeMono, sourceFile, wav } from './audio.mjs';
 
 const CACHE = 'tmp/engine-cache';
 const WORK = 'tmp/engine-work';
 const OUTPUT = 'assets/audio/engines';
 const MANIFEST = `${OUTPUT}/manifest.json`;
-const FFMPEG = process.env.FFMPEG ?? 'ffmpeg';
 const SAMPLE_RATE = 22050;
 const SECONDS_PER_MINUTE = 60;
 const CENTS_PER_OCTAVE = 1200;
@@ -86,8 +85,6 @@ const ON_LEVEL_DB = -16;
 const LEVEL_DB_PER_OCTAVE = 3;
 const OFF_LEVEL_DB = -6;
 const PEAK_CEILING_DB = -1;
-const PCM_MAX = 32767;
-const WAV_HEADER_BYTES = 44;
 
 /** CC BY YouTube (`yt-<id>`) and CC0 Freesound (`fs-<id>`) recordings: `order` = engine order of the
  *  tracked comb (README), `standIn` = a related engine, `exclude` = [from, to] s that are not the engine. */
@@ -165,17 +162,7 @@ const biquad = (pcm, type, hz) => {
 /** Decodes a downloaded source to mono float PCM at SAMPLE_RATE, without DC and handling rumble and
  *  without the hiss above the brightest cabin low-pass (never heard in the game). */
 const decode = (source) => {
-    const folder = `${CACHE}/${source}`;
-    const file = readdirSync(folder).find((name) => {
-        return name.startsWith('source.');
-    });
-    if (!file) throw new Error(`${folder} has no source file: download it first (assets/audio/engines/README.md)`);
-    const args = ['-v', 'error', '-i', `${folder}/${file}`, '-ac', '1', '-ar', String(SAMPLE_RATE), '-f', 'f32le', '-'];
-    const result = spawnSync(FFMPEG, args, { maxBuffer: 1 << 30 });
-    if (result.status !== 0) throw new Error(`ffmpeg failed on ${folder}/${file}: ${result.stderr}`);
-    const bytes = result.stdout;
-    const pcm = new Float32Array(bytes.length / Float32Array.BYTES_PER_ELEMENT);
-    pcm.set(new Float32Array(bytes.buffer, bytes.byteOffset, pcm.length));
+    const pcm = decodeMono(sourceFile(`${CACHE}/${source}`, 'assets/audio/engines/README.md'), SAMPLE_RATE);
     const band = biquad(biquad(pcm, 'highpass', HIGH_PASS_HZ), 'lowpass', LOW_PASS_HZ);
     return biquad(band, 'lowpass', LOW_PASS_HZ);
 };
@@ -576,27 +563,6 @@ const targetLevel = (car, stretch) => {
     return ON_LEVEL_DB + rise + (stretch.load === 'off' ? OFF_LEVEL_DB : 0);
 };
 
-/** 16-bit PCM mono WAV bytes. */
-const wav = (pcm) => {
-    const bytes = Buffer.alloc(WAV_HEADER_BYTES + pcm.length * 2);
-    bytes.write('RIFF', 0);
-    bytes.writeUInt32LE(bytes.length - 8, 4);
-    bytes.write('WAVEfmt ', 8);
-    bytes.writeUInt32LE(16, 16);
-    bytes.writeUInt16LE(1, 20);
-    bytes.writeUInt16LE(1, 22);
-    bytes.writeUInt32LE(SAMPLE_RATE, 24);
-    bytes.writeUInt32LE(SAMPLE_RATE * 2, 28);
-    bytes.writeUInt16LE(2, 32);
-    bytes.writeUInt16LE(16, 34);
-    bytes.write('data', 36);
-    bytes.writeUInt32LE(pcm.length * 2, 40);
-    pcm.forEach((v, i) => {
-        bytes.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * PCM_MAX), WAV_HEADER_BYTES + i * 2);
-    });
-    return bytes;
-};
-
 /** The rpm track of a source, written for inspection. */
 const dumpTrack = (car, source, frames, path, pcm) => {
     const rows = frames.map((frame, t) => {
@@ -719,7 +685,7 @@ const writeLoops = (car, chosen) => {
             return v * gain;
         });
         const file = `${folder}/${s.load}_${rpm}.wav`;
-        writeFileSync(file, wav(levelled));
+        writeFileSync(file, wav(levelled, SAMPLE_RATE));
         console.info(
             `[engine]   ${s.load.padEnd(3)} ${String(rpm).padStart(4)} rpm  ${(loop.length / SAMPLE_RATE).toFixed(2)} s  ` +
                 `${s.source} @ ${s.from.toFixed(1)}-${s.to.toFixed(1)} s  slope ${s.slope.toFixed(2)} oct/s  ` +
