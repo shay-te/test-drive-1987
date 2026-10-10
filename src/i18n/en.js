@@ -142,6 +142,7 @@ export const EN = {
         empty: 'No scores yet',
         continue: 'Press ENTER',
     },
+    orientation: { rotate: 'Turn your phone sideways to play' },
     // What the prompts above say on a touch screen, at the same keys under `touch`.
     touch: {
         title: {

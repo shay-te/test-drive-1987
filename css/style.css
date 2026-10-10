@@ -70,16 +70,18 @@ body {
         font-size: 28px;
     }
 
-    /* The left thumb's floating stick: it shows only while a thumb is down, where it landed. */
+    /* The left thumb's floating stick: faint at rest, then under the thumb wherever it lands. */
     #touch-controls .stick {
         position: absolute;
+        left: calc(var(--stick-radius) + var(--space-touch) * 2);
+        top: calc(100% - var(--stick-radius) - var(--space-touch) * 2);
         width: calc(var(--stick-radius) * 2);
         height: calc(var(--stick-radius) * 2);
         margin: calc(var(--stick-radius) * -1) 0 0 calc(var(--stick-radius) * -1);
         border-radius: 50%;
         border: 2px solid var(--c-touch-border);
         background: var(--c-touch);
-        opacity: 0;
+        opacity: 0.5;
     }
 
     #touch-controls .stick.active {
@@ -95,5 +97,26 @@ body {
         border-radius: 50%;
         background: var(--c-touch-border);
         transform: translate(var(--knob-x, 0), var(--knob-y, 0));
+    }
+}
+
+#rotate-notice {
+    display: none;
+}
+
+/* A portrait phone cannot show the 16:10 stage: ask for the turn until it is sideways. */
+@media (pointer: coarse) and (orientation: portrait) {
+    #rotate-notice {
+        display: flex;
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-touch);
+        background: #05070d;
+        color: var(--c-touch-ink);
+        font-size: 22px;
+        text-align: center;
     }
 }
