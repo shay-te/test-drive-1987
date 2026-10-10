@@ -10,6 +10,11 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
 > results and high scores work end to end. All five cars are full 3D models, driven from inside
 > their own cabins.
 
+## Play it
+
+**https://shay-te.github.io/test-drive-1987/**: published from `master` by
+`.github/workflows/pages.yml` (into the `gh-pages` branch) after the tests pass.
+
 ### Done
 
 - `src/sim/`: drivetrain (fitted to each car's road test: 0-60, 0-100, quarter mile and top
@@ -146,11 +151,6 @@ drove: the Sea-to-Sky Highway, northbound from Horseshoe Bay along Howe Sound to
 1. **A 1980s RCMP patrol car** in place of the 2001 Crown Victoria model.
 2. **Every stage inspected section by section** for anything that does not look real.
 3. Frame rates on real phones (the cabin pass, the mirrors, shadows).
-
-## Play it
-
-**https://shay-te.github.io/test-drive-1987/**: published from `master` by
-`.github/workflows/pages.yml` (into the `gh-pages` branch) after the tests pass.
 
 ## Run it
 
