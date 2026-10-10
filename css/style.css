@@ -70,16 +70,18 @@ body {
         font-size: 28px;
     }
 
-    /* The left thumb's floating stick: it shows only while a thumb is down, where it landed. */
+    /* The left thumb's floating stick: faint at rest, then under the thumb wherever it lands. */
     #touch-controls .stick {
         position: absolute;
+        left: calc(var(--stick-radius) + var(--space-touch) * 2);
+        top: calc(100% - var(--stick-radius) - var(--space-touch) * 2);
         width: calc(var(--stick-radius) * 2);
         height: calc(var(--stick-radius) * 2);
         margin: calc(var(--stick-radius) * -1) 0 0 calc(var(--stick-radius) * -1);
         border-radius: 50%;
         border: 2px solid var(--c-touch-border);
         background: var(--c-touch);
-        opacity: 0;
+        opacity: 0.5;
     }
 
     #touch-controls .stick.active {

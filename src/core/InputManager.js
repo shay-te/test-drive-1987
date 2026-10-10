@@ -150,7 +150,12 @@ export class InputManager {
 
     _endStick() {
         this.stick.end();
-        this.stickKnob?.classList.remove('active');
+        if (!this.stickKnob) return;
+        // Back to its resting place in the stylesheet, shown faintly for the thumb to find.
+        this.stickKnob.classList.remove('active');
+        for (const property of ['left', 'top']) this.stickKnob.style.removeProperty(property);
+        this.stickKnob.style.setProperty('--knob-x', '0px');
+        this.stickKnob.style.setProperty('--knob-y', '0px');
     }
 
     _drawStick(x, y) {
