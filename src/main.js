@@ -3,6 +3,7 @@ import { Display } from './core/Display.js';
 import { Game } from './core/Game.js';
 import { HighScores } from './core/HighScores.js';
 import { InputManager } from './core/InputManager.js';
+import { OrientationGuard } from './core/OrientationGuard.js';
 import { ResourceManager } from './core/ResourceManager.js';
 import { StageLoader, stageLayout } from './core/StageLoader.js';
 import { DriveScreen } from './ui/screens/DriveScreen.js';
@@ -13,6 +14,7 @@ import { TitleScreen } from './ui/screens/TitleScreen.js';
 import { WorldView } from './world/WorldView.js';
 
 const display = new Display(document.getElementById('stage'));
+new OrientationGuard(document.body);
 const resources = new ResourceManager();
 const world = new WorldView(display, resources);
 const game = new Game(

@@ -97,3 +97,24 @@ body {
         transform: translate(var(--knob-x, 0), var(--knob-y, 0));
     }
 }
+
+#rotate-notice {
+    display: none;
+}
+
+/* A portrait phone cannot show the 16:10 stage: ask for the turn until it is sideways. */
+@media (pointer: coarse) and (orientation: portrait) {
+    #rotate-notice {
+        display: flex;
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-touch);
+        background: #05070d;
+        color: var(--c-touch-ink);
+        font-size: 22px;
+        text-align: center;
+    }
+}
