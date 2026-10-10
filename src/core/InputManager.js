@@ -1,6 +1,7 @@
 import { CABIN_VIEWS } from '../data/cabinViews.js';
-import { LOOK } from '../config.js';
+import { LOOK, STICK } from '../config.js';
 import { clamp } from '../util/math.js';
+import { TouchStick } from './TouchStick.js';
 
 /** Keys of the 1987 PC version (arrows + A/Z) plus a few modern conveniences. */
 const KEY_BINDINGS = {
@@ -59,7 +60,11 @@ export class InputManager {
         this.lookEnabled = false;
         this.pointerLook = { x: 0, y: 0 };
         this.drag = null;
+        this.stickTravel = 0;
+        this.stickSide = 0;
         this.padTriggers = [0, 0];
+        this.stick = new TouchStick();
+        this.stickKnob = touchRoot?.querySelector('.stick') ?? null;
         this.typed = [];
         // The same test the stylesheet uses to show the touch buttons.
         this.touch = Boolean(globalThis.matchMedia?.('(pointer: coarse)').matches);
@@ -73,6 +78,7 @@ export class InputManager {
             this.keys.clear();
             this.touchActions.clear();
             this.drag = null;
+            this._endStick();
             this.pointerLook = { x: 0, y: 0 };
         });
         this._bindTouch(touchRoot);
@@ -88,12 +94,14 @@ export class InputManager {
     _bindLook(target) {
         target.addEventListener('pointerdown', (event) => {
             if (event.target.closest?.('[data-action]')) return;
+            if (this._startStick(event)) return;
             if (this.lookEnabled && event.target.closest?.('canvas') && event.button === 0) {
                 this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY, distance: 0 };
                 event.target.setPointerCapture?.(event.pointerId);
             } else this.pressedTouch.add('confirm');
         });
         target.addEventListener('pointermove', (event) => {
+            this._moveStick(event);
             if (!this.drag || this.drag.id !== event.pointerId) return;
             const dx = event.clientX - this.drag.x;
             const dy = event.clientY - this.drag.y;
@@ -104,11 +112,56 @@ export class InputManager {
             this.pointerLook.y += dy;
         });
         target.addEventListener('pointerup', (event) => {
+            if (this.stick.id === event.pointerId) {
+                if (this.stickTravel < LOOK.dragThreshold) this.pressedTouch.add('confirm');
+                this._endStick();
+            }
             if (!this.drag || this.drag.id !== event.pointerId) return;
             if (this.drag.distance < LOOK.dragThreshold) this.pressedTouch.add('confirm');
             this.drag = null;
         });
-        target.addEventListener('pointercancel', () => { this.drag = null; });
+        target.addEventListener('pointercancel', () => {
+            this.drag = null;
+            this._endStick();
+        });
+    }
+
+    /** A thumb landing on the left of the screen starts the floating stick there. */
+    _startStick(event) {
+        if (event.pointerType !== 'touch' || this.stick.active) return false;
+        if (event.clientX > globalThis.innerWidth * STICK.half) return false;
+        this.stick.begin(event.pointerId, event.clientX, event.clientY);
+        this.stickTravel = 0;
+        this.stickSide = 0;
+        this._drawStick(event.clientX, event.clientY);
+        return true;
+    }
+
+    _moveStick(event) {
+        if (this.stick.id !== event.pointerId) return;
+        this.stick.move(event.clientX, event.clientY);
+        this.stickTravel = Math.max(this.stickTravel, Math.hypot(event.clientX - this.stick.origin.x, event.clientY - this.stick.origin.y));
+        // Flicking the stick across steps a menu, as the arrow keys do.
+        const side = Math.abs(this.stick.x) >= STICK.stepAt ? Math.sign(this.stick.x) : 0;
+        if (side !== this.stickSide && side !== 0) this.pressedTouch.add(side < 0 ? 'steerLeft' : 'steerRight');
+        this.stickSide = side;
+        this._drawStick(event.clientX, event.clientY);
+    }
+
+    _endStick() {
+        this.stick.end();
+        this.stickKnob?.classList.remove('active');
+    }
+
+    _drawStick(x, y) {
+        if (!this.stickKnob) return;
+        const knob = this.stick.knob(x, y);
+        const style = this.stickKnob.style;
+        style.left = `${this.stick.origin.x}px`;
+        style.top = `${this.stick.origin.y}px`;
+        style.setProperty('--knob-x', `${knob.x}px`);
+        style.setProperty('--knob-y', `${knob.y}px`);
+        this.stickKnob.classList.add('active');
     }
 
     look() {
@@ -191,7 +244,7 @@ export class InputManager {
         );
     }
 
-    /** Menu step pressed this frame: -1 left, 1 right, 0 none (keys, pad, or the touch steering buttons). */
+    /** Menu step pressed this frame: -1 left, 1 right, 0 none (keys, pad, or the touch stick flicked across). */
     menuStep() {
         const left = this.pressed('left') || this.pressed('steerLeft');
         const right = this.pressed('right') || this.pressed('steerRight');
@@ -202,15 +255,15 @@ export class InputManager {
     steering() {
         const keys = (this.isDown('steerRight') ? 1 : 0) - (this.isDown('steerLeft') ? 1 : 0);
         const stick = Math.abs(this.padAxes[0]) > PAD_DEADZONE ? this.padAxes[0] : 0;
-        return clamp(keys + stick, -1, 1);
+        return clamp(keys + stick + this.stick.x, -1, 1);
     }
 
     throttle() {
-        return Math.max(this.isDown('throttle') ? 1 : 0, this.padTriggers[1], this.padAxes[1] < -0.5 ? 1 : 0);
+        return Math.max(this.isDown('throttle') ? 1 : 0, this.padTriggers[1], this.padAxes[1] < -0.5 ? 1 : 0, Math.max(0, this.stick.y));
     }
 
     brake() {
-        return Math.max(this.isDown('brake') ? 1 : 0, this.padTriggers[0], this.padAxes[1] > 0.5 ? 1 : 0);
+        return Math.max(this.isDown('brake') ? 1 : 0, this.padTriggers[0], this.padAxes[1] > 0.5 ? 1 : 0, Math.max(0, -this.stick.y));
     }
 
     /** On a touch screen, which has no keys to type with: a line of text from the device's own text

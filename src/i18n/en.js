@@ -146,13 +146,13 @@ export const EN = {
     touch: {
         title: {
             start: 'Tap to start',
-            controls: 'Touch: ◀ ▶ steer    ▲ gas    ▼ brake    − + gears (− at a stop: reverse)    ◫ outside view',
+            controls: 'Touch: left thumb — stick: steer, up gas, down brake    right thumb — + − gears (− at a stop: reverse)    ◫ outside view',
         },
         preview: { assetRetry: 'Tap to retry' },
-        select: { hint: '◀ ▶  choose a car        Tap  take it for a test drive' },
+        select: { hint: 'Flick ◀ ▶  choose a car        Tap  take it for a test drive' },
         drive: {
             assetRetry: 'Tap to retry',
-            startHint: 'Hold ▲ to pull away in first gear, then tap + to shift up',
+            startHint: 'Push the stick up to pull away in first gear, then tap + to shift up',
             shiftUp: 'Tap + to shift up',
         },
         crash: { continue: 'Tap to continue' },

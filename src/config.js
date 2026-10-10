@@ -193,6 +193,15 @@ export const MOTION = Object.freeze({
     impactKick: 0.05,
 });
 
+/** The floating thumb stick on a touch screen: px of thumb travel for full deflection, the dead share
+ *  of it, the deflection that steps a menu, and the left share of the width where a thumb makes one. */
+export const STICK = Object.freeze({
+    radius: 64,
+    deadzone: 0.12,
+    stepAt: 0.5,
+    half: 0.5,
+});
+
 /** Seated look-around limits, angular rate, pointer response, and tap threshold. */
 export const LOOK = Object.freeze({
     yawLimit: 2.8,
