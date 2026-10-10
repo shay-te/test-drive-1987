@@ -4,6 +4,8 @@
     --c-touch-border: rgba(255, 255, 255, 0.35);
     --c-touch-ink: #ffffff;
     --size-touch: 72px;
+    --stick-radius: 64px;
+    --size-knob: 44px;
     --space-touch: 14px;
 }
 
@@ -41,16 +43,19 @@ body {
 
 @media (pointer: coarse) {
     #touch-controls {
-        display: flex;
+        display: block;
         position: fixed;
-        inset: auto 0 0 0;
-        justify-content: space-between;
-        padding: var(--space-touch);
+        inset: 0;
         pointer-events: none;
     }
 
+    /* Right thumb: gear up on top, gear down beneath, the outside-view toggle above them. */
     #touch-controls .cluster {
+        position: absolute;
+        right: var(--space-touch);
+        bottom: var(--space-touch);
         display: flex;
+        flex-direction: column;
         gap: var(--space-touch);
         pointer-events: auto;
     }
@@ -64,29 +69,31 @@ body {
         color: var(--c-touch-ink);
         font-size: 28px;
     }
-}
 
-/* Too narrow for one row: steering and pedals along the bottom under the thumbs, the rest above. */
-@media (pointer: coarse) and (orientation: portrait) {
-    #touch-controls {
-        display: grid;
-        grid-template-columns: repeat(4, var(--size-touch));
-        grid-template-areas:
-            "view . down up"
-            "left right brake throttle";
-        justify-content: space-between;
-        row-gap: var(--space-touch);
+    /* The left thumb's floating stick: it shows only while a thumb is down, where it landed. */
+    #touch-controls .stick {
+        position: absolute;
+        width: calc(var(--stick-radius) * 2);
+        height: calc(var(--stick-radius) * 2);
+        margin: calc(var(--stick-radius) * -1) 0 0 calc(var(--stick-radius) * -1);
+        border-radius: 50%;
+        border: 2px solid var(--c-touch-border);
+        background: var(--c-touch);
+        opacity: 0;
     }
 
-    #touch-controls .cluster {
-        display: contents;
+    #touch-controls .stick.active {
+        opacity: 1;
     }
 
-    #touch-controls [data-action="toggleView"] { grid-area: view; }
-    #touch-controls [data-action="shiftDown"] { grid-area: down; }
-    #touch-controls [data-action="shiftUp"] { grid-area: up; }
-    #touch-controls [data-action="steerLeft"] { grid-area: left; }
-    #touch-controls [data-action="steerRight"] { grid-area: right; }
-    #touch-controls [data-action="brake"] { grid-area: brake; }
-    #touch-controls [data-action="throttle"] { grid-area: throttle; }
+    #touch-controls .knob {
+        position: absolute;
+        inset: 50% auto auto 50%;
+        width: var(--size-knob);
+        height: var(--size-knob);
+        margin: calc(var(--size-knob) / -2) 0 0 calc(var(--size-knob) / -2);
+        border-radius: 50%;
+        background: var(--c-touch-border);
+        transform: translate(var(--knob-x, 0), var(--knob-y, 0));
+    }
 }
